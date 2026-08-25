@@ -27,6 +27,7 @@ const FURNISHED_LEASE_KINDS = new Set(["furnished_primary", "furnished_student",
 
 export type LmnpLeaseLike = {
   property_id: string;
+  lot_id?: string | null;
   status?: string | null;
   lease_kind?: string | null;
 };
@@ -67,4 +68,30 @@ export function propertyRequiresLmnpInventory(
       String(l.status || "").toLowerCase() === "active" &&
       FURNISHED_LEASE_KINDS.has(String(l.lease_kind || ""))
   );
+}
+
+// Variante par lot, pour un immeuble à plusieurs lots : chaque lot a son
+// propre bail, donc sa propre obligation LMNP — un lot loué nu dans un
+// immeuble dont un autre lot est meublé ne doit pas être soumis à
+// l'inventaire pour autant.
+export function lotRequiresLmnpInventory(lotId: string, leases: LmnpLeaseLike[] | null | undefined): boolean {
+  return (leases || []).some(
+    (l) =>
+      l.lot_id === lotId &&
+      String(l.status || "").toLowerCase() === "active" &&
+      FURNISHED_LEASE_KINDS.has(String(l.lease_kind || ""))
+  );
+}
+
+// Point d'entrée unique pour "ce bail donné doit-il suivre l'inventaire LMNP ?" —
+// bascule automatiquement sur la vérification par lot si le bail en a un
+// (immeuble), sinon la vérification par bien habituelle.
+export function leaseRequiresLmnpInventory(
+  lease: LmnpLeaseLike | null | undefined,
+  leases: LmnpLeaseLike[] | null | undefined,
+  properties?: LmnpPropertyLike[] | null
+): boolean {
+  if (!lease) return false;
+  if (lease.lot_id) return lotRequiresLmnpInventory(lease.lot_id, leases);
+  return propertyRequiresLmnpInventory(lease.property_id, leases, properties);
 }

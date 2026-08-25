@@ -15,8 +15,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
-import type { Lease, Property, PropertyFinance } from "../../../lib/landlord/types";
-import { getLmnpItemStatus, propertyRequiresLmnpInventory, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
+import type { Lease, Property, PropertyFinance, PropertyLot } from "../../../lib/landlord/types";
+import { getLmnpItemStatus, lotRequiresLmnpInventory, propertyRequiresLmnpInventory, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
 
 type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
 type InventoryStatus = LmnpInventoryStatus;
@@ -25,6 +25,7 @@ type PropertyInventoryItem = {
   id: string;
   user_id: string;
   property_id: string;
+  lot_id: string | null;
   room: string | null;
   category: string;
   label: string;
@@ -41,6 +42,7 @@ type PropertyInventoryItem = {
 type Props = {
   userId: string;
   properties?: Property[];
+  propertyLots?: PropertyLot[];
   propertyFinance?: PropertyFinance[];
   leases?: Lease[];
 };
@@ -189,29 +191,45 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function SectionInventaire({ userId, properties, leases }: Props) {
+export function SectionInventaire({ userId, properties, propertyLots, leases }: Props) {
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
-  const lmnpPropertyIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const p of properties || []) {
-      if (propertyRequiresLmnpInventory(p.id, leases, properties)) ids.add(p.id);
-    }
-    return ids;
-  }, [properties, leases]);
+  const safePropertyLots = useMemo(() => Array.isArray(propertyLots) ? propertyLots : [], [propertyLots]);
 
-  const safeProperties = useMemo(() =>
-    (Array.isArray(properties) ? properties : []).filter(
-      (p) => lmnpPropertyIds.has(p.id) && String(p.status || "").toLowerCase() !== "archived"
-    ),
-  [properties, lmnpPropertyIds]);
+  const activeLotsByProperty = useMemo(() => {
+    const m = new Map<string, PropertyLot[]>();
+    for (const lot of safePropertyLots) {
+      if (String((lot as any)?.status || "active").toLowerCase() === "archived") continue;
+      const pid = lot.property_id;
+      if (!m.has(pid)) m.set(pid, []);
+      m.get(pid)!.push(lot);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    return m;
+  }, [safePropertyLots]);
+
+  // Un immeuble à lots est éligible LMNP si AU MOINS un de ses lots a un bail meublé
+  // actif — chaque lot garde ensuite sa propre obligation, un lot loué nu dans un
+  // immeuble dont un autre lot est meublé n'a pas à suivre l'inventaire.
+  const safeProperties = useMemo(() => {
+    const props = Array.isArray(properties) ? properties : [];
+    return props.filter((p) => {
+      if (String(p.status || "").toLowerCase() === "archived") return false;
+      if ((p as any).type === "building") {
+        const lots = activeLotsByProperty.get(p.id) || [];
+        return lots.some((lot) => lotRequiresLmnpInventory(lot.id, leases));
+      }
+      return propertyRequiresLmnpInventory(p.id, leases, properties);
+    });
+  }, [properties, leases, activeLotsByProperty]);
 
   const propertyById = useMemo(() => new Map(safeProperties.map((p) => [p.id, p])), [safeProperties]);
 
   const [items, setItems] = useState<PropertyInventoryItem[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [selectedLotId, setSelectedLotId] = useState("");
   const [filterText, setFilterText] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStatus, setFilterStatus] = useState<InventoryStatus | "">("");
@@ -254,7 +272,25 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
   const autoInitDoneRef = useRef<Set<string>>(new Set());
 
   const selectedProperty = selectedPropertyId ? propertyById.get(selectedPropertyId) || null : null;
-  const propertyItems = useMemo(() => items.filter((item) => item.property_id === selectedPropertyId), [items, selectedPropertyId]);
+  const isBuildingSelected = (selectedProperty as any)?.type === "building";
+
+  // Lots du bien sélectionné qui ont réellement besoin d'un suivi LMNP (bail
+  // meublé actif) — un lot loué nu n'a pas de raison d'apparaître ici.
+  const lotsForSelectedProperty = useMemo(() => {
+    if (!selectedProperty || !isBuildingSelected) return [];
+    return (activeLotsByProperty.get(selectedProperty.id) || []).filter((lot) => lotRequiresLmnpInventory(lot.id, leases));
+  }, [selectedProperty, isBuildingSelected, activeLotsByProperty, leases]);
+
+  const selectedLot = isBuildingSelected ? lotsForSelectedProperty.find((l) => l.id === selectedLotId) || null : null;
+
+  const propertyItems = useMemo(
+    () =>
+      items.filter((item) => {
+        if (item.property_id !== selectedPropertyId) return false;
+        return isBuildingSelected ? item.lot_id === selectedLotId : true;
+      }),
+    [items, selectedPropertyId, isBuildingSelected, selectedLotId]
+  );
 
   const categories = useMemo(() => Array.from(new Set(propertyItems.map((item) => item.category).filter(Boolean))).sort(), [propertyItems]);
 
@@ -376,20 +412,37 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     if (!selectedPropertyId && safeProperties.length > 0) setSelectedPropertyId(safeProperties[0].id);
   }, [safeProperties, selectedPropertyId]);
 
-  // Auto-init : si le bien sélectionné est LMNP et n'a aucun item → insérer la liste réglementaire
+  // Sélectionne automatiquement le premier lot éligible quand le bien change,
+  // ou si le lot actuellement retenu ne fait plus partie du bien sélectionné.
+  useEffect(() => {
+    if (!isBuildingSelected) {
+      if (selectedLotId) setSelectedLotId("");
+      return;
+    }
+    if (!lotsForSelectedProperty.some((l) => l.id === selectedLotId)) {
+      setSelectedLotId(lotsForSelectedProperty[0]?.id || "");
+    }
+  }, [isBuildingSelected, lotsForSelectedProperty, selectedLotId]);
+
+  // Auto-init : si l'unité sélectionnée (bien, ou lot pour un immeuble) est LMNP et
+  // n'a aucun item → insérer la liste réglementaire.
   useEffect(() => {
     if (!supabase || !userId || !selectedPropertyId) return;
-    if (!lmnpPropertyIds.has(selectedPropertyId)) return;
+    if (isBuildingSelected && !selectedLotId) return;
     if (loading) return;
-    if (autoInitDoneRef.current.has(selectedPropertyId)) return;
-    const hasItems = items.some((i) => i.property_id === selectedPropertyId);
+    const unitKey = `${selectedPropertyId}:${selectedLotId || ""}`;
+    if (autoInitDoneRef.current.has(unitKey)) return;
+    const hasItems = items.some(
+      (i) => i.property_id === selectedPropertyId && (isBuildingSelected ? i.lot_id === selectedLotId : true)
+    );
     if (hasItems) return;
 
-    autoInitDoneRef.current.add(selectedPropertyId);
+    autoInitDoneRef.current.add(unitKey);
 
     const payload = LMNP_REQUIRED_ITEMS.map((item) => ({
       user_id: userId,
       property_id: selectedPropertyId,
+      lot_id: isBuildingSelected ? selectedLotId : null,
       room: item.room,
       category: item.category,
       label: item.label,
@@ -402,19 +455,32 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     }));
 
     (async () => {
+      // Re-vérifie en base juste avant d'insérer : le state local `items` peut être
+      // périmé (double montage React en dev, onglet concurrent...) — sans ce contrôle,
+      // la liste réglementaire pourrait être insérée deux fois pour la même unité.
+      let existsQuery = supabase
+        .from("property_inventory_items")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("property_id", selectedPropertyId);
+      existsQuery = isBuildingSelected ? existsQuery.eq("lot_id", selectedLotId) : existsQuery.is("lot_id", null);
+      const { count: existingCount } = await existsQuery;
+      if (existingCount) { await loadInventory(); return; }
+
       const { error } = await supabase.from("property_inventory_items").insert(payload);
       if (error) {
         setErr(error.message || "Impossible d'initialiser l'inventaire LMNP.");
-        autoInitDoneRef.current.delete(selectedPropertyId);
+        autoInitDoneRef.current.delete(unitKey);
       } else {
         await loadInventory();
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPropertyId, items, loading, lmnpPropertyIds, userId]);
+  }, [selectedPropertyId, selectedLotId, isBuildingSelected, items, loading, userId]);
 
   const createBaseInventory = async () => {
     if (!supabase || !userId || !selectedPropertyId) return;
+    if (isBuildingSelected && !selectedLotId) return;
 
     setLoading(true);
     setErr(null);
@@ -425,6 +491,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
       const payload = LMNP_REQUIRED_ITEMS.filter((item) => !existingLabels.has(item.label.toLowerCase())).map((item) => ({
         user_id: userId,
         property_id: selectedPropertyId,
+        lot_id: isBuildingSelected ? selectedLotId : null,
         room: item.room,
         category: item.category,
         label: item.label,
@@ -468,6 +535,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
   const addItem = async (e: FormEvent) => {
     e.preventDefault();
     if (!supabase || !userId || !selectedPropertyId) return;
+    if (isBuildingSelected && !selectedLotId) return;
 
     setLoading(true);
     setErr(null);
@@ -478,6 +546,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
       const payload = {
         user_id: userId,
         property_id: selectedPropertyId,
+        lot_id: isBuildingSelected ? selectedLotId : null,
         room: form.room.trim() || null,
         category: form.category.trim() || "Autre",
         label: form.label.trim(),
@@ -601,9 +670,11 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
       return;
     }
 
+    const propertyLabel = selectedProperty?.label || "Bien";
+    const unitLabel = selectedLot ? `${propertyLabel} — ${selectedLot.label}` : propertyLabel;
     const headers = ["Bien", "Pièce", "Catégorie", "Élément", "Qté attendue", "Qté réelle", "Statut", "État", "Obligatoire LMNP", "Coût remplacement", "Notes"];
     const rows = filteredItems.map((item) => [
-      selectedProperty?.label || "Bien",
+      unitLabel,
       item.room || "",
       item.category,
       item.label,
@@ -619,7 +690,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const propertySlug = (selectedProperty?.label || "inventaire").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+    const propertySlug = (unitLabel || "inventaire").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
     link.href = url;
     link.download = `inventaire-meuble-${propertySlug || "bien"}.csv`;
     document.body.appendChild(link);
@@ -671,7 +742,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
       </div>
 
       <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div className="grid gap-3 lg:grid-cols-[1fr,auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[1fr,1fr,auto] lg:items-end">
           <div>
             <label className="text-xs font-semibold text-slate-600">Bien à inventorier</label>
             <select
@@ -691,6 +762,27 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
             </select>
           </div>
 
+          {isBuildingSelected ? (
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Lot</label>
+              <select
+                value={selectedLotId}
+                onChange={(e) => setSelectedLotId(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                disabled={lotsForSelectedProperty.length === 0}
+              >
+                {lotsForSelectedProperty.length === 0
+                  ? <option value="">Aucun lot meublé sur cet immeuble</option>
+                  : lotsForSelectedProperty.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {lot.label}
+                      </option>
+                    ))
+                }
+              </select>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -704,20 +796,19 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
             <button
               type="button"
               onClick={createBaseInventory}
-              disabled={!selectedPropertyId || loading}
-              className={cx("inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50", (!selectedPropertyId || loading) && "opacity-60")}
+              disabled={!selectedPropertyId || (isBuildingSelected && !selectedLotId) || loading}
+              className={cx("inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50", (!selectedPropertyId || (isBuildingSelected && !selectedLotId) || loading) && "opacity-60")}
             >
               <HomeModernIcon className="h-4 w-4" />
               Restaurer obligations LMNP
             </button>
           </div>
         </div>
-        {(selectedProperty as any)?.type === "building" && (
-          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-            Cet immeuble a plusieurs lots : l’inventaire mobilier reste partagé au niveau de l’immeuble pour l’instant —
-            un élément déclaré ici s’applique à tous les lots, il n’est pas encore possible de le distinguer par lot.
+        {isBuildingSelected ? (
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Chaque lot de cet immeuble a son propre inventaire et sa propre conformité LMNP.
           </p>
-        )}
+        ) : null}
       </section>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -818,7 +909,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
                 <input value={form.notes} onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))} className="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Note : marque, emplacement, précision..." />
               </div>
               <div className="mt-3 flex justify-end">
-                <button type="submit" disabled={loading || !selectedPropertyId} className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, (loading || !selectedPropertyId) && "opacity-60")}>
+                <button type="submit" disabled={loading || !selectedPropertyId || (isBuildingSelected && !selectedLotId)} className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, (loading || !selectedPropertyId || (isBuildingSelected && !selectedLotId)) && "opacity-60")}>
                   Ajouter
                 </button>
               </div>

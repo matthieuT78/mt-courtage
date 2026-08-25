@@ -22,7 +22,7 @@ import { SectionTitle } from "../UiBits";
 import { NiceSelect } from "../ui/NiceSelect";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
-import { propertyRequiresLmnpInventory, getLmnpItemStatus } from "../../../lib/landlord/lmnpInventory";
+import { leaseRequiresLmnpInventory, getLmnpItemStatus } from "../../../lib/landlord/lmnpInventory";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import RepairsGuideCard from "../RepairsGuideCard";
 
@@ -806,22 +806,24 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // que de laisser l'EDL paraître vide sans explication.
   useEffect(() => {
     if (!supabase || !userId || !selectedProperty?.id) { setLmnpInventoryEmptyForProperty(false); return; }
-    if (!propertyRequiresLmnpInventory(selectedProperty.id, leases, properties)) {
+    if (!leaseRequiresLmnpInventory(selectedLease, leases, properties)) {
       setLmnpInventoryEmptyForProperty(false);
       return;
     }
     let mounted = true;
     (async () => {
-      const { count } = await supabase
+      let query = supabase
         .from("property_inventory_items")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("property_id", selectedProperty.id)
         .eq("is_required_lmnp", true);
+      query = selectedLease?.lot_id ? query.eq("lot_id", selectedLease.lot_id) : query.is("lot_id", null);
+      const { count } = await query;
       if (mounted) setLmnpInventoryEmptyForProperty(!count);
     })();
     return () => { mounted = false; };
-  }, [selectedProperty?.id, leases, userId]);
+  }, [selectedProperty?.id, selectedLease, leases, userId]);
   const standalonePlaceLabel = selectedReport
     ? [
         selectedReport.property_address_line1,
@@ -1182,15 +1184,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // enregistrés sur le bien (section Inventaire), plutôt que de les faire
   // ressaisir. Les lignes créées sont taguées is_lmnp_required pour pouvoir
   // les repérer plus tard (comparatif + resynchronisation à la sortie).
-  const prefillLmnpItemsForEntry = async (propertyId: string, reportId: string) => {
+  const prefillLmnpItemsForEntry = async (propertyId: string, reportId: string, lotId?: string | null) => {
     if (!supabase || !userId) return { roomsCreated: 0, itemsCreated: 0 };
 
-    const { data: lmnpItems, error } = await supabase
+    let itemsQuery = supabase
       .from("property_inventory_items")
       .select("room, category, label, required_quantity, actual_quantity, condition")
       .eq("user_id", userId)
       .eq("property_id", propertyId)
       .eq("is_required_lmnp", true);
+    itemsQuery = lotId ? itemsQuery.eq("lot_id", lotId) : itemsQuery.is("lot_id", null);
+    const { data: lmnpItems, error } = await itemsQuery;
     if (error) throw error;
     if (!lmnpItems || !lmnpItems.length) return { roomsCreated: 0, itemsCreated: 0 };
 
@@ -1296,7 +1300,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // filtre, mettre à jour l'un écrasait silencieusement l'état de l'autre.
   const syncLmnpInventoryFromExit = async (
     propertyId: string,
-    lmnpItemsInReport: Array<InventoryItem & { roomName?: string | null }>
+    lmnpItemsInReport: Array<InventoryItem & { roomName?: string | null }>,
+    lotId?: string | null
   ) => {
     if (!supabase || !userId || !lmnpItemsInReport.length) return { updated: 0 };
     let updated = 0;
@@ -1307,6 +1312,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
         .eq("user_id", userId)
         .eq("property_id", propertyId)
         .eq("label", it.label);
+      query = lotId ? query.eq("lot_id", lotId) : query.is("lot_id", null);
       if (it.roomName) query = query.eq("room", it.roomName);
       const { error, count } = await query;
       if (!error && count) updated += count;
@@ -1389,9 +1395,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
           console.error(copyErr);
           setOk("EDL de sortie créé ✅ (copie entrée impossible — tu peux compléter manuellement)");
         }
-      } else if (type === "entry" && _property?.id && propertyRequiresLmnpInventory(_property.id, leases, properties)) {
+      } else if (type === "entry" && _property?.id && leaseRequiresLmnpInventory(_lease, leases, properties)) {
         try {
-          const { itemsCreated } = await prefillLmnpItemsForEntry(_property.id, reportId);
+          const { itemsCreated } = await prefillLmnpItemsForEntry(_property.id, reportId, _lease?.lot_id);
           setOk(
             itemsCreated > 0
               ? `État des lieux créé ✅ (${itemsCreated} élément(s) LMNP obligatoire(s) prérempli(s) depuis l'inventaire du bien)`
@@ -1541,7 +1547,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       // fait maintenant, seulement s'il s'agit d'une entrée et qu'aucun élément
       // LMNP n'a déjà été ajouté (évite un double-préremplissage).
       let lmnpMessage = "";
-      if (lease.property_id && updated?.report_type === "entry" && propertyRequiresLmnpInventory(lease.property_id, leases, properties)) {
+      if (lease.property_id && updated?.report_type === "entry" && leaseRequiresLmnpInventory(lease, leases, properties)) {
         try {
           const { count } = await supabase
             .from("inventory_items")
@@ -1549,7 +1555,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
             .eq("report_id", reportId)
             .eq("is_lmnp_required", true);
           if (!count) {
-            const { itemsCreated } = await prefillLmnpItemsForEntry(lease.property_id, reportId);
+            const { itemsCreated } = await prefillLmnpItemsForEntry(lease.property_id, reportId, lease.lot_id);
             if (itemsCreated > 0) lmnpMessage = ` (${itemsCreated} élément(s) LMNP obligatoire(s) prérempli(s))`;
           }
         } catch (lmnpErr) {
@@ -2418,19 +2424,22 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
     if (!supabase || !userId || wizardStep !== "config" || !selectedReport?.property_id) return;
     let cancelled = false;
     (async () => {
-      const { count } = await supabase
+      const reportLease = safeLeases.find((l) => l.id === selectedReport.lease_id) || null;
+      let query = supabase
         .from("property_inventory_items")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("property_id", selectedReport.property_id)
         .eq("is_required_lmnp", true);
+      query = reportLease?.lot_id ? query.eq("lot_id", reportLease.lot_id) : query.is("lot_id", null);
+      const { count } = await query;
       if (!cancelled) setLmnpTotalRequiredCount(count || 0);
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wizardStep, selectedReport?.property_id, userId]);
+  }, [wizardStep, selectedReport?.property_id, selectedReport?.lease_id, safeLeases, userId]);
 
   const wizardStepsMeta = useMemo(() => {
     return [
@@ -2853,7 +2862,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
     setLmnpSyncLoading(true);
     setErr(null);
     try {
-      const { updated } = await syncLmnpInventoryFromExit(selectedReport.property_id, lmnpItemsInReport);
+      const reportLease = safeLeases.find((l) => l.id === selectedReport.lease_id) || null;
+      const { updated } = await syncLmnpInventoryFromExit(selectedReport.property_id, lmnpItemsInReport, reportLease?.lot_id);
       setOk(`Inventaire LMNP mis à jour ✅ (${updated} élément(s))`);
       setLmnpSyncDone(true);
     } catch (e: any) {

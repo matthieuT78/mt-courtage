@@ -10,7 +10,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
-import { isLmnpItemCompliant, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
+import { isLmnpItemCompliant, lotRequiresLmnpInventory, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
@@ -396,7 +396,7 @@ export function SectionDashboard({
   // surtout avec plusieurs biens où la liste peut devenir longue.
   const [weatherExpanded, setWeatherExpanded] = useState(false);
   const [lmnpInventoryCompliance, setLmnpInventoryCompliance] = useState<
-    Array<{ propertyId: string; compliance: number; missingCount: number }>
+    Array<{ unitId: string; label: string; compliance: number; missingCount: number }>
   >([]);
   // Taux moyens marché (crédit immobilier) — table publique mise à jour
   // manuellement chaque trimestre, fallback local si Supabase indisponible.
@@ -677,49 +677,70 @@ export function SectionDashboard({
   }, [userId]);
 
   // ── Conformité inventaire LMNP ────────────────────────────────────────
+  // Unité = un lot pour un immeuble qui en a un de meublé, sinon le bien
+  // lui-même — chaque lot d'un immeuble a sa propre conformité, un lot loué nu
+  // dans un immeuble par ailleurs meublé ne doit pas fausser la moyenne du bien.
+  const lmnpUnits = useMemo(() => {
+    const units: Array<{ unitId: string; propertyId: string; lotId: string | null; label: string }> = [];
+    for (const property of properties || []) {
+      if (String(property.status || "").toLowerCase() === "archived") continue;
+      if ((property as any).type === "building") {
+        const lots = (propertyLots || []).filter(
+          (lot: any) => lot.property_id === property.id && String(lot.status || "active").toLowerCase() !== "archived"
+        );
+        for (const lot of lots) {
+          if (lotRequiresLmnpInventory(lot.id, leases)) {
+            units.push({ unitId: lot.id, propertyId: property.id, lotId: lot.id, label: `${property.label || "Immeuble"} — ${lot.label}` });
+          }
+        }
+      } else if (propertyRequiresLmnpInventory(property.id, leases, properties)) {
+        units.push({ unitId: property.id, propertyId: property.id, lotId: null, label: (property as any).label || (property as any).address_line1 || "Bien" });
+      }
+    }
+    return units;
+  }, [properties, propertyLots, leases]);
+
   useEffect(() => {
     if (!supabase || !userId) return;
-    const activePropertyIds = new Set(
-      (properties || [])
-        .filter((p) => String(p.status || "").toLowerCase() !== "archived")
-        .map((p) => p.id)
-    );
-    const lmnpIds = Array.from(activePropertyIds).filter((propertyId) => propertyRequiresLmnpInventory(propertyId, leases, properties));
-    if (!lmnpIds.length) { setLmnpInventoryCompliance([]); return; }
+    if (!lmnpUnits.length) { setLmnpInventoryCompliance([]); return; }
+    const propertyIds = Array.from(new Set(lmnpUnits.map((u) => u.propertyId)));
 
     let mounted = true;
     (async () => {
       try {
         const { data } = await supabase
           .from("property_inventory_items")
-          .select("property_id, is_required_lmnp, actual_quantity, required_quantity, condition")
+          .select("property_id, lot_id, is_required_lmnp, actual_quantity, required_quantity, condition")
           .eq("user_id", userId)
           .eq("is_required_lmnp", true)
-          .in("property_id", lmnpIds);
+          .in("property_id", propertyIds);
 
         if (!mounted) return;
-        const byProp = new Map<string, { ok: number; total: number }>();
+        const byUnit = new Map<string, { ok: number; total: number }>();
         for (const item of data || []) {
-          const entry = byProp.get(item.property_id) || { ok: 0, total: 0 };
+          const unitId = item.lot_id || item.property_id;
+          const entry = byUnit.get(unitId) || { ok: 0, total: 0 };
           entry.total++;
           if (isLmnpItemCompliant(item)) entry.ok++;
-          byProp.set(item.property_id, entry);
+          byUnit.set(unitId, entry);
         }
-        // Biens sans aucun item inventaire → compliance 0
-        for (const id of lmnpIds) { if (!byProp.has(id)) byProp.set(id, { ok: 0, total: 0 }); }
         setLmnpInventoryCompliance(
-          Array.from(byProp.entries()).map(([propertyId, { ok, total }]) => ({
-            propertyId,
-            compliance: total > 0 ? Math.round((ok / total) * 100) : 0,
-            missingCount: total - ok,
-          }))
+          lmnpUnits.map((unit) => {
+            const { ok, total } = byUnit.get(unit.unitId) || { ok: 0, total: 0 };
+            return {
+              unitId: unit.unitId,
+              label: unit.label,
+              compliance: total > 0 ? Math.round((ok / total) * 100) : 0,
+              missingCount: total - ok,
+            };
+          })
         );
       } catch {
         // On ignore silencieusement — la table peut ne pas exister en dev
       }
     })();
     return () => { mounted = false; };
-  }, [userId, propertyFinance, properties, leases]);
+  }, [userId, propertyFinance, lmnpUnits]);
 
   const accountingMonths = useMemo(() => {
     const now = new Date();
@@ -1143,11 +1164,7 @@ export function SectionDashboard({
     // ── Inventaire LMNP non conforme ──────────────────────────────────────
     const lmnpInventoryIssues = lmnpInventoryCompliance
       .filter((d) => d.compliance < 100)
-      .map((d) => {
-        const property = propertyById.get(d.propertyId);
-        const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
-        return { label, compliance: d.compliance, missingCount: d.missingCount };
-      });
+      .map((d) => ({ label: d.label, compliance: d.compliance, missingCount: d.missingCount }));
 
     if (lmnpInventoryIssues.length > 0) {
       const allEmpty = lmnpInventoryIssues.every((b) => b.compliance === 0 && b.missingCount === 0);

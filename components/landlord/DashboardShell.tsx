@@ -785,7 +785,7 @@ export function DashboardShell(props: any) {
         return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} propertyFinance={propertyFinance} onRefresh={refresh} onNavigateToBaux={() => onChangeTab("baux")} onNavigateToInventaire={() => onChangeTab("inventaire")} />;
 
       case "inventaire":
-        return <SectionInventaire userId={userId} properties={properties} propertyFinance={propertyFinance} leases={leases} />;
+        return <SectionInventaire userId={userId} properties={properties} propertyLots={propertyLots} propertyFinance={propertyFinance} leases={leases} />;
 
       case "candidatures":
         return <SectionCandidatures userId={userId} onNavigate={setActive} onNavigateDeep={navigateDeep} onRefresh={refresh} />;
