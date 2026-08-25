@@ -1972,7 +1972,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                     />
                     <Stat
                       label={selectedPeriod.monthCount === 1 ? "Dépenses ce mois" : "Dépenses / mois"}
-                      value={money(row.expense / selectedPeriod.monthCount)}
+                      value={money(row.expense / selectedPeriod.monthCount + row.recurringPeriodAvg)}
                     />
                     <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                     <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
