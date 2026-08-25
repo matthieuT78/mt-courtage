@@ -1,6 +1,7 @@
 // components/landlord/sections/SectionBiens.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
+import { DELEGATED_SERVICES } from "../../../lib/landlord/delegatedServices";
 import { UploadProgressBar } from "../../UploadProgressBar";
 import Link from "next/link";
 import {
@@ -120,12 +121,6 @@ const EMPTY = {
   delegated_services: [] as string[],
   delegation_agency_name: "",
 };
-
-const DELEGATED_SERVICES = [
-  { key: "mise_en_location", label: "Mise en location & candidatures", desc: "Recherche locataire, dossiers de candidature" },
-  { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux, dépôt de garantie" },
-  { key: "gestion_courante", label: "Gestion courante", desc: "Encaissement loyers, quittances, révision IRL" },
-] as const;
 
 function photoUrl(photo: any): string | null {
   if (!photo) return null;

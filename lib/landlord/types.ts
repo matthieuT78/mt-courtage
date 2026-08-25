@@ -109,7 +109,6 @@ export type Lease = {
   auto_reminder_enabled: boolean | null;
   auto_quittance_enabled: boolean | null;
   receipts_disabled?: boolean | null;
-  entry_edl_not_required?: boolean | null;
   reminder_day_of_month: number | null;
   reminder_email: string | null;
   tenant_receipt_email: string | null;

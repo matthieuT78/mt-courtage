@@ -11,6 +11,7 @@ import {
 import { getServerUserPlan } from "../../../lib/serverPermissions";
 import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import type { DelegatedServiceKey } from "../../../lib/landlord/delegatedServices";
 
 type AlertTone = "red" | "amber" | "slate";
 
@@ -141,7 +142,7 @@ function weeklyScheduleKey(prefix: string, today: Date, daysElapsed?: number | n
   return `${prefix}:week-${toISODate(monday)}`;
 }
 
-const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, string>> = {
+const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, DelegatedServiceKey>> = {
   late_payment:            "gestion_courante",
   receipt_to_finalize:     "gestion_courante",
   rent_revision_due:       "gestion_courante",
@@ -239,15 +240,14 @@ function renderAlertCard(alert: AlertItem) {
       </p>`
     : "";
 
-  // Seule alerte pour laquelle un bailleur peut avoir fait un choix délibéré
-  // (pas d'EDL par choix) plutôt qu'un simple oubli — on le renvoie vers le
-  // réglage par bail plutôt que de laisser croire que la seule option est
-  // de couper l'alerte globalement dans les préférences.
+  // L'état des lieux d'entrée reste géré par le bailleur pour ce bail précis : si l'agence
+  // s'en charge, c'est la délégation du bien (Logements > Services délégués > "Bail & états
+  // des lieux") qui supprime cette alerte via isServiceDelegated ci-dessous — pas un réglage
+  // par bail. Ne rien proposer d'autre ici évite de recréer un mécanisme redondant.
   const optOutNote =
     alert.preferenceKey === "entry_inventory_missing"
       ? `<p style="margin:8px 0 0;color:#64748b;font-size:12px;line-height:1.45">
-          Vous ne comptez pas faire d'état des lieux d'entrée pour ce bail ? Ouvrez-le, cliquez sur « Modifier », puis « Options avancées »,
-          et cochez « Pas d'état des lieux d'entrée pour ce bail » — cette alerte ne sera plus envoyée pour cette location précise (vos autres baux ne sont pas concernés).
+          Ce bien est géré par une agence pour le bail et l'état des lieux ? Configurez la délégation sur ce bien (Logements → le bien → « Bail &amp; états des lieux ») pour ne plus recevoir cette alerte sur aucun de ses baux.
         </p>`
       : "";
 
@@ -512,7 +512,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (!hasPreparedEntryEdl && leaseStart && !lease.entry_edl_not_required) {
+          if (!hasPreparedEntryEdl && leaseStart) {
             const daysToStart = daysBetween(today, leaseStart);
             // Avant/le jour du début du bail : deux rappels ponctuels de préparation.
             // Après le début : relance hebdomadaire tant que l'EDL n'est pas fait

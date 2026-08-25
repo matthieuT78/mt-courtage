@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { DELEGATED_SERVICES } from "../../../lib/landlord/delegatedServices";
 import {
   UserCircleIcon,
   HomeModernIcon,
@@ -78,12 +79,6 @@ const WIZARD_STEP_HELP: Record<StepKey, { title: string; items: string[] }> = {
     ],
   },
 };
-
-const DELEGATED_SERVICES = [
-  { key: "mise_en_location", label: "Mise en location & candidatures", desc: "Recherche locataire, dossiers de candidature" },
-  { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux, dépôt de garantie" },
-  { key: "gestion_courante", label: "Gestion courante", desc: "Encaissement loyers, quittances, révision IRL" },
-] as const;
 
 const PROPERTY_TYPE_OPTIONS: Array<{ value: string; label: string; icon: typeof HomeIcon }> = [
   { value: "apartment", label: "Appartement", icon: BuildingOffice2Icon },
