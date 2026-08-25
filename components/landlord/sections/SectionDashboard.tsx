@@ -229,6 +229,20 @@ export function SectionDashboard({
   const router = useRouter();
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
 
+  // Sur un immeuble, plusieurs baux partagent le même bien — sans le nom du
+  // lot, impossible de savoir quel logement une alerte ou une carte concerne.
+  const lotById = useMemo(() => {
+    const m = new Map<string, PropertyLot>();
+    for (const lot of Array.isArray(propertyLots) ? propertyLots : []) m.set(lot.id, lot);
+    return m;
+  }, [propertyLots]);
+  const leasePropertyLabel = (lease: Pick<Lease, "property_id" | "lot_id">) => {
+    const property = propertyById.get(lease.property_id);
+    const lot = (lease as any).lot_id ? lotById.get((lease as any).lot_id) : null;
+    const base = (property as any)?.label || (property as any)?.address_line1 || (property as any)?.city || "Bien";
+    return lot ? `${base} · ${lot.label}` : base;
+  };
+
   // ── Événements contextuels (anniversaires + baux expirants) ──────────────
   const contextualEvents = useMemo(() => {
     const now = new Date();
@@ -243,9 +257,8 @@ export function SectionDashboard({
 
     for (const l of activeLeases) {
       const tenant   = tenantById.get(l.tenant_id);
-      const property = propertyById.get(l.property_id);
       const tenantName    = tenant?.full_name    || (l as any).tenant_name    || "Locataire";
-      const propertyLabel = (property as any)?.label || (property as any)?.city || "Logement";
+      const propertyLabel = leasePropertyLabel(l);
 
       // Prochain anniversaire du bail (révision IRL)
       if (l.start_date && Number(l.rent_amount || 0) > 0) {
@@ -272,7 +285,7 @@ export function SectionDashboard({
     }
 
     return events.sort((a, b) => a.days - b.days).slice(0, 6);
-  }, [activeLeases, tenantById, propertyById]);
+  }, [activeLeases, tenantById, propertyById, lotById]);
   const remainingToCollect = Math.max(0, monthlyExpected - monthlyPaid);
   const currentMonthPayments = useMemo(
     () =>
@@ -873,7 +886,6 @@ export function SectionDashboard({
     const currentMonth = monthRange.startISO.slice(0, 7);
 
     return activeLeases.map((lease) => {
-      const property = propertyById.get(lease.property_id);
       const tenant = tenantById.get(lease.tenant_id);
       const payment = currentMonthPayments.find((p) => p.lease_id === lease.id);
       const receipt = currentMonthReceipts.find((r) => r.lease_id === lease.id);
@@ -899,7 +911,7 @@ export function SectionDashboard({
 
       return {
         lease,
-        propertyLabel: property?.label || "Bien",
+        propertyLabel: leasePropertyLabel(lease),
         tenantName: tenant?.full_name || "Locataire",
         total,
         paymentStatus,
@@ -913,7 +925,7 @@ export function SectionDashboard({
         endDate,
       };
     });
-  }, [activeLeases, currentMonthPayments, currentMonthReceipts, monthRange.startISO, propertyById, tenantById]);
+  }, [activeLeases, currentMonthPayments, currentMonthReceipts, monthRange.startISO, propertyById, lotById, tenantById]);
 
   const rentsToCollect = useMemo(
     () =>
@@ -1040,9 +1052,8 @@ export function SectionDashboard({
     });
 
     for (const lease of leasesMissingContract) {
-      const property = propertyById.get(lease.property_id);
       const tenant = tenantById.get(lease.tenant_id);
-      const propertyLabel = (property as any)?.label || (property as any)?.address_line1 || "Bien";
+      const propertyLabel = leasePropertyLabel(lease);
       const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
       actions.push({
         id: `missing-contract-${lease.id}`,
@@ -1278,6 +1289,7 @@ export function SectionDashboard({
     lmnpInventoryCompliance,
     properties,
     propertyById,
+    lotById,
     propertyFinance,
     rentsToCollect,
     ratio,

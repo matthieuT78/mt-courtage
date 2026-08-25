@@ -16,7 +16,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
+import type { RentReceipt, Lease, Property, PropertyLot, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { usePermissions } from "../../PermissionProvider";
@@ -46,6 +46,7 @@ type Props = {
   leases?: Lease[];
   payments?: AnyPayment[]; // ✅ AJOUT (depuis DashboardShell)
   propertyById?: Map<string, Property>;
+  propertyLots?: PropertyLot[];
   tenantById?: Map<string, Tenant>;
 
   onRefresh: () => Promise<void>;
@@ -501,6 +502,7 @@ export function SectionQuittances({
   leases,
   payments,
   propertyById,
+  propertyLots,
   tenantById,
   onRefresh,
 }: Props) {
@@ -511,6 +513,11 @@ export function SectionQuittances({
 
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
   const tenantsById = tenantById instanceof Map ? tenantById : new Map<string, Tenant>();
+  const lotsById = useMemo(() => {
+    const m = new Map<string, PropertyLot>();
+    for (const lot of Array.isArray(propertyLots) ? propertyLots : []) m.set(lot.id, lot);
+    return m;
+  }, [propertyLots]);
 
   const delegatedLeaseIds = useMemo(() => {
     const ids = new Set<string>();
@@ -577,7 +584,9 @@ export function SectionQuittances({
   const leaseLabel = (lease: Lease) => {
     const p = propsById.get((lease as any).property_id);
     const t = tenantsById.get((lease as any).tenant_id);
-    return `${p?.label || "Bien"} — ${t?.full_name || "Locataire"}`;
+    const lot = (lease as any).lot_id ? lotsById.get((lease as any).lot_id) : null;
+    const propertyLabel = lot ? `${p?.label || "Bien"} · ${lot.label}` : p?.label || "Bien";
+    return `${propertyLabel} — ${t?.full_name || "Locataire"}`;
   };
 
   const loadReminderSettings = async () => {

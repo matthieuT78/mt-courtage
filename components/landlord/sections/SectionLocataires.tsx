@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, LockClosedIcon, NoSymbolIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import type { RentPayment } from "../../../lib/landlord/types";
+import type { RentPayment, PropertyLot } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
@@ -47,6 +47,7 @@ export type Lease = {
   id: string;
   user_id: string;
   property_id: string;
+  lot_id?: string | null;
   tenant_id: string;
   start_date: string;
   end_date: string | null;
@@ -82,6 +83,7 @@ type Props = {
   tenants?: Tenant[];
   leases?: Lease[];
   properties?: PropertyLite[];
+  propertyLots?: PropertyLot[];
   payments?: RentPayment[];
   onRefresh: () => Promise<void>;
   onContactTenant?: (tenantId: string) => void;
@@ -242,6 +244,7 @@ export function SectionLocataires({
   tenants,
   leases,
   properties,
+  propertyLots,
   payments,
   onRefresh,
   onContactTenant,
@@ -254,6 +257,7 @@ export function SectionLocataires({
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
+  const safePropertyLots = Array.isArray(propertyLots) ? propertyLots : [];
   const safePayments = Array.isArray(payments) ? payments : [];
 
   const { plan } = usePermissions();
@@ -414,6 +418,12 @@ export function SectionLocataires({
     return m;
   }, [safeProperties]);
 
+  const lotById = useMemo(() => {
+    const m = new Map<string, PropertyLot>();
+    for (const lot of safePropertyLots) m.set(lot.id, lot);
+    return m;
+  }, [safePropertyLots]);
+
   const activeLeaseForTenant = (tenantId: string) => {
     const now = new Date();
     return (
@@ -433,6 +443,14 @@ export function SectionLocataires({
     const lease = activeLeaseForTenant(tenantId);
     if (!lease) return null;
     return propertyById.get(lease.property_id) || null;
+  };
+
+  // Sur un immeuble, plusieurs locataires partagent le même bien — sans le
+  // nom du lot, la carte locataire ne dit pas quel logement il occupe.
+  const activeLotForTenant = (tenantId: string) => {
+    const lease = activeLeaseForTenant(tenantId);
+    if (!lease?.lot_id) return null;
+    return lotById.get(lease.lot_id) || null;
   };
 
   const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => l?.tenant_id === tenantId);
@@ -983,6 +1001,7 @@ export function SectionLocataires({
   const renderTenantTile = (t: Tenant, archived: boolean) => {
     const activeLease = !archived ? activeLeaseForTenant(t.id) : null;
     const p = !archived ? activePropertyForTenant(t.id) : null;
+    const lot = !archived ? activeLotForTenant(t.id) : null;
     const hasLease = hasAnyLeaseForTenant(t.id);
     const paymentStatus = activeLease ? getTenantPaymentStatus(activeLease.id, safePayments) : null;
     const totalRent = activeLease ? Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0) : 0;
@@ -1014,7 +1033,7 @@ export function SectionLocataires({
           {archived ? (
             <p className="text-sm text-slate-500">Locataire archivé</p>
           ) : activeLease && p ? (
-            <p className="text-sm font-medium text-slate-900">{p.label} • Bail actif</p>
+            <p className="text-sm font-medium text-slate-900">{p.label}{lot ? ` · ${lot.label}` : ""} • Bail actif</p>
           ) : activeLease ? (
             <p className="text-sm font-medium text-slate-900">Bail actif</p>
           ) : (
@@ -1794,11 +1813,12 @@ export function SectionLocataires({
                           ) : (
                             leasesForTenant(t.id).map((l) => {
                               const prop = propertyById.get(l.property_id);
+                              const histLot = l.lot_id ? lotById.get(l.lot_id) : null;
                               return (
                                 <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
                                   <p className="text-[0.75rem] font-semibold text-slate-900 flex items-center gap-1">
                                     <HomeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                    {prop?.label || "Bien"} • {LEASE_STATUS_LABELS[String(l.status || "").toLowerCase()] || l.status || "—"}
+                                    {prop?.label || "Bien"}{histLot ? ` · ${histLot.label}` : ""} • {LEASE_STATUS_LABELS[String(l.status || "").toLowerCase()] || l.status || "—"}
                                   </p>
                                   <p className="text-[0.7rem] text-slate-600">
                                     Début : {formatDateFR(l.start_date)} • Fin : {formatDateFR(l.end_date)}

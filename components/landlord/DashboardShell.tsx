@@ -705,6 +705,7 @@ export function DashboardShell(props: any) {
             tenants={tenants}
             leases={leases}
             properties={properties}
+            propertyLots={propertyLots}
             payments={payments}
             onRefresh={refresh}
             deepLink={deepLink}
@@ -750,6 +751,7 @@ export function DashboardShell(props: any) {
             leases={leases}
             payments={payments} // ✅ AJOUT (important pour Payé / À payer / Retards)
             propertyById={propertyById}
+            propertyLots={propertyLots}
             tenantById={tenantById}
             onRefresh={refresh}
           />
