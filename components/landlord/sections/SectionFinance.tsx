@@ -3626,32 +3626,26 @@ function PropertyFinanceForm({
         {/* Financement */}
         <div className="py-5">
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Financement</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} error={fieldErrors.down_payment} />
             <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
-            <Field
-              label="Fin du crédit (année)"
-              value={s.loan_end_year ?? null}
-              integer
-              placeholder="Ex. 2043"
-              onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
-              error={fieldErrors.loan_end_year}
-            />
             <div>
-              <label className="text-xs text-slate-600">Mois de fin (optionnel)</label>
-              <select
-                value={s.loan_end_month ?? ""}
-                onChange={(e) => setS((p) => ({ ...p, loan_end_month: e.target.value === "" ? null : Number(e.target.value) }))}
+              <label className="text-xs text-slate-600">Fin du crédit</label>
+              <input
+                type="month"
+                value={s.loan_end_year != null ? `${s.loan_end_year}-${String(s.loan_end_month ?? 12).padStart(2, "0")}` : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) {
+                    setS((p) => ({ ...p, loan_end_year: null, loan_end_month: null }));
+                    return;
+                  }
+                  const [y, m] = v.split("-").map(Number);
+                  setS((p) => ({ ...p, loan_end_year: y, loan_end_month: m }));
+                }}
                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              >
-                <option value="">Non précisé (déc. par défaut)</option>
-                {["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-[0.68rem] leading-4 text-slate-500">
-                Affine le capital restant dû estimé (Performance) — sans lui, on suppose une fin en décembre.
-              </p>
+              />
+              {fieldErrors.loan_end_year && <p className="mt-1 text-xs text-red-600">{fieldErrors.loan_end_year}</p>}
             </div>
           </div>
           {/* Mensualité + date de prise en compte regroupées : la date ne concerne
