@@ -2011,66 +2011,99 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                     />
                     <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                     <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
-                    <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
-                    <Stat
-                      label="Fin crédit"
-                      value={
-                        row.loanEndYear == null
-                          ? "—"
-                          : row.loanEndMonth != null
-                          ? new Date(row.loanEndYear, row.loanEndMonth - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
-                          : String(row.loanEndYear)
-                      }
-                    />
-                    <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
-                    <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
                   </div>
 
-                  {(row.grossYield != null || row.irr != null || row.estimatedValue != null) && (
-                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
-                      <Stat label="Rendement brut" value={row.grossYield != null ? pct(row.grossYield) : "—"} />
-                      <Stat
-                        label="TRI estimé"
-                        value={row.irr != null ? pct(row.irr * 100) : "—"}
-                        strong={row.irr != null ? (row.irr >= 0.07 ? "good" : row.irr < 0 ? "bad" : undefined) : undefined}
-                      />
-                      <Stat label="Valeur estimée" value={row.estimatedValue != null ? money(row.estimatedValue) : "—"} />
-                      <Stat
-                        label="Plus-value latente"
-                        value={row.latentGain != null ? `${row.latentGain >= 0 ? "+" : ""}${money(row.latentGain)}` : "—"}
-                        strong={row.latentGain != null ? (row.latentGain >= 0 ? "good" : "bad") : undefined}
-                      />
-                    </div>
-                  )}
-
-                  {row.loanRepaidPercent != null && (
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Remboursement du crédit (estimation)</p>
-                        <p className="text-sm font-semibold text-slate-900">{Math.round(row.loanRepaidPercent)} %</p>
-                      </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div
-                          className="h-full rounded-full bg-[#635bff] transition-all duration-700"
-                          style={{ width: `${Math.max(2, Math.min(100, row.loanRepaidPercent))}%` }}
-                        />
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-500">
-                        <span>{money(row.loanRepaidAmount ?? 0)} remboursés sur {money(row.loanOriginalPrincipal ?? 0)} (capital estimé)</span>
-                        {row.loanRemainingMonths != null && (
-                          <span>
-                            {Math.round(row.loanRemainingMonths / 12)} an{Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""} restant{Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""}
+                  {(row.loanRate != null || row.loanEndYear != null || row.loanRepaidPercent != null) && (
+                    <div className="mt-3 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 to-white px-4 py-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
+                              <rect x="2.5" y="6" width="15" height="10" rx="2" />
+                              <path d="M2.5 9.5h15M6 13h3" strokeLinecap="round" />
+                            </svg>
                           </span>
-                        )}
+                          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900/70">Crédit</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span>{row.loanRate == null ? "Taux —" : `${row.loanRate.toLocaleString("fr-FR")} %`}</span>
+                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <span>
+                            Fin{" "}
+                            {row.loanEndYear == null
+                              ? "—"
+                              : row.loanEndMonth != null
+                              ? new Date(row.loanEndYear, row.loanEndMonth - 1, 1).toLocaleDateString("fr-FR", { month: "short", year: "numeric" })
+                              : row.loanEndYear}
+                          </span>
+                        </div>
                       </div>
-                      {row.cashflowAfterLoan != null && (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Cashflow visé une fois le crédit remboursé :{" "}
-                          <span className="font-semibold text-emerald-700">{money(row.cashflowAfterLoan)} / mois</span>
+
+                      {row.loanRepaidPercent != null ? (
+                        <>
+                          <div className="mt-3 flex items-end justify-between gap-2">
+                            <p className="text-2xl font-bold leading-none text-slate-950">
+                              {Math.round(row.loanRepaidPercent)}
+                              <span className="text-sm font-semibold text-slate-400"> % remboursé</span>
+                            </p>
+                            {row.loanRemainingMonths != null && (
+                              <p className="text-xs text-slate-500">
+                                {Math.round(row.loanRemainingMonths / 12)} an{Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""} restant
+                                {Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""}
+                              </p>
+                            )}
+                          </div>
+                          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-inset ring-slate-200">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700"
+                              style={{ width: `${Math.max(2, Math.min(100, row.loanRepaidPercent))}%` }}
+                            />
+                          </div>
+                          <p className="mt-1.5 text-xs text-slate-500">
+                            {money(row.loanRepaidAmount ?? 0)} remboursés sur {money(row.loanOriginalPrincipal ?? 0)} (capital estimé)
+                          </p>
+                          {row.cashflowAfterLoan != null && (
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              Cashflow visé une fois le crédit remboursé :{" "}
+                              <span className="font-semibold text-emerald-700">{money(row.cashflowAfterLoan)} / mois</span>
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Renseignez l’apport et la fin de crédit pour voir la progression du remboursement.
                         </p>
                       )}
                     </div>
                   )}
+
+                  {(row.grossYield != null || row.irr != null || row.estimatedValue != null) && (
+                    <div className="mt-3">
+                      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Rentabilité &amp; patrimoine</p>
+                      <div className="grid gap-2 sm:grid-cols-4">
+                        <Stat label="Rendement brut" value={row.grossYield != null ? pct(row.grossYield) : "—"} />
+                        <Stat
+                          label="TRI estimé"
+                          value={row.irr != null ? pct(row.irr * 100) : "—"}
+                          strong={row.irr != null ? (row.irr >= 0.07 ? "good" : row.irr < 0 ? "bad" : undefined) : undefined}
+                        />
+                        <Stat label="Valeur estimée" value={row.estimatedValue != null ? money(row.estimatedValue) : "—"} />
+                        <Stat
+                          label="Plus-value latente"
+                          value={row.latentGain != null ? `${row.latentGain >= 0 ? "+" : ""}${money(row.latentGain)}` : "—"}
+                          strong={row.latentGain != null ? (row.latentGain >= 0 ? "good" : "bad") : undefined}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Occupation</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
+                      <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
+                    </div>
+                  </div>
 
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
                     <p className="text-sm font-semibold text-slate-900">{decision.signal}</p>
