@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(403).json({ error: "Les dossiers de candidature nécessitent un abonnement lokt.one ou supérieur." });
   }
 
-  const { title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, property_id } = req.body || {};
+  const { title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, property_id, lot_id } = req.body || {};
 
   const rentAmountNum = Number(rent_amount);
   const chargesAmountNum = Number(charges_amount || 0);
@@ -32,14 +32,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Surface invalide." });
   }
 
+  let lotLabel: string | null = null;
   if (property_id) {
     const { data: property } = await supabaseAdmin
       .from("properties")
-      .select("id")
+      .select("id,type")
       .eq("id", property_id)
       .eq("user_id", auth.userId)
       .maybeSingle();
     if (!property) return res.status(403).json({ error: "Bien introuvable ou non autorisé." });
+
+    if (property.type === "building") {
+      if (!lot_id) return res.status(400).json({ error: "Veuillez sélectionner le lot concerné par cette annonce." });
+      const { data: lot } = await supabaseAdmin
+        .from("property_lots")
+        .select("id,label")
+        .eq("id", lot_id)
+        .eq("user_id", auth.userId)
+        .eq("property_id", property_id)
+        .maybeSingle();
+      if (!lot) return res.status(403).json({ error: "Lot introuvable ou non autorisé." });
+      lotLabel = lot.label;
+    }
   }
 
   const { data, error } = await supabaseAdmin
@@ -47,6 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .insert({
       user_id: auth.userId,
       property_id: property_id || null,
+      lot_id: lotLabel ? lot_id : null,
+      lot_label: lotLabel,
       title,
       address: address || null,
       rent_amount: rentAmountNum,

@@ -22,6 +22,7 @@ type Listing = {
   surface_m2: number | null;
   available_at: string | null;
   income_ratio: number;
+  lot_label: string | null;
 };
 
 const euro = (n: number) =>
@@ -587,7 +588,12 @@ export default function CandidaturePage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-[#635bff]">Dossier de candidature</p>
             <h1 className="mt-1.5 text-xl font-semibold text-slate-950">{listing.title}</h1>
-            {listing.address && <p className="mt-1 text-sm text-slate-500">{listing.address}</p>}
+            {listing.address && (
+              <p className="mt-1 text-sm text-slate-500">
+                {listing.address}
+                {listing.lot_label ? ` — ${listing.lot_label}` : ""}
+              </p>
+            )}
             <div className="mt-4 flex flex-wrap gap-3">
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-800">
                 {euro(totalRent)} / mois cc

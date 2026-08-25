@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyLot, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import { cx } from "../ui/uiHelpers";
@@ -86,6 +86,7 @@ type NavigateLink = {
 type Props = {
   userId: string;
   leases?: Lease[];
+  propertyLots?: PropertyLot[];
   payments?: RentPayment[];
   propertyById?: Map<string, Property>;
   onNavigateDeep?: (section: LandlordSectionKey, link?: NavigateLink) => void;
@@ -416,21 +417,23 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
     });
   }
 
-  if (row.paymentDelay && (row.paymentDelay.avgDelayDays >= 5 || row.paymentDelay.lateCount / row.paymentDelay.totalCount >= 0.5)) {
-    actions.push({
-      tone: row.paymentDelay.avgDelayDays >= 10 ? "amber" : "slate",
-      title: `Retards de paiement récurrents — ${Math.round(row.paymentDelay.avgDelayDays)} j en moyenne`,
-      detail: `${row.paymentDelay.lateCount} paiement(s) en retard sur les ${row.paymentDelay.totalCount} derniers échus. Un rappel plus tôt dans le mois ou un passage au prélèvement automatique peut limiter la récurrence.`,
-      cta: { label: "Ouvrir Quittances", section: "quittances" },
-    });
+  for (const { stats } of row.paymentDelayList) {
+    if (stats.avgDelayDays >= 5 || stats.lateCount / stats.totalCount >= 0.5) {
+      actions.push({
+        tone: stats.avgDelayDays >= 10 ? "amber" : "slate",
+        title: `Retards de paiement récurrents — ${Math.round(stats.avgDelayDays)} j en moyenne`,
+        detail: `${stats.lateCount} paiement(s) en retard sur les ${stats.totalCount} derniers échus. Un rappel plus tôt dans le mois ou un passage au prélèvement automatique peut limiter la récurrence.`,
+        cta: { label: "Ouvrir Quittances", section: "quittances" },
+      });
+    }
   }
 
-  if (row.depositUncollected) {
+  for (const deposit of row.depositUncollectedList) {
     actions.push({
       tone: "amber",
-      title: `Dépôt de garantie non encaissé — ${money(row.depositUncollected.amount)}`,
+      title: `Dépôt de garantie non encaissé — ${money(deposit.amount)}`,
       detail: `Le bail est actif mais la caution n’est pas enregistrée comme encaissée. Sans elle, vous n’êtes pas couvert en cas de dégradations ou d’impayés en fin de bail.`,
-      cta: { label: "Ouvrir la location", section: "baux", link: { leaseId: row.depositUncollected.leaseId, openPanel: "deposit", depositAction: "collect" } },
+      cta: { label: "Ouvrir la location", section: "baux", link: { leaseId: deposit.leaseId, openPanel: "deposit", depositAction: "collect" } },
     });
   }
 
@@ -462,13 +465,13 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
   }
 
   // ── 3. OPTIMISATIONS (visibles même si cashflow positif) ────────────────
-  if (row.irlLate) {
+  for (const irlLate of row.irlLateList) {
     const gainMonthly = row.expected * 0.03;
     actions.push({
-      tone: row.irlLate.monthsLate >= 6 ? "amber" : "slate",
-      title: `Révision IRL en retard de ${row.irlLate.monthsLate} mois`,
-      detail: `Une révision au rythme habituel (~3 %/an) rapporterait ~${money(gainMonthly)}/mois, soit environ ${money(gainMonthly * row.irlLate.monthsLate)} déjà manqués depuis l’échéance.`,
-      cta: { label: "Réviser l’IRL", section: "baux", link: { leaseId: row.irlLate.leaseId, openPanel: "irl" } },
+      tone: irlLate.monthsLate >= 6 ? "amber" : "slate",
+      title: `Révision IRL en retard de ${irlLate.monthsLate} mois`,
+      detail: `Une révision au rythme habituel (~3 %/an) rapporterait ~${money(gainMonthly)}/mois, soit environ ${money(gainMonthly * irlLate.monthsLate)} déjà manqués depuis l’échéance.`,
+      cta: { label: "Réviser l’IRL", section: "baux", link: { leaseId: irlLate.leaseId, openPanel: "irl" } },
     });
   }
 
@@ -806,7 +809,7 @@ type PropertyRow = {
   holdingYears: number | null;
   irr: number | null;
   activeLeaseId: string | null;
-  irlLate: { leaseId: string; monthsLate: number } | null;
+  irlLateList: { leaseId: string; monthsLate: number }[];
   loanMonthlyPI: number;
   loanInsuranceMonthly: number;
   loanPrincipalRemaining: number | null;
@@ -814,8 +817,8 @@ type PropertyRow = {
   loanRepaidAmount: number | null;
   loanRepaidPercent: number | null;
   cashflowAfterLoan: number | null;
-  paymentDelay: { avgDelayDays: number; lateCount: number; totalCount: number } | null;
-  depositUncollected: { amount: number; leaseId: string } | null;
+  paymentDelayList: { leaseId: string; stats: { avgDelayDays: number; lateCount: number; totalCount: number } }[];
+  depositUncollectedList: { amount: number; leaseId: string }[];
   archived: boolean;
 };
 
@@ -1170,14 +1173,22 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           Number.isFinite(avgAnnualCashflow)
             ? bisectionIRR(investment, avgAnnualCashflow, terminalValue, holdingYears)
             : null;
-        const irlLate = irlLateness(primaryLease || undefined);
-        const paymentDelay = primaryLease ? paymentDelayStats(safePayments, primaryLease.id) : null;
-        const leaseStart = primaryLease ? normalizeDate(primaryLease.start_date) : null;
-        const leaseAgeDays = leaseStart ? (Date.now() - leaseStart.getTime()) / 86400_000 : 0;
-        const depositUncollected =
-          primaryLease && Number(primaryLease.deposit_amount || 0) > 0 && !primaryLease.deposit_paid_at && leaseAgeDays >= 30
-            ? { amount: Number(primaryLease.deposit_amount), leaseId: primaryLease.id }
-            : null;
+        // Boucle sur TOUS les baux actifs du bien (pas seulement le premier de la liste) —
+        // un immeuble à plusieurs lots a plusieurs baux actifs simultanés, et un bail en
+        // retard IRL/dépôt sur le lot 2 ne doit pas être masqué par le lot 1.
+        const irlLateList = propertyLeases
+          .map((lease) => irlLateness(lease))
+          .filter((x): x is { leaseId: string; monthsLate: number } => !!x);
+        const paymentDelayList = propertyLeases
+          .map((lease) => ({ leaseId: lease.id, stats: paymentDelayStats(safePayments, lease.id) }))
+          .filter((x): x is { leaseId: string; stats: { avgDelayDays: number; lateCount: number; totalCount: number } } => !!x.stats);
+        const depositUncollectedList = propertyLeases
+          .filter((lease) => {
+            const leaseStart = normalizeDate(lease.start_date);
+            const leaseAgeDays = leaseStart ? (Date.now() - leaseStart.getTime()) / 86400_000 : 0;
+            return Number(lease.deposit_amount || 0) > 0 && !lease.deposit_paid_at && leaseAgeDays >= 30;
+          })
+          .map((lease) => ({ amount: Number(lease.deposit_amount), leaseId: lease.id }));
 
         return {
           propertyId: id,
@@ -1206,8 +1217,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           latentGain,
           holdingYears,
           irr,
-          activeLeaseId: primaryLease?.id || null,
-          irlLate,
+          activeLeaseId: propertyLeases[0]?.id || null,
+          irlLateList,
           loanMonthlyPI,
           loanInsuranceMonthly,
           loanPrincipalRemaining,
@@ -1215,8 +1226,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           loanRepaidAmount,
           loanRepaidPercent,
           cashflowAfterLoan,
-          paymentDelay,
-          depositUncollected,
+          paymentDelayList,
+          depositUncollectedList,
           archived,
         };
       })
@@ -1247,13 +1258,13 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       }
     }
 
-    const irlLateRows = propertyRows.filter((row) => row.irlLate);
+    const irlLateCount = propertyRows.reduce((sum, row) => sum + row.irlLateList.length, 0);
     return {
       negativeCount: negativeRows.length,
       totalDeficit,
       renegotiableCount,
       renegotiableGain,
-      irlLateCount: irlLateRows.length,
+      irlLateCount,
     };
   }, [propertyRows, referenceRates]);
 

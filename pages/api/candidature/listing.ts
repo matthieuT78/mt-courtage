@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data, error } = await supabaseAdmin
     .from("rental_listings")
-    .select("id, token, title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, status")
+    .select("id, token, title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, status, lot_label")
     .eq("token", token)
     .eq("status", "active")
     .maybeSingle();

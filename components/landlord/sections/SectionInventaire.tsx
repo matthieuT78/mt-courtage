@@ -712,6 +712,12 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
             </button>
           </div>
         </div>
+        {(selectedProperty as any)?.type === "building" && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            Cet immeuble a plusieurs lots : l’inventaire mobilier reste partagé au niveau de l’immeuble pour l’instant —
+            un élément déclaré ici s’applique à tous les lots, il n’est pas encore possible de le distinguer par lot.
+          </p>
+        )}
       </section>
 
       <div className="grid gap-3 md:grid-cols-4">

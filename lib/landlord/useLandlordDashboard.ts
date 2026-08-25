@@ -7,6 +7,7 @@ import type {
   LandlordSettings,
   Property,
   PropertyFinance,
+  PropertyLot,
   Tenant,
   Lease,
   RentPayment,
@@ -82,6 +83,7 @@ export function useLandlordDashboard() {
 
   const [landlord, setLandlord] = useState<LandlordSettings | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertyLots, setPropertyLots] = useState<PropertyLot[]>([]);
   const [photos, setPhotos] = useState<any[]>([]);
   const [propertyFinance, setPropertyFinance] = useState<PropertyFinance[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -170,6 +172,7 @@ export function useLandlordDashboard() {
         { data: tData, error: tErr },
         { data: lData, error: lErr },
         { data: phData, error: phErr },
+        { data: lotData, error: lotErr },
       ] = await Promise.all([
         supabase
           .from("properties")
@@ -191,12 +194,18 @@ export function useLandlordDashboard() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: true }),
+        supabase
+          .from("property_lots")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("sort_order", { ascending: true }),
       ]);
 
       if (pErr) throw pErr;
       if (tErr) throw tErr;
       if (lErr) throw lErr;
       if (phErr) console.warn("Impossible de charger les photos des biens.", phErr);
+      if (lotErr) console.warn("Impossible de charger les lots des immeubles.", lotErr);
 
       const leasesArr: Lease[] = ((lData as any) ?? []) as Lease[];
       const propertiesArr: Property[] = ((pData as any) ?? []) as Property[];
@@ -204,6 +213,7 @@ export function useLandlordDashboard() {
       setTenants(((tData as any) ?? []) as Tenant[]);
       setLeases(leasesArr);
       setPhotos(((phData as any) ?? []) as any[]);
+      setPropertyLots(((lotData as any) ?? []) as PropertyLot[]);
 
       if (propertiesArr.length === 0) {
         setPropertyFinance([]);
@@ -509,22 +519,44 @@ export function useLandlordDashboard() {
 
   const activeProperties = useMemo(() => (properties || []).filter(isActivePropertyLike), [properties]);
 
-  const occupiedPropertyIds = useMemo(() => new Set(activeLeases.map((l) => l.property_id).filter(Boolean)), [activeLeases]);
+  // Unité d'occupation = un lot pour un immeuble qui en a, sinon le bien lui-même —
+  // un immeuble à moitié vide ne doit pas compter comme "occupé" au global. Un bien
+  // simple (l'immense majorité des comptes) garde exactement le même calcul qu'avant.
+  const occupancyUnits = useMemo(() => {
+    const units: Array<{ id: string; propertyId: string }> = [];
+    for (const property of activeProperties) {
+      const lots = (property as any)?.type === "building"
+        ? (propertyLots || []).filter((lot: any) => lot?.property_id === property.id && String(lot?.status || "active").toLowerCase() !== "archived")
+        : [];
+      if (lots.length > 0) {
+        for (const lot of lots) units.push({ id: lot.id, propertyId: property.id });
+      } else {
+        units.push({ id: property.id, propertyId: property.id });
+      }
+    }
+    return units;
+  }, [activeProperties, propertyLots]);
+
+  const occupiedUnitIds = useMemo(() => {
+    const occupiedLotIds = new Set(activeLeases.map((l) => (l as any).lot_id).filter(Boolean));
+    const occupiedPropertyIds = new Set(activeLeases.filter((l) => !(l as any).lot_id).map((l) => l.property_id).filter(Boolean));
+    return new Set(occupancyUnits.filter((u) => occupiedLotIds.has(u.id) || occupiedPropertyIds.has(u.id)).map((u) => u.id));
+  }, [activeLeases, occupancyUnits]);
 
   const occupancyRate = useMemo(() => {
-    const totalProps = activeProperties.length;
-    if (totalProps === 0) return 0;
-    return Math.round((occupiedPropertyIds.size / totalProps) * 100);
-  }, [activeProperties.length, occupiedPropertyIds]);
+    const totalUnits = occupancyUnits.length;
+    if (totalUnits === 0) return 0;
+    return Math.round((occupiedUnitIds.size / totalUnits) * 100);
+  }, [occupancyUnits.length, occupiedUnitIds]);
 
   const activePropertyCoverage = useMemo(() => {
-    if (activeProperties.length === 0) return 0;
-    return Math.min(Math.max(occupiedPropertyIds.size / activeProperties.length, 0), 1);
-  }, [activeProperties.length, occupiedPropertyIds]);
+    if (occupancyUnits.length === 0) return 0;
+    return Math.min(Math.max(occupiedUnitIds.size / occupancyUnits.length, 0), 1);
+  }, [occupancyUnits.length, occupiedUnitIds]);
 
   const vacantActivePropertyCount = useMemo(
-    () => activeProperties.filter((property) => !occupiedPropertyIds.has(property.id)).length,
-    [activeProperties, occupiedPropertyIds]
+    () => occupancyUnits.filter((unit) => !occupiedUnitIds.has(unit.id)).length,
+    [occupancyUnits, occupiedUnitIds]
   );
 
   const healthScore = useMemo(() => {
@@ -662,6 +694,7 @@ export function useLandlordDashboard() {
 
     landlord,
     properties,
+    propertyLots,
     photos,
     propertyFinance,
     tenants,

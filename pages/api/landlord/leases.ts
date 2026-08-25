@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const [{ data: property, error: propertyError }, { data: tenant, error: tenantError }] = await Promise.all([
-      supabaseAdmin.from("properties").select("id,user_id").eq("id", leasePayload.property_id).eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("properties").select("id,user_id,type").eq("id", leasePayload.property_id).eq("user_id", userId).maybeSingle(),
       supabaseAdmin.from("tenants").select("id,user_id").eq("id", leasePayload.tenant_id).eq("user_id", userId).maybeSingle(),
     ]);
 
@@ -59,6 +59,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (tenantError) return res.status(500).json({ error: tenantError.message });
     if (!property) return res.status(403).json({ error: "Bien introuvable ou non autorisé." });
     if (!tenant) return res.status(403).json({ error: "Locataire introuvable ou non autorisé." });
+
+    // Un immeuble à lots doit toujours préciser le lot loué — cette règle est déjà
+    // appliquée côté client (SectionBaux.tsx) mais doit aussi l'être ici, seule
+    // source de vérité pour tout appelant (onboarding, script, etc.).
+    if (property.type === "building" && !leasePayload.lot_id) {
+      return res.status(400).json({ error: "Veuillez sélectionner le lot loué dans cet immeuble." });
+    }
+
+    if (leasePayload.lot_id) {
+      const { data: lot, error: lotError } = await supabaseAdmin
+        .from("property_lots")
+        .select("id,property_id,user_id")
+        .eq("id", leasePayload.lot_id)
+        .eq("user_id", userId)
+        .eq("property_id", leasePayload.property_id)
+        .maybeSingle();
+      if (lotError) return res.status(500).json({ error: lotError.message });
+      if (!lot) return res.status(403).json({ error: "Lot introuvable ou non autorisé." });
+
+      // Un lot ne peut avoir qu'un seul bail actif à la fois — contrairement au bien
+      // simple (aucune contrainte équivalente aujourd'hui, volontairement inchangé
+      // pour ne rien casser sur l'existant).
+      const { data: lotLeases, error: lotLeasesError } = await supabaseAdmin
+        .from("leases")
+        .select("id,status")
+        .eq("lot_id", leasePayload.lot_id);
+      if (lotLeasesError) return res.status(500).json({ error: lotLeasesError.message });
+      const lotHasActiveLease = (lotLeases || []).some((l) => String(l.status || "").toLowerCase() === "active");
+      if (lotHasActiveLease) {
+        return res.status(409).json({ error: "Ce lot a déjà un bail actif. Terminez-le avant d’en créer un nouveau." });
+      }
+    }
 
     const plan = await getServerUserPlan(String(userId));
     if (!planAllowsReceiptAutomation(plan)) {

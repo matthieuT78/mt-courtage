@@ -198,7 +198,7 @@ export function DashboardShell(props: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -233,6 +233,7 @@ export function DashboardShell(props: any) {
   const profileLoaded: boolean = !!props?.profileLoaded;
 
   const properties = Array.isArray(props?.properties) ? props.properties : [];
+  const propertyLots = Array.isArray(props?.propertyLots) ? props.propertyLots : [];
   const propertyFinance = Array.isArray(props?.propertyFinance) ? props.propertyFinance : [];
   const tenants = Array.isArray(props?.tenants) ? props.tenants : [];
   const leases = Array.isArray(props?.leases) ? props.leases : [];
@@ -403,7 +404,7 @@ export function DashboardShell(props: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -667,6 +668,7 @@ export function DashboardShell(props: any) {
             showTransitionPanel
             propertiesCount={properties.length}
             properties={properties}
+            propertyLots={propertyLots}
             propertyFinance={propertyFinance}
             tenantsCount={tenants.length}
             leasesCount={leases.length}
@@ -694,7 +696,7 @@ export function DashboardShell(props: any) {
         );
 
       case "biens":
-        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} deepLink={deepLink} onNavigateDeep={navigateDeep} />;
+        return <SectionBiens userId={userId} properties={properties} propertyLots={propertyLots} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} deepLink={deepLink} onNavigateDeep={navigateDeep} />;
 
       case "locataires":
         return (
@@ -724,6 +726,7 @@ export function DashboardShell(props: any) {
             userEmail={userEmail}
             leases={leases}
             properties={properties}
+            propertyLots={propertyLots}
             tenants={tenants}
             payments={payments}
             receipts={receipts}
@@ -773,7 +776,7 @@ export function DashboardShell(props: any) {
         );
 
       case "performance":
-        return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} onNavigateDeep={navigateDeep} />;
+        return <SectionPerformance userId={userId} leases={leases} propertyLots={propertyLots} payments={payments} propertyById={propertyById} onNavigateDeep={navigateDeep} />;
 
       case "outils":
         return <SectionOutils userId={userId} properties={properties} leases={leases} tenants={tenants} plan={plan} onRefresh={refresh} />;

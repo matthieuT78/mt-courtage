@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
-import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyFinance, PropertyLot, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
 import type { Profile } from "../../../hooks/useProfile";
 import { supabase } from "../../../lib/supabaseClient";
@@ -181,6 +181,7 @@ export function SectionDashboard({
   propertyById,
   tenantById,
   properties,
+  propertyLots,
   propertyFinance,
   propertiesCount,
   tenantsCount,
@@ -210,6 +211,7 @@ export function SectionDashboard({
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
   properties: Property[];
+  propertyLots?: PropertyLot[];
   propertyFinance: PropertyFinance[];
   propertiesCount: number;
   tenantsCount: number;
@@ -293,12 +295,31 @@ export function SectionDashboard({
   const occupancySnapshot = useMemo(() => {
     const activeProperties = (Array.isArray(properties) ? properties : []).filter(isActivePropertyLike);
     const allLeases = Array.isArray(leases) ? leases : [];
+    const allLots = Array.isArray(propertyLots) ? propertyLots : [];
     const now = new Date();
     const windowEnd = addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
     const windowStart = addDays(windowEnd, -365);
 
-    const rows = activeProperties.map((property) => {
-      const propertyLeases = allLeases.filter((lease) => lease?.property_id === property?.id);
+    // Un immeuble avec des lots compte une unité d'occupation par lot, pas une
+    // seule pour tout le bâtiment — sinon un immeuble à moitié vide passerait
+    // pour "occupé" dès qu'un seul lot a un locataire. Un bien simple garde
+    // exactement le même calcul qu'avant (une unité = le bien).
+    type OccupancyUnit = { property: any; leases: Lease[] };
+    const units: OccupancyUnit[] = [];
+    for (const property of activeProperties) {
+      const lots = (property as any)?.type === "building"
+        ? allLots.filter((lot: any) => lot?.property_id === property.id && String(lot?.status || "active").toLowerCase() !== "archived")
+        : [];
+      if (lots.length > 0) {
+        for (const lot of lots) {
+          units.push({ property, leases: allLeases.filter((lease) => (lease as any)?.lot_id === lot.id) });
+        }
+      } else {
+        units.push({ property, leases: allLeases.filter((lease) => lease?.property_id === property?.id) });
+      }
+    }
+
+    const rows = units.map(({ property, leases: propertyLeases }) => {
       const usableLeases = propertyLeases.filter(isLeaseUsable);
       const firstLeaseStart =
         usableLeases
@@ -341,7 +362,7 @@ export function SectionDashboard({
       vacantCount,
       shortHistoryCount,
     };
-  }, [leases, properties]);
+  }, [leases, properties, propertyLots]);
 
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);

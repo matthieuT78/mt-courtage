@@ -6,6 +6,7 @@ import { UploadProgressBar } from "../../UploadProgressBar";
 import Link from "next/link";
 import {
   ArrowTrendingUpIcon,
+  BuildingOffice2Icon,
   ChartBarIcon,
   ChevronDownIcon,
   ClockIcon,
@@ -14,7 +15,9 @@ import {
   ExclamationTriangleIcon,
   HomeIcon,
   HomeModernIcon,
+  PencilIcon,
   PlusIcon,
+  TrashIcon,
   TruckIcon,
   UsersIcon,
   XMarkIcon,
@@ -31,6 +34,7 @@ import AddressAutocomplete from "../../forms/AddressAutocomplete";
 type Props = {
   userId: string;
   properties?: any[];
+  propertyLots?: any[];
   leases?: any[];
   tenants?: any[];
   photos?: any[];
@@ -45,6 +49,7 @@ const FREE_PROPERTY_LIMIT = 1;
 const PROPERTY_TYPES = [
   { key: "apartment", label: "Appartement", icon: HomeModernIcon, bg: "bg-indigo-100", text: "text-indigo-700" },
   { key: "house", label: "Maison", icon: HomeIcon, bg: "bg-amber-100", text: "text-amber-700" },
+  { key: "building", label: "Immeuble (plusieurs lots)", icon: BuildingOffice2Icon, bg: "bg-violet-100", text: "text-violet-700" },
   { key: "garage", label: "Garage", icon: CubeIcon, bg: "bg-slate-200", text: "text-slate-700" },
   { key: "parking", label: "Parking", icon: TruckIcon, bg: "bg-sky-100", text: "text-sky-700" },
   { key: "other", label: "Autre", icon: EllipsisHorizontalCircleIcon, bg: "bg-slate-100", text: "text-slate-600" },
@@ -252,12 +257,28 @@ function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m
   return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
 }
 
-export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink, onNavigateDeep }: Props) {
+export function SectionBiens({ userId, properties, propertyLots, leases, tenants, photos, onRefresh, deepLink, onNavigateDeep }: Props) {
   const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
+  const safePropertyLots = Array.isArray(propertyLots) ? propertyLots : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safePhotos = Array.isArray(photos) ? photos : [];
+
+  // Lots actifs groupés par bien — un immeuble sans lot configuré se comporte comme
+  // un bien simple (une seule "unité" = le bien), donc aucune régression possible.
+  const activeLotsByProperty = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const lot of safePropertyLots) {
+      if (String(lot?.status || "active").toLowerCase() === "archived") continue;
+      const pid = lot?.property_id;
+      if (!pid) continue;
+      if (!m.has(pid)) m.set(pid, []);
+      m.get(pid)!.push(lot);
+    }
+    for (const arr of m.values()) arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    return m;
+  }, [safePropertyLots]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // "__create__" ou propertyId
   const [saving, setSaving] = useState(false);
@@ -300,8 +321,24 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     const windowStart = addDays(windowEnd, -365);
     const windowDays = Math.max(1, daysBetween(windowStart, windowEnd));
 
-    const rows = actifs.map((property) => {
-      const propertyLeases = safeLeases.filter((lease) => lease?.property_id === property?.id);
+    // Une "unité" = un lot pour un immeuble qui en a, sinon le bien lui-même — pour
+    // qu'un immeuble à plusieurs lots compte plusieurs occupations distinctes au lieu
+    // de se réduire à un seul bail (comme un bien simple, qui garde exactement le
+    // même calcul qu'avant : une unité = le bien).
+    type Unit = { unitId: string; property: any; lot: any | null; leases: any[] };
+    const units: Unit[] = [];
+    for (const property of actifs) {
+      const lots = property?.type === "building" ? activeLotsByProperty.get(property.id) || [] : [];
+      if (lots.length > 0) {
+        for (const lot of lots) {
+          units.push({ unitId: lot.id, property, lot, leases: safeLeases.filter((lease) => lease?.lot_id === lot.id) });
+        }
+      } else {
+        units.push({ unitId: property.id, property, lot: null, leases: safeLeases.filter((lease) => lease?.property_id === property?.id) });
+      }
+    }
+
+    const rows = units.map(({ unitId, property, lot, leases: propertyLeases }) => {
       const usableLeases = propertyLeases.filter(isLeaseUsable);
       const firstLeaseStart =
         usableLeases
@@ -328,7 +365,9 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       const currentTenantDays = currentStart ? daysBetween(currentStart, now) : null;
 
       return {
+        unitId,
         property,
+        lot,
         currentLease,
         currentTenant,
         currentTenantDays,
@@ -359,7 +398,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       vacantNow: rows.filter((row) => !row.currentLease).length,
       attentionCount: rows.filter((row) => !row.currentLease || row.turnover12m >= 2 || row.vacancyDays12m >= 30).length,
     };
-  }, [actifs, safeLeases, tenantById]);
+  }, [actifs, safeLeases, tenantById, activeLotsByProperty]);
   const activePropertyCount = actifs.length;
   const activePropertyLimit = permissionsLoading ? FREE_PROPERTY_LIMIT : Math.max(maxActiveProperties, FREE_PROPERTY_LIMIT);
   const hasFreeLimit = activePropertyLimit === FREE_PROPERTY_LIMIT;
@@ -699,6 +738,78 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     }
   };
 
+  const [newLotLabel, setNewLotLabel] = useState<Record<string, string>>({});
+  const [lotBusyId, setLotBusyId] = useState<string | null>(null);
+
+  const addLot = async (propertyId: string) => {
+    const label = (newLotLabel[propertyId] || "").trim();
+    if (!label) return;
+    setErr(null);
+    setOk(null);
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+      const existing = activeLotsByProperty.get(propertyId) || [];
+      // Le 1er lot d'un immeuble ne change rien au total (il remplace juste le bien
+      // lui-même comme unité) ; à partir du 2e, chaque lot ajoute une unité de plus —
+      // sans ce garde-fou, un immeuble permettrait de contourner la limite du plan.
+      if (existing.length > 0) {
+        const totalUnits = actifs.reduce((sum, p) => {
+          const lots = activeLotsByProperty.get(p.id) || [];
+          return sum + (lots.length > 0 ? lots.length : 1);
+        }, 0);
+        if (totalUnits >= activePropertyLimit) {
+          setErr(upgradeMessage);
+          return;
+        }
+      }
+      const { error } = await supabase.from("property_lots").insert({
+        property_id: propertyId,
+        user_id: userId,
+        label,
+        sort_order: existing.length,
+      });
+      if (error) throw error;
+      setNewLotLabel((prev) => ({ ...prev, [propertyId]: "" }));
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible d’ajouter ce lot.");
+    }
+  };
+
+  const renameLot = async (lotId: string, label: string) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+      const { error } = await supabase.from("property_lots").update({ label: trimmed }).eq("id", lotId).eq("user_id", userId);
+      if (error) throw error;
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de renommer ce lot.");
+    }
+  };
+
+  const removeLot = async (lotId: string) => {
+    const hasLease = safeLeases.some((l) => l?.lot_id === lotId);
+    if (hasLease) {
+      setErr("Suppression impossible : ce lot a un historique de bail. Archivez-le pour le masquer — les données sont conservées.");
+      return;
+    }
+    setLotBusyId(lotId);
+    setErr(null);
+    setOk(null);
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+      const { error } = await supabase.from("property_lots").delete().eq("id", lotId).eq("user_id", userId);
+      if (error) throw error;
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de retirer ce lot.");
+    } finally {
+      setLotBusyId(null);
+    }
+  };
+
   const clearFieldError = (formId: string, field: "label" | "address_line1" | "surface_m2" | "rooms" | "energy_value") => {
     setFieldErrors((prev) => {
       if (!prev[formId]?.[field]) return prev;
@@ -715,7 +826,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     const formId = propertyId || "create";
     const fErr = fieldErrors[formId] ?? {};
     const selectedPhotos = propertyId ? (photosByProperty.get(propertyId) ?? []) : [];
-
     return (
       <>
         <div className="space-y-1">
@@ -724,20 +834,32 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             {PROPERTY_TYPES.map((t) => {
               const Icon = t.icon;
               const selected = form.type === t.key;
+              // "Immeuble" n'a de sens que si le plan autorise plus d'un logement actif —
+              // sinon un compte gratuit pourrait contourner la limite via des lots
+              // illimités sur un seul bien. Affiché grisé plutôt que masqué, pour rester
+              // découvrable (édition d'un immeuble existant après downgrade : jamais grisé).
+              const locked = t.key === "building" && activePropertyLimit <= 1 && !selected;
               return (
                 <button
                   key={t.key}
                   type="button"
+                  disabled={locked}
                   onClick={() => setForm((s) => ({ ...s, type: t.key }))}
+                  title={locked ? "Disponible à partir d'un abonnement payant" : undefined}
                   className={cx(
                     "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition",
-                    selected ? "border-[#635bff] bg-indigo-50/60 ring-1 ring-[#635bff]" : "border-slate-200 bg-white hover:border-slate-300"
+                    locked
+                      ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"
+                      : selected
+                      ? "border-[#635bff] bg-indigo-50/60 ring-1 ring-[#635bff]"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   )}
                 >
-                  <span className={cx("flex h-9 w-9 items-center justify-center rounded-full", t.bg, t.text)}>
+                  <span className={cx("flex h-9 w-9 items-center justify-center rounded-full", locked ? "bg-slate-200 text-slate-400" : cx(t.bg, t.text))}>
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <span className={cx("text-xs font-medium", selected ? "text-[#635bff]" : "text-slate-700")}>{t.label}</span>
+                  <span className={cx("text-xs font-medium", locked ? "text-slate-400" : selected ? "text-[#635bff]" : "text-slate-700")}>{t.label}</span>
+                  {locked ? <span className="text-[0.6rem] font-semibold text-amber-600">Payant</span> : null}
                 </button>
               );
             })}
@@ -900,6 +1022,58 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           )}
         </div>
 
+        {propertyId && form.type === "building" ? (
+          <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900">Lots de cet immeuble</p>
+              {badge("emerald", `${(activeLotsByProperty.get(propertyId) || []).length} lot(s)`)}
+            </div>
+            <p className="text-xs text-slate-600">
+              Un crédit et une fiche finance pour tout l’immeuble, mais un bail par lot — chaque lot pourra avoir son propre locataire.
+            </p>
+
+            <div className="space-y-1.5">
+              {(activeLotsByProperty.get(propertyId) || []).map((lot: any) => (
+                <div key={lot.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                  <input
+                    className="flex-1 border-none bg-transparent text-sm text-slate-900 focus:outline-none"
+                    defaultValue={lot.label}
+                    onBlur={(e) => {
+                      if (e.target.value.trim() && e.target.value.trim() !== lot.label) renameLot(lot.id, e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeLot(lot.id)}
+                    disabled={lotBusyId === lot.id}
+                    className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    aria-label={`Retirer ${lot.label}`}
+                  >
+                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                placeholder="Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
+                value={newLotLabel[propertyId] || ""}
+                onChange={(e) => setNewLotLabel((prev) => ({ ...prev, [propertyId]: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLot(propertyId); } }}
+              />
+              <button
+                type="button"
+                onClick={() => addLot(propertyId)}
+                className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700"
+              >
+                Ajouter un lot
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
 
         {propertyId ? (
@@ -983,12 +1157,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     const meta = propertyTypeMeta(p.type);
     const Icon = meta.icon;
     const cover = photoUrl(pPhotos[0]);
-    const statusRow = !archived ? parcStats.rows.find((r) => r.property.id === p.id) : null;
+    const unitRows = !archived ? parcStats.rows.filter((r) => r.property.id === p.id) : [];
+    const isBuilding = p.type === "building" && unitRows.length > 0 && unitRows.some((r) => r.lot);
+    const statusRow = unitRows[0] ?? null;
     const tenantName = statusRow?.currentTenant
       ? statusRow.currentTenant.full_name ||
         [statusRow.currentTenant.first_name, statusRow.currentTenant.last_name].filter(Boolean).join(" ") ||
         "Locataire"
       : null;
+    const occupiedLots = isBuilding ? unitRows.filter((r) => r.currentLease).length : 0;
 
     return (
       <button
@@ -1028,6 +1205,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         <div className="flex flex-1 flex-col gap-2 p-4">
           {archived ? (
             <p className="text-sm text-slate-500">Bien archivé</p>
+          ) : isBuilding ? (
+            <p className="text-sm font-medium text-slate-900">
+              {occupiedLots}/{unitRows.length} lot{unitRows.length > 1 ? "s" : ""} occupé{occupiedLots > 1 ? "s" : ""}
+            </p>
           ) : tenantName ? (
             <p className="text-sm font-medium text-slate-900">{tenantName} • Bail actif</p>
           ) : (
@@ -1185,7 +1366,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                 const signalClasses = toneClasses(signal.tone);
 
                 return (
-                  <div key={row.property.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                  <div key={row.unitId} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
                     <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1.4fr_10rem] lg:items-center">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -1193,7 +1374,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                             <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
                           </span>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-950">{row.property.label || "Bien"}</p>
+                            <p className="truncate text-sm font-semibold text-slate-950">
+                              {row.property.label || "Bien"}
+                              {row.lot ? <span className="font-normal text-slate-500"> — {row.lot.label}</span> : null}
+                            </p>
                             <p className="truncate text-xs text-slate-500">{row.property.city || row.property.address_line1 || "Adresse à compléter"}</p>
                           </div>
                         </div>

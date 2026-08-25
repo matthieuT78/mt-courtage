@@ -35,7 +35,7 @@ import { NiceSelect } from "../ui/NiceSelect";
 import { usePermissions } from "../../PermissionProvider";
 import { LeaseContractWizard } from "../LeaseContractWizard";
 import { IrlRevisionPanel } from "./SectionRevision";
-import type { RentPayment, RentReceipt } from "../../../lib/landlord/types";
+import type { RentPayment, RentReceipt, PropertyLot } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../../lib/landlord/archiveFilters";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 
@@ -47,6 +47,7 @@ export type Lease = {
   id: string;
   user_id: string;
   property_id: string;
+  lot_id?: string | null;
   tenant_id: string;
   start_date: string;
   end_date: string | null;
@@ -96,6 +97,7 @@ export type PropertyLite = {
   status?: string | null;
   delegated_services?: string[];
   delegation_agency_name?: string | null;
+  type?: string | null;
 };
 
 export type TenantLite = {
@@ -112,12 +114,13 @@ type Props = {
   userEmail?: string | null;
   leases?: Lease[];
   properties?: PropertyLite[];
+  propertyLots?: PropertyLot[];
   tenants?: TenantLite[];
   payments?: RentPayment[];
   receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
-  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string } | null;
   onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean }) => void;
 };
 
@@ -755,7 +758,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, deepLink, onNavigateDeep }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, propertyLots, tenants, payments, receipts, onRefresh, onPrepareDeparture, deepLink, onNavigateDeep }: Props) {
   const { canUseLandlord, maxActiveLeases, loading: permissionsLoading } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -778,9 +781,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   const activeProps = useMemo(() => safeProps.filter(isActivePropertyLike), [safeProps]);
   const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
+  const safePropertyLots = Array.isArray(propertyLots) ? propertyLots : [];
 
   const defaultFormValues = () => ({
     property_id: "",
+    lot_id: "",
     tenant_id: "",
     start_date: todayISO(),
     end_date: "",
@@ -1256,6 +1261,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   const [form, setForm] = useState({
     property_id: "",
+    lot_id: "",
     tenant_id: "",
     start_date: todayISO(),
     end_date: "",
@@ -1282,6 +1288,21 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     () => includeSelected(activeProps, safeProps, form.property_id),
     [activeProps, safeProps, form.property_id]
   );
+  // Lots du bien sélectionné, en excluant ceux déjà loués par un autre bail actif
+  // (le lot du bail en cours d'édition reste proposé, pour ne pas le faire
+  // disparaître de sa propre édition).
+  const lotsForSelectedProperty = useMemo(() => {
+    if (!form.property_id) return [];
+    return safePropertyLots
+      .filter((lot) => lot?.property_id === form.property_id && String(lot?.status || "active").toLowerCase() !== "archived")
+      .filter((lot) => {
+        const occupied = safeLeases.some(
+          (l) => l?.lot_id === lot.id && String(l?.status || "").toLowerCase() === "active" && l.id !== editingId
+        );
+        return !occupied || lot.id === form.lot_id;
+      })
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [safePropertyLots, safeLeases, form.property_id, form.lot_id, editingId]);
   const selectableTenants = useMemo(
     () => includeSelected(activeTenants, safeTenants, form.tenant_id),
     [activeTenants, safeTenants, form.tenant_id]
@@ -1342,6 +1363,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setForm({
       ...defaultFormValues(),
       property_id: prefillPropertyId,
+      lot_id: deepLink.prefillLotId ?? "",
       tenant_id: prefillTenantId,
       ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true } : {}),
     });
@@ -1365,6 +1387,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
     setForm({
       property_id: lease.property_id || "",
+      lot_id: lease.lot_id || "",
       tenant_id: lease.tenant_id || "",
       start_date: lease.start_date || todayISO(),
       end_date: lease.end_date || "",
@@ -1477,6 +1500,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       if (!supabase) throw new Error("Supabase non initialisé.");
       if (!form.property_id) throw new Error("Veuillez sélectionner un bien.");
       if (!form.tenant_id) throw new Error("Veuillez sélectionner un locataire.");
+      const selectedPropertyIsBuilding = propertyById.get(form.property_id)?.type === "building";
+      if (selectedPropertyIsBuilding && !form.lot_id) throw new Error("Veuillez sélectionner le lot loué dans cet immeuble.");
       if (!form.start_date) throw new Error("La date de début est obligatoire.");
       if (form.end_date && form.end_date < form.start_date) throw new Error("La date de fin doit être postérieure au début du bail.");
       const leaseRule = getLeaseKindRule(form.lease_kind);
@@ -1557,6 +1582,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       const payload: any = {
         user_id: userId,
         property_id: form.property_id,
+        lot_id: selectedPropertyIsBuilding ? form.lot_id : null,
         tenant_id: form.tenant_id,
         start_date: form.start_date,
         end_date: form.end_date ? form.end_date : null,
@@ -2390,6 +2416,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 setForm((s) => ({
                   ...s,
                   property_id: pid,
+                  lot_id: pid === s.property_id ? s.lot_id : "",
                   receipts_disabled: prevDelegated && !nextDelegated ? false : s.receipts_disabled,
                 }));
               }}
@@ -2406,6 +2433,26 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               </p>
             ) : null}
           </div>
+
+          {form.property_id && propertyById.get(form.property_id)?.type === "building" ? (
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Lot loué *</label>
+              <NiceSelect
+                icon={BuildingOfficeIcon}
+                value={form.lot_id}
+                onChange={(lid) => setForm((s) => ({ ...s, lot_id: lid }))}
+                options={lotsForSelectedProperty.map((lot) => ({
+                  value: lot.id,
+                  label: lot.label,
+                }))}
+              />
+              {lotsForSelectedProperty.length === 0 ? (
+                <p className="text-[0.7rem] text-amber-700">
+                  Ajoutez d’abord des lots à cet immeuble (section Biens).
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Locataire *</label>

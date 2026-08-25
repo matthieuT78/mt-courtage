@@ -20,6 +20,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import type { Profile } from "../../../hooks/useProfile";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
+import { usePermissions } from "../../PermissionProvider";
 
 /* ======================================================
    TYPES & PROPS
@@ -83,6 +84,7 @@ const WIZARD_STEP_HELP: Record<StepKey, { title: string; items: string[] }> = {
 const PROPERTY_TYPE_OPTIONS: Array<{ value: string; label: string; icon: typeof HomeIcon }> = [
   { value: "apartment", label: "Appartement", icon: BuildingOffice2Icon },
   { value: "house", label: "Maison", icon: HomeIcon },
+  { value: "building", label: "Immeuble (plusieurs lots)", icon: HomeModernIcon },
   { value: "garage", label: "Garage", icon: TruckIcon },
   { value: "parking", label: "Parking", icon: MapPinIcon },
 ];
@@ -267,6 +269,7 @@ function ChoiceCard({
   selected,
   onClick,
   dense,
+  disabled,
 }: {
   label: string;
   hint?: string;
@@ -274,21 +277,26 @@ function ChoiceCard({
   selected: boolean;
   onClick: () => void;
   dense?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
+      title={disabled ? "Disponible à partir d'un abonnement payant" : undefined}
       className={
         "flex min-h-[84px] flex-1 flex-col items-center justify-center gap-2 rounded-xl border p-2.5 text-center transition " +
-        (selected
+        (disabled
+          ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 opacity-60"
+          : selected
           ? "border-[#635bff] bg-indigo-50 text-indigo-950 ring-2 ring-indigo-100"
           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50")
       }
     >
-      {Icon ? <Icon className={"h-6 w-6 " + (selected ? "text-[#635bff]" : "text-slate-400")} aria-hidden="true" /> : null}
+      {Icon ? <Icon className={"h-6 w-6 " + (disabled ? "text-slate-300" : selected ? "text-[#635bff]" : "text-slate-400")} aria-hidden="true" /> : null}
       <span className={dense ? "text-xs font-semibold leading-4 break-words" : "text-sm font-semibold leading-4 break-words"}>{label}</span>
-      {hint ? <span className="text-[0.68rem] leading-4 text-slate-500">{hint}</span> : null}
+      {hint ? <span className={"text-[0.68rem] leading-4 " + (disabled ? "font-semibold text-amber-600" : "text-slate-500")}>{hint}</span> : null}
     </button>
   );
 }
@@ -359,6 +367,13 @@ export function OnboardingWizard({
     [properties, tenantById, activeLeases, propertyFinance, profile, profileLoaded]
   );
 
+  const { maxActiveProperties } = usePermissions();
+  // "Immeuble" n'a de sens que si le plan autorise plus d'un logement actif — sinon
+  // un compte gratuit pourrait créer un seul bien avec des lots illimités et
+  // contourner la limite (même garde-fou que dans la section Biens complète).
+  // Affiché grisé plutôt que masqué, pour rester découvrable.
+  const buildingTypeLocked = maxActiveProperties <= 1;
+
   const initialIndex = useMemo(() => {
     const idx = STEP_DEFS.findIndex((s) => s.key === status.next?.key);
     return idx >= 0 ? idx : 0;
@@ -389,6 +404,8 @@ export function OnboardingWizard({
   const [delegatedServices, setDelegatedServices] = useState<string[]>([]);
   const [delegationAgencyName, setDelegationAgencyName] = useState("");
   const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null);
+  const [lotLabel, setLotLabel] = useState("Lot 1");
+  const [createdLotId, setCreatedLotId] = useState<string | null>(null);
 
   // Locataire
   const [tenantIsCompany, setTenantIsCompany] = useState(false);
@@ -428,6 +445,11 @@ export function OnboardingWizard({
   const targetTenantId = createdTenantId || tenants[0]?.id || null;
   const targetTenant = tenants.find((t) => t.id === targetTenantId) || null;
   const targetTenantIsCompany = targetTenant ? !!targetTenant.is_company : tenantIsCompany;
+  const targetProperty = properties.find((p) => p.id === targetPropertyId) || null;
+  // Source de vérité = le bien réellement enregistré, pas le state local `propertyType`
+  // (resterait sur sa valeur par défaut si le bien existait déjà avant cette session
+  // de l'assistant, par ex. repris en cours de route).
+  const targetPropertyIsBuilding = (targetProperty as any)?.type === "building";
 
   const goToStep = (index: number) => {
     if (index < 0 || index >= STEP_DEFS.length) return;
@@ -468,6 +490,7 @@ export function OnboardingWizard({
   /* -------------------- Étape 2 : Bien -------------------- */
   const submitBien = async () => {
     if (!propertyLabel.trim() || !propertyAddress.trim()) return setErr("Nom du bien et adresse sont obligatoires.");
+    if (propertyType === "building" && !lotLabel.trim()) return setErr("Nom du premier lot obligatoire.");
     if (!supabase) return setErr("Supabase non initialisé.");
     setSaving(true);
     setErr(null);
@@ -487,6 +510,7 @@ export function OnboardingWizard({
         status: "active",
       };
 
+      let propertyId = createdPropertyId;
       if (createdPropertyId) {
         // Retour en arrière depuis une étape suivante : on met à jour le bien déjà
         // créé plutôt que d'en insérer un second à chaque nouveau passage sur cette étape.
@@ -495,8 +519,27 @@ export function OnboardingWizard({
       } else {
         const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
         if (error) throw error;
-        setCreatedPropertyId(data?.id || null);
+        propertyId = data?.id || null;
+        setCreatedPropertyId(propertyId);
       }
+
+      // Un immeuble a besoin d'au moins un lot pour que la location puisse s'y
+      // rattacher — les lots supplémentaires se gèrent ensuite depuis Logements.
+      if (propertyType === "building" && propertyId) {
+        if (createdLotId) {
+          const { error } = await supabase.from("property_lots").update({ label: lotLabel.trim() }).eq("id", createdLotId).eq("user_id", userId);
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase
+            .from("property_lots")
+            .insert({ property_id: propertyId, user_id: userId, label: lotLabel.trim(), sort_order: 0 })
+            .select("id")
+            .single();
+          if (error) throw error;
+          setCreatedLotId(data?.id || null);
+        }
+      }
+
       await onRefresh();
       next();
     } catch (e: any) {
@@ -555,6 +598,9 @@ export function OnboardingWizard({
   const submitBail = async () => {
     if (!leaseChoice) return setErr("Merci d'indiquer si le bail existe déjà.");
     if (!targetPropertyId || !targetTenantId) return setErr("Bien et locataire introuvables — revenez aux étapes précédentes.");
+    if (targetPropertyIsBuilding && !createdLotId) {
+      return setErr("Ce bien est un immeuble à plusieurs lots — créez d'abord un lot depuis Logements avant de créer la location.");
+    }
     const rent = Number(String(rentAmount).replace(",", "."));
     if (!Number.isFinite(rent) || rent <= 0) return setErr("Le loyer doit être supérieur à 0 €.");
     const charges = chargesAmount ? Number(String(chargesAmount).replace(",", ".")) : 0;
@@ -577,6 +623,7 @@ export function OnboardingWizard({
     try {
       const leasePayload = {
         property_id: targetPropertyId,
+        lot_id: targetPropertyIsBuilding ? createdLotId : null,
         tenant_id: targetTenantId,
         start_date: startDate,
         end_date: endDate || null,
@@ -729,13 +776,25 @@ export function OnboardingWizard({
                   <ChoiceCard
                     key={opt.value}
                     label={opt.label}
+                    hint={opt.value === "building" && buildingTypeLocked ? "Payant" : undefined}
                     icon={opt.icon}
                     selected={propertyType === opt.value}
                     onClick={() => setPropertyType(opt.value)}
+                    disabled={opt.value === "building" && buildingTypeLocked}
                     dense
                   />
                 ))}
               </div>
+              {propertyType === "building" ? (
+                <TextField
+                  label="Nom du premier lot"
+                  value={lotLabel}
+                  onChange={setLotLabel}
+                  placeholder="Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
+                  required
+                  hint="Les autres lots de l'immeuble se créent ensuite depuis Logements."
+                />
+              ) : null}
               <AddressAutocomplete
                 id="wizard_bien_address1"
                 label="Adresse *"

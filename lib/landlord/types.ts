@@ -32,6 +32,21 @@ export type Property = {
   updated_at: string;
   delegated_services?: string[];
   delegation_agency_name?: string | null;
+  type?: string | null;
+};
+
+// Lot au sein d'un bien de type "building" (immeuble en monopropriété) : un seul
+// bien/crédit, plusieurs unités louées séparément.
+export type PropertyLot = {
+  id: string;
+  property_id: string;
+  user_id: string;
+  label: string;
+  surface_m2?: number | null;
+  status?: string | null;
+  sort_order?: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type PropertyFinance = {
@@ -86,6 +101,7 @@ export type Lease = {
   id: string;
   user_id: string;
   property_id: string;
+  lot_id?: string | null;
   tenant_id: string;
   start_date: string;
   end_date: string | null;

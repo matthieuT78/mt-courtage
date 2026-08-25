@@ -28,7 +28,7 @@ import type { LandlordSectionKey } from "../navigation";
 type Props = {
   userId: string;
   onNavigate?: (section: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string }) => void;
   onRefresh?: () => void;
 };
 
@@ -84,6 +84,8 @@ type Listing = {
   status: string;
   created_at: string;
   property_id?: string | null;
+  lot_id?: string | null;
+  lot_label?: string | null;
   candidatures: Candidature[];
 };
 
@@ -829,29 +831,38 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
 
   const [form, setForm] = useState({
     title: "", address: "", rent_amount: "", charges_amount: "",
-    property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "",
+    property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "", lot_id: "",
   });
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  type PropertyLite = { id: string; label: string | null; address_line1: string | null; postal_code: string | null; city: string | null; surface_m2: number | null; status?: string | null };
+  type PropertyLite = { id: string; label: string | null; address_line1: string | null; postal_code: string | null; city: string | null; surface_m2: number | null; status?: string | null; type?: string | null };
+  type LotLite = { id: string; property_id: string; label: string };
   const [properties, setProperties] = useState<PropertyLite[]>([]);
+  const [lots, setLots] = useState<LotLite[]>([]);
   const [vacantIds, setVacantIds] = useState<Set<string>>(new Set());
+  const [occupiedLotIds, setOccupiedLotIds] = useState<Set<string>>(new Set());
   const [propsLoaded, setPropsLoaded] = useState(false);
 
   useEffect(() => {
     if (!showCreate || propsLoaded || !supabase) return;
     (async () => {
-      const [propsRes, leasesRes] = await Promise.all([
-        supabase.from("properties").select("id,label,address_line1,postal_code,city,surface_m2,status").eq("user_id", userId).order("created_at", { ascending: false }),
-        supabase.from("leases").select("property_id").eq("user_id", userId).eq("status", "active"),
+      const [propsRes, leasesRes, lotsRes] = await Promise.all([
+        supabase.from("properties").select("id,label,address_line1,postal_code,city,surface_m2,status,type").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("leases").select("property_id,lot_id").eq("user_id", userId).eq("status", "active"),
+        supabase.from("property_lots").select("id,property_id,label").eq("user_id", userId).eq("status", "active").order("sort_order", { ascending: true }),
       ]);
-      const occupied = new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean));
+      const occupiedProps = new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean));
+      const occupiedLots = new Set<string>((leasesRes.data || []).map((l: any) => l.lot_id).filter(Boolean));
       const nonArchived = (propsRes.data || []).filter((p: any) => String(p.status || "").toLowerCase() !== "archived");
-      setVacantIds(new Set(nonArchived.map((p: any) => p.id).filter((id: string) => !occupied.has(id))));
+      setVacantIds(new Set(nonArchived.map((p: any) => p.id).filter((id: string) => !occupiedProps.has(id))));
+      setOccupiedLotIds(occupiedLots);
       setProperties(nonArchived);
+      setLots((lotsRes.data || []) as LotLite[]);
       setPropsLoaded(true);
     })();
   }, [showCreate]);
+
+  const lotsForSelectedProperty = form.property_id ? lots.filter((l) => l.property_id === form.property_id) : [];
 
   async function load() {
     try {
@@ -881,13 +892,14 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
 
   function selectProperty(p: PropertyLite | null) {
     if (!p) {
-      setForm((f) => ({ ...f, property_id: "", address: "", surface_m2: "" }));
+      setForm((f) => ({ ...f, property_id: "", lot_id: "", address: "", surface_m2: "" }));
       return;
     }
     const parts = [p.address_line1, [p.postal_code, p.city].filter(Boolean).join(" ")].filter(Boolean);
     setForm((f) => ({
       ...f,
       property_id: p.id,
+      lot_id: "",
       address: parts.join(", "),
       surface_m2: p.surface_m2 != null ? String(p.surface_m2) : f.surface_m2,
     }));
@@ -909,6 +921,11 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
       setCreateErr("Surface invalide.");
       return;
     }
+    const selectedProperty = form.property_id ? properties.find((p) => p.id === form.property_id) : null;
+    if (selectedProperty?.type === "building" && !form.lot_id) {
+      setCreateErr("Veuillez sélectionner le lot concerné par cette annonce.");
+      return;
+    }
     setCreating(true);
     setCreateErr(null);
     const headers = await getHeaders();
@@ -922,13 +939,14 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
         surface_m2: surfaceM2,
         income_ratio: parseFloat(form.income_ratio || "3"),
         property_id: form.property_id || null,
+        lot_id: selectedProperty?.type === "building" ? form.lot_id || null : null,
       }),
     });
     const json = await res.json();
     if (!res.ok) { setCreateErr(json.error); setCreating(false); return; }
     setShowCreate(false);
     setCreating(false);
-    setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "" });
+    setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "", lot_id: "" });
     await load();
     setActiveListing(json.listing.id);
   }
@@ -1024,12 +1042,13 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
     }
   }
 
-  function navigateToBailCreate(c: Candidature, propertyId?: string | null) {
+  function navigateToBailCreate(c: Candidature, propertyId?: string | null, lotId?: string | null) {
     const tid = convertResult?.candidatureId === c.id ? convertResult?.tenantId ?? undefined : undefined;
     if (onNavigateDeep) {
       onNavigateDeep("baux", {
         openCreate: true,
         prefillPropertyId: propertyId ?? undefined,
+        prefillLotId: lotId ?? undefined,
         prefillTenantId: tid,
         prefillCandidatureEmail: c.email ?? undefined,
       });
@@ -1142,6 +1161,39 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
             </div>
           )}
 
+          {/* Lot picker — uniquement pour un immeuble à plusieurs lots */}
+          {form.property_id && properties.find((p) => p.id === form.property_id)?.type === "building" && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-700">Lot concerné *</p>
+              {lotsForSelectedProperty.length === 0 ? (
+                <p className="text-[0.7rem] text-amber-700">Ajoutez d’abord des lots à cet immeuble (section Biens).</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {lotsForSelectedProperty.map((lot) => {
+                    const occupied = occupiedLotIds.has(lot.id);
+                    const selected = form.lot_id === lot.id;
+                    return (
+                      <button
+                        key={lot.id}
+                        type="button"
+                        onClick={() => setF("lot_id", selected ? "" : lot.id)}
+                        disabled={occupied}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          selected
+                            ? "border-[#635bff] bg-[#635bff]/10 text-[#635bff]"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {lot.label}
+                        {occupied && <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-slate-500">Loué</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1 text-xs font-semibold text-slate-700 sm:col-span-2">
               Titre de l'annonce
@@ -1181,7 +1233,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
             </label>
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={() => { setShowCreate(false); setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "" }); setPropsLoaded(false); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            <button type="button" onClick={() => { setShowCreate(false); setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "", lot_id: "" }); setPropsLoaded(false); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
               Annuler
             </button>
             <button type="button" onClick={createListing} disabled={creating} className="rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
@@ -1359,7 +1411,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={() => {}}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
-                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
+                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id, currentListing.lot_id)}
                           />
                         ))}
                       </div>
@@ -1416,7 +1468,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                               visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                               onUpdateStatus={(status) => updateStatus(c.id, status)}
                               onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
-                              onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
+                              onCreateBail={() => navigateToBailCreate(c, currentListing.property_id, currentListing.lot_id)}
                             />
                           ))}
                       </div>
@@ -1440,7 +1492,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={(status) => updateStatus(c.id, status)}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
-                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
+                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id, currentListing.lot_id)}
                           />
                         ))}
                       </div>
@@ -1639,7 +1691,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                                   visitAt={visitByEmail.get(`${l.id}|${(c.email || "").toLowerCase()}`)}
                                   onUpdateStatus={() => {}}
                                   onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), l.property_id)}
-                                  onCreateBail={() => navigateToBailCreate(c, l.property_id)}
+                                  onCreateBail={() => navigateToBailCreate(c, l.property_id, l.lot_id)}
                                 />
                               ))}
                             </div>
