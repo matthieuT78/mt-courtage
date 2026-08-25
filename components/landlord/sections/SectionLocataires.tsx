@@ -264,6 +264,20 @@ export function SectionLocataires({
   const canUsePortal = planAllowsDocumentSharing(plan);
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // row ouverte (create ou tenant id)
+
+  // Sans ce verrou, le geste de scroll tactile sur mobile passe à travers la
+  // modale (pourtant scrollable) et fait défiler la page en arrière-plan à la
+  // place — la modale paraît alors tronquée sans moyen d'atteindre le bouton
+  // "Créer le locataire" en bas du formulaire.
+  useEffect(() => {
+    if (!expandedId) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [expandedId]);
+
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"az" | "recent">("az");
 
@@ -1242,7 +1256,7 @@ export function SectionLocataires({
 
       {expandedId && (expandedId === CREATE_ID || activeTenant) ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) closeTenantModal(); }}
         >
           <div

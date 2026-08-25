@@ -2918,7 +2918,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           </div>
         </details>
 
-        <div className="sticky bottom-3 z-10 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+        {/* Sur mobile, la nav du bas est fixed et z-50 : un simple "bottom-3" plaçait
+            ce bandeau (donc le bouton "Créer") littéralement dessous, invisible et
+            inatteignable. On lui laisse la même marge que le panneau "Plus" du shell. */}
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-10 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur lg:bottom-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <p className="text-xs text-slate-600">

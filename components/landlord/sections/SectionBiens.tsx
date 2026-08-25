@@ -281,6 +281,20 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   }, [safePropertyLots]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // "__create__" ou propertyId
+
+  // Sans ce verrou, le geste de scroll tactile sur mobile passe à travers la
+  // modale (pourtant scrollable) et fait défiler la page en arrière-plan à la
+  // place — la modale paraît alors tronquée sans moyen d'atteindre le bouton
+  // "Créer le bien" en bas du formulaire.
+  useEffect(() => {
+    if (!expandedId) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [expandedId]);
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -1749,7 +1763,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
 
       {expandedId && (expandedId === CREATE_ID || activeProperty) ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) closePropertyModal(); }}
         >
           <div
