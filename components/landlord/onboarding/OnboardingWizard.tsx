@@ -12,6 +12,9 @@ import {
   LightBulbIcon,
   DocumentCheckIcon,
   PencilSquareIcon,
+  PlusIcon,
+  TrashIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import CalculatorWizardShell from "../../calculators/CalculatorWizardShell";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
@@ -94,6 +97,36 @@ const LEASE_KIND_OPTIONS: Array<{ value: string; label: string; hint: string }> 
   { value: "empty_primary", label: "Nu — résidence principale", hint: "Bail non meublé, durée minimale de 3 ans." },
   { value: "other", label: "Autre / je préciserai plus tard", hint: "Modifiable à tout moment depuis Locations." },
 ];
+
+const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
+
+// Un lot d'immeuble est traité comme un bien à part entière : mêmes
+// caractéristiques qu'un appartement classique (surface, pièces, DPE, GES,
+// description), sauf l'adresse qui est héritée de l'immeuble.
+type OnboardingLotDraft = {
+  id: string; // id réel une fois créé en base, sinon id temporaire "pending-N"
+  label: string;
+  surface_m2: string;
+  rooms: string;
+  energy_class: string;
+  ghg_class: string;
+  energy_value: string;
+  description: string;
+};
+const EMPTY_LOT_DRAFT: Omit<OnboardingLotDraft, "id"> = {
+  label: "",
+  surface_m2: "",
+  rooms: "",
+  energy_class: "",
+  ghg_class: "",
+  energy_value: "",
+  description: "",
+};
+
+function toNumOrNull(v: string): number | null {
+  const n = Number(String(v).trim().replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 
 /* ======================================================
    HELPERS
@@ -404,8 +437,12 @@ export function OnboardingWizard({
   const [delegatedServices, setDelegatedServices] = useState<string[]>([]);
   const [delegationAgencyName, setDelegationAgencyName] = useState("");
   const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null);
-  const [lotLabel, setLotLabel] = useState("Lot 1");
-  const [createdLotId, setCreatedLotId] = useState<string | null>(null);
+  // Immeuble : un ou plusieurs lots, chacun avec ses propres caractéristiques —
+  // gérés en mémoire tant que l'immeuble n'est pas créé, insérés/mis à jour en
+  // base au clic sur "Continuer" (cf. submitBien).
+  const [lots, setLots] = useState<OnboardingLotDraft[]>([{ id: "pending-0", ...EMPTY_LOT_DRAFT, label: "Lot 1" }]);
+  const [expandedLotRowId, setExpandedLotRowId] = useState<string | null>(null);
+  const [selectedLeaseLotId, setSelectedLeaseLotId] = useState<string | null>(null);
 
   // Locataire
   const [tenantIsCompany, setTenantIsCompany] = useState(false);
@@ -450,6 +487,15 @@ export function OnboardingWizard({
   // (resterait sur sa valeur par défaut si le bien existait déjà avant cette session
   // de l'assistant, par ex. repris en cours de route).
   const targetPropertyIsBuilding = (targetProperty as any)?.type === "building";
+  // Lots réellement enregistrés en base (id temporaire "pending-" = pas encore créé) —
+  // c'est parmi eux que l'étape Location choisit celui qui reçoit le bail.
+  const createdLots = useMemo(() => lots.filter((l) => !l.id.startsWith("pending-")), [lots]);
+
+  useEffect(() => {
+    if (targetPropertyIsBuilding && createdLots.length === 1 && !selectedLeaseLotId) {
+      setSelectedLeaseLotId(createdLots[0].id);
+    }
+  }, [targetPropertyIsBuilding, createdLots, selectedLeaseLotId]);
 
   const goToStep = (index: number) => {
     if (index < 0 || index >= STEP_DEFS.length) return;
@@ -490,12 +536,15 @@ export function OnboardingWizard({
   /* -------------------- Étape 2 : Bien -------------------- */
   const submitBien = async () => {
     if (!propertyLabel.trim() || !propertyAddress.trim()) return setErr("Nom du bien et adresse sont obligatoires.");
-    if (propertyType === "building" && !lotLabel.trim()) return setErr("Nom du premier lot obligatoire.");
+    if (propertyType === "building" && !lots.some((l) => l.label.trim())) {
+      return setErr("Au moins un lot doit avoir un nom.");
+    }
     if (!supabase) return setErr("Supabase non initialisé.");
     setSaving(true);
     setErr(null);
     setErrIsPlanLimit(false);
     try {
+      const isBuilding = propertyType === "building";
       const payload = {
         user_id: userId,
         type: propertyType,
@@ -503,8 +552,10 @@ export function OnboardingWizard({
         address_line1: propertyAddress.trim(),
         postal_code: propertyPostalCode.trim() || null,
         city: propertyCity.trim() || null,
-        surface_m2: propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
-        rooms: propertyRooms.trim() ? Number(propertyRooms.trim()) || null : null,
+        // Un immeuble n'a pas de surface/pièces uniques représentatives de tous ses
+        // logements — ces caractéristiques se saisissent par lot ci-dessous.
+        surface_m2: isBuilding ? null : propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
+        rooms: isBuilding ? null : propertyRooms.trim() ? Number(propertyRooms.trim()) || null : null,
         delegated_services: delegatedServices,
         delegation_agency_name: delegationAgencyName.trim() || null,
         status: "active",
@@ -524,20 +575,52 @@ export function OnboardingWizard({
       }
 
       // Un immeuble a besoin d'au moins un lot pour que la location puisse s'y
-      // rattacher — les lots supplémentaires se gèrent ensuite depuis Logements.
-      if (propertyType === "building" && propertyId) {
-        if (createdLotId) {
-          const { error } = await supabase.from("property_lots").update({ label: lotLabel.trim() }).eq("id", createdLotId).eq("user_id", userId);
+      // rattacher — les lots sont traités comme des biens à part entière, avec
+      // leurs propres caractéristiques (mêmes champs qu'un appartement classique).
+      if (isBuilding && propertyId) {
+        const namedLots = lots.filter((l) => l.label.trim());
+        const toInsert = namedLots.filter((l) => l.id.startsWith("pending-"));
+        const toUpdate = namedLots.filter((l) => !l.id.startsWith("pending-"));
+
+        const lotPatch = (l: OnboardingLotDraft) => ({
+          label: l.label.trim(),
+          surface_m2: l.surface_m2 ? toNumOrNull(l.surface_m2) : null,
+          rooms: l.rooms ? Math.round(toNumOrNull(l.rooms) ?? 0) : null,
+          energy_class: l.energy_class || null,
+          ghg_class: l.ghg_class || null,
+          energy_value: l.energy_value ? toNumOrNull(l.energy_value) : null,
+          description: l.description.trim() || null,
+        });
+
+        for (const l of toUpdate) {
+          const { error } = await supabase.from("property_lots").update(lotPatch(l)).eq("id", l.id).eq("user_id", userId);
           if (error) throw error;
-        } else {
+        }
+
+        let newIds: string[] = [];
+        if (toInsert.length > 0) {
           const { data, error } = await supabase
             .from("property_lots")
-            .insert({ property_id: propertyId, user_id: userId, label: lotLabel.trim(), sort_order: 0 })
-            .select("id")
-            .single();
+            .insert(
+              toInsert.map((l, index) => ({
+                property_id: propertyId,
+                user_id: userId,
+                ...lotPatch(l),
+                sort_order: toUpdate.length + index,
+              }))
+            )
+            .select("id");
           if (error) throw error;
-          setCreatedLotId(data?.id || null);
+          newIds = (data || []).map((row: any) => row.id as string);
         }
+        // Remplace les id temporaires par les vrais id renvoyés (même ordre que
+        // `toInsert`) et retire les lignes vides jamais nommées.
+        setLots((prev) => {
+          let cursor = 0;
+          return prev
+            .filter((l) => l.label.trim())
+            .map((l) => (l.id.startsWith("pending-") ? { ...l, id: newIds[cursor++] || l.id } : l));
+        });
       }
 
       await onRefresh();
@@ -598,8 +681,8 @@ export function OnboardingWizard({
   const submitBail = async () => {
     if (!leaseChoice) return setErr("Merci d'indiquer si le bail existe déjà.");
     if (!targetPropertyId || !targetTenantId) return setErr("Bien et locataire introuvables — revenez aux étapes précédentes.");
-    if (targetPropertyIsBuilding && !createdLotId) {
-      return setErr("Ce bien est un immeuble à plusieurs lots — créez d'abord un lot depuis Logements avant de créer la location.");
+    if (targetPropertyIsBuilding && !selectedLeaseLotId) {
+      return setErr("Choisissez le lot loué dans cet immeuble.");
     }
     const rent = Number(String(rentAmount).replace(",", "."));
     if (!Number.isFinite(rent) || rent <= 0) return setErr("Le loyer doit être supérieur à 0 €.");
@@ -623,7 +706,7 @@ export function OnboardingWizard({
     try {
       const leasePayload = {
         property_id: targetPropertyId,
-        lot_id: targetPropertyIsBuilding ? createdLotId : null,
+        lot_id: targetPropertyIsBuilding ? selectedLeaseLotId : null,
         tenant_id: targetTenantId,
         start_date: startDate,
         end_date: endDate || null,
@@ -689,6 +772,19 @@ export function OnboardingWizard({
     } finally {
       setSaving(false);
     }
+  };
+
+  /* -------------------- Lots (étape Bien, immeuble) -------------------- */
+  const addLotRow = () => {
+    setLots((prev) => [...prev, { id: `pending-${Date.now()}-${prev.length}`, ...EMPTY_LOT_DRAFT }]);
+  };
+  const updateLotRow = (id: string, patch: Partial<OnboardingLotDraft>) => {
+    setLots((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  };
+  const removeLotRow = (id: string) => {
+    setLots((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
+    if (expandedLotRowId === id) setExpandedLotRowId(null);
+    if (selectedLeaseLotId === id) setSelectedLeaseLotId(null);
   };
 
   /* ======================================================
@@ -785,16 +881,6 @@ export function OnboardingWizard({
                   />
                 ))}
               </div>
-              {propertyType === "building" ? (
-                <TextField
-                  label="Nom du premier lot"
-                  value={lotLabel}
-                  onChange={setLotLabel}
-                  placeholder="Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
-                  required
-                  hint="Les autres lots de l'immeuble se créent ensuite depuis Logements."
-                />
-              ) : null}
               <AddressAutocomplete
                 id="wizard_bien_address1"
                 label="Adresse *"
@@ -806,10 +892,126 @@ export function OnboardingWizard({
                 onCityChange={setPropertyCity}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField label="Surface (m²)" value={propertySurface} onChange={setPropertySurface} placeholder="Ex : 45" type="number" />
-                <TextField label="Nombre de pièces" value={propertyRooms} onChange={setPropertyRooms} placeholder="Ex : 2" type="number" />
-              </div>
+              {propertyType === "building" ? (
+                <>
+                  <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                    Surface, pièces et DPE se renseignent par lot ci-dessous — un immeuble n'a pas une surface ou un DPE unique représentatif de tous ses logements.
+                  </p>
+                  <div className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900">Lots de cet immeuble</p>
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-800">
+                        {lots.length} lot{lots.length > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      Chaque lot est un logement à part entière — mêmes caractéristiques qu'un bien classique, sauf l'adresse (héritée de l'immeuble). Vous choisirez ensuite lequel reçoit la première location.
+                    </p>
+                    <div className="space-y-1.5">
+                      {lots.map((lot) => {
+                        const isExpanded = expandedLotRowId === lot.id;
+                        return (
+                          <div key={lot.id} className="rounded-xl border border-slate-200 bg-white">
+                            <div className="flex flex-wrap items-center gap-2 p-2">
+                              <input
+                                className="min-w-[8rem] flex-1 rounded-lg border-none bg-transparent px-1 text-sm font-medium text-slate-900 focus:outline-none"
+                                value={lot.label}
+                                onChange={(e) => updateLotRow(lot.id, { label: e.target.value })}
+                                placeholder="Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
+                              />
+                              <input
+                                className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                placeholder="m²"
+                                inputMode="decimal"
+                                value={lot.surface_m2}
+                                onChange={(e) => updateLotRow(lot.id, { surface_m2: e.target.value })}
+                              />
+                              <input
+                                className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                placeholder="pièces"
+                                inputMode="numeric"
+                                value={lot.rooms}
+                                onChange={(e) => updateLotRow(lot.id, { rooms: e.target.value })}
+                              />
+                              <select
+                                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                                value={lot.energy_class}
+                                onChange={(e) => updateLotRow(lot.id, { energy_class: e.target.value })}
+                              >
+                                <option value="">DPE —</option>
+                                {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                                  <option key={o} value={o}>DPE {o}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setExpandedLotRowId(isExpanded ? null : lot.id)}
+                                className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                                aria-label={isExpanded ? "Réduire" : "Plus de détails (GES, DPE)"}
+                              >
+                                <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+                              </button>
+                              {lots.length > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeLotRow(lot.id)}
+                                  className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                                  aria-label={`Retirer ${lot.label || "ce lot"}`}
+                                >
+                                  <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                                </button>
+                              ) : null}
+                            </div>
+                            {isExpanded ? (
+                              <div className="space-y-2 border-t border-slate-100 p-3">
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <select
+                                    className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                                    value={lot.ghg_class}
+                                    onChange={(e) => updateLotRow(lot.id, { ghg_class: e.target.value })}
+                                  >
+                                    <option value="">GES —</option>
+                                    {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                                      <option key={o} value={o}>GES {o}</option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                                    placeholder="kWh/m²/an"
+                                    inputMode="decimal"
+                                    value={lot.energy_value}
+                                    onChange={(e) => updateLotRow(lot.id, { energy_value: e.target.value })}
+                                  />
+                                </div>
+                                <textarea
+                                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                                  rows={2}
+                                  placeholder="Description (étage, balcon, etc.)"
+                                  value={lot.description}
+                                  onChange={(e) => updateLotRow(lot.id, { description: e.target.value })}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addLotRow}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 hover:border-[#635bff]/50 hover:bg-indigo-50/40 hover:text-[#635bff]"
+                    >
+                      <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                      Ajouter un lot
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextField label="Surface (m²)" value={propertySurface} onChange={setPropertySurface} placeholder="Ex : 45" type="number" />
+                  <TextField label="Nombre de pièces" value={propertyRooms} onChange={setPropertyRooms} placeholder="Ex : 2" type="number" />
+                </div>
+              )}
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <div>
@@ -1007,6 +1209,24 @@ export function OnboardingWizard({
                   Renseignez d'abord ces infos de base, vous compléterez ensuite le contrat complet (parties, clauses...) dans
                   l'étape suivante.
                 </p>
+              ) : null}
+              {targetPropertyIsBuilding ? (
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-700">
+                    Lot loué <span className="text-red-500">*</span>
+                  </span>
+                  <select
+                    value={selectedLeaseLotId || ""}
+                    onChange={(e) => setSelectedLeaseLotId(e.target.value || null)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  >
+                    <option value="">— Sélectionner —</option>
+                    {createdLots.map((l) => (
+                      <option key={l.id} value={l.id}>{l.label}</option>
+                    ))}
+                  </select>
+                  <span className="block text-[0.68rem] leading-4 text-slate-500">Cet immeuble a {createdLots.length} lot{createdLots.length > 1 ? "s" : ""} — cette première location se rattache à l'un d'eux, les autres se louent ensuite depuis Locations.</span>
+                </label>
               ) : null}
               {targetTenantIsCompany ? (
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
