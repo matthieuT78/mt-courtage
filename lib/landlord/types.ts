@@ -47,6 +47,7 @@ export type PropertyFinance = {
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
+  loan_end_month?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly?: number | null;
   fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;

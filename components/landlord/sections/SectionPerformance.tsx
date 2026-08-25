@@ -60,6 +60,7 @@ type PropertyFinance = {
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
+  loan_end_month?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly: number | null;
   fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;
@@ -224,6 +225,15 @@ function remainingLoanMonths(finance: PropertyFinance | null) {
   const endYear = Number(finance?.loan_end_year || 0);
   if (Number.isFinite(endYear) && endYear > 0) {
     const now = new Date();
+    // Précis si le mois de fin est renseigné (ex: avril, pas forcément décembre) ; sinon,
+    // on garde l'hypothèse historique (fin d'année) pour ne rien changer aux biens existants
+    // qui n'ont que l'année.
+    if (finance?.loan_end_month != null) {
+      const endMonth = Math.min(12, Math.max(1, Number(finance.loan_end_month)));
+      const totalMonthsNow = now.getFullYear() * 12 + now.getMonth();
+      const totalMonthsEnd = endYear * 12 + (endMonth - 1);
+      return Math.max(0, totalMonthsEnd - totalMonthsNow);
+    }
     return Math.max(0, (endYear - now.getFullYear()) * 12 + (12 - now.getMonth()));
   }
   const legacy = Number(finance?.loan_remaining_months || 0);
@@ -785,6 +795,7 @@ type PropertyRow = {
   loanRate: number | null;
   loanRemainingMonths: number | null;
   loanEndYear: number | null;
+  loanEndMonth: number | null;
   taxRegime: string | null;
   vacancyDays12m: number;
   turnover12m: number;
@@ -1185,6 +1196,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           loanRate: fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent),
           loanRemainingMonths,
           loanEndYear: fin?.loan_end_year == null ? null : Number(fin.loan_end_year),
+          loanEndMonth: fin?.loan_end_month == null ? null : Number(fin.loan_end_month),
           taxRegime: fin?.tax_regime || null,
           vacancyDays12m: occupancy.vacancyDays12m,
           turnover12m: occupancy.turnover12m,
@@ -2000,7 +2012,16 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                     <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                     <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
                     <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
-                    <Stat label="Fin crédit" value={row.loanEndYear == null ? "—" : String(row.loanEndYear)} />
+                    <Stat
+                      label="Fin crédit"
+                      value={
+                        row.loanEndYear == null
+                          ? "—"
+                          : row.loanEndMonth != null
+                          ? new Date(row.loanEndYear, row.loanEndMonth - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+                          : String(row.loanEndYear)
+                      }
+                    />
                     <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
                     <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
                   </div>

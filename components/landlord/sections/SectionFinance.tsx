@@ -113,6 +113,7 @@ type PropertyFinance = {
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
+  loan_end_month?: number | null;
   tax_regime?: string | null;
 
   fixed_charges_monthly: number | null;
@@ -3495,6 +3496,7 @@ function PropertyFinanceForm({
     loan_rate_percent: ex?.loan_rate_percent ?? null,
     loan_remaining_months: ex?.loan_remaining_months ?? null,
     loan_end_year: ex?.loan_end_year ?? estimatedLoanEndYear(ex?.loan_remaining_months),
+    loan_end_month: ex?.loan_end_month ?? null,
     tax_regime: ex?.tax_regime ?? null,
     fixed_charges_monthly: ex?.fixed_charges_monthly ?? null,
     fixed_charges_frequency: ex?.fixed_charges_frequency || "monthly",
@@ -3534,6 +3536,7 @@ function PropertyFinanceForm({
         loan_insurance_monthly: s.loan_insurance_monthly,
         loan_rate_percent: s.loan_rate_percent,
         loan_end_year: s.loan_end_year,
+        loan_end_month: s.loan_end_month,
         loan_remaining_months: null,
         tax_regime: s.tax_regime,
         fixed_charges_monthly: s.fixed_charges_monthly,
@@ -3623,7 +3626,7 @@ function PropertyFinanceForm({
         {/* Financement */}
         <div className="py-5">
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Financement</p>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} error={fieldErrors.down_payment} />
             <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
             <Field
@@ -3634,6 +3637,22 @@ function PropertyFinanceForm({
               onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
               error={fieldErrors.loan_end_year}
             />
+            <div>
+              <label className="text-xs text-slate-600">Mois de fin (optionnel)</label>
+              <select
+                value={s.loan_end_month ?? ""}
+                onChange={(e) => setS((p) => ({ ...p, loan_end_month: e.target.value === "" ? null : Number(e.target.value) }))}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              >
+                <option value="">Non précisé (déc. par défaut)</option>
+                {["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-[0.68rem] leading-4 text-slate-500">
+                Affine le capital restant dû estimé (Performance) — sans lui, on suppose une fin en décembre.
+              </p>
+            </div>
           </div>
           {/* Mensualité + date de prise en compte regroupées : la date ne concerne
               que cette mensualité dans ce panneau — la taxe foncière, l'assurance,

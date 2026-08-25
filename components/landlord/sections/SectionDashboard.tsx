@@ -930,14 +930,15 @@ export function SectionDashboard({
       if (!activePropertyIds.has(fin.property_id)) continue;
       const rate = Number(fin.loan_rate_percent || 0);
       const monthly = Number(fin.loan_monthly || 0);
-      // Le formulaire Finance ne fait saisir que l'année de fin de crédit
-      // (loan_end_year) — loan_remaining_months n'est jamais renseigné en
-      // pratique. On dérive une durée restante approximative (fin de crédit
-      // au milieu de l'année déclarée), suffisante pour cette estimation.
+      // loan_remaining_months n'est presque jamais renseigné en pratique — on dérive la
+      // durée restante depuis loan_end_year, précisément si loan_end_month est connu,
+      // sinon avec l'hypothèse d'une fin au milieu de l'année déclarée.
       const remainingMonths = fin.loan_remaining_months
         ? Number(fin.loan_remaining_months)
         : fin.loan_end_year
-        ? (Number(fin.loan_end_year) - now.getFullYear()) * 12 + 6 - now.getMonth()
+        ? fin.loan_end_month != null
+          ? (Number(fin.loan_end_year) * 12 + (Number(fin.loan_end_month) - 1)) - (now.getFullYear() * 12 + now.getMonth())
+          : (Number(fin.loan_end_year) - now.getFullYear()) * 12 + 6 - now.getMonth()
         : 0;
       if (!rate || !monthly || remainingMonths < MIN_REMAINING_MONTHS) continue;
 
