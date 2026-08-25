@@ -783,6 +783,12 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
   const safePropertyLots = Array.isArray(propertyLots) ? propertyLots : [];
 
+  const lotById = useMemo(() => {
+    const m = new Map<string, PropertyLot>();
+    for (const lot of safePropertyLots) m.set(lot.id, lot);
+    return m;
+  }, [safePropertyLots]);
+
   const defaultFormValues = () => ({
     property_id: "",
     lot_id: "",
@@ -1112,6 +1118,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const leaseLine = (l: Lease) => {
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
+    const lot = l.lot_id ? lotById.get(l.lot_id) : null;
     const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
     const renewal = leaseRenewalInfo(l);
     const startDateFR = fmtDateShortFR(l.start_date);
@@ -1120,7 +1127,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     const delegatedServices: string[] = Array.isArray(p?.delegated_services) ? p!.delegated_services! : [];
     const agencyName = p?.delegation_agency_name || null;
     return {
-      propertyLabel: p?.label || "Bien",
+      // Sur un immeuble, plusieurs baux partagent le même bien — sans le nom du
+      // lot, impossible de distinguer les cartes des différents locataires.
+      propertyLabel: lot ? `${p?.label || "Bien"} · ${lot.label}` : p?.label || "Bien",
+      lotLabel: lot?.label || null,
       tenantName: t?.full_name || "Locataire",
       tenantEmail: t?.email || null,
       city: p?.city || null,
@@ -1723,6 +1733,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const renderLeaseDetails = (l: Lease) => {
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
+    const lot = l.lot_id ? lotById.get(l.lot_id) : null;
     const flow = workflowInfo(l, t);
     const renewal = leaseRenewalInfo(l);
     const history = buildLeaseHistory(l, safePayments, safeReceipts);
@@ -1817,6 +1828,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               <span className={cx("h-2 w-2 rounded-full", p?.label ? "bg-emerald-400" : "bg-amber-400")} />
             </div>
             <p className="mt-1 font-semibold text-slate-900 break-words">{p?.label || "—"}</p>
+            {lot ? <p className="break-words text-xs font-medium text-[#635bff]">{lot.label}</p> : null}
             {p?.city ? <p className="break-words text-xs text-slate-600">{p.city}</p> : null}
           </div>
 

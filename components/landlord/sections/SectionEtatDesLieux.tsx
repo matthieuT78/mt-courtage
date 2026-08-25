@@ -20,7 +20,7 @@ import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
 import { NiceSelect } from "../ui/NiceSelect";
-import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyFinance, PropertyLot, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
 import { leaseRequiresLmnpInventory, getLmnpItemStatus } from "../../../lib/landlord/lmnpInventory";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
@@ -102,6 +102,7 @@ type Props = {
   userId: string;
   leases?: Lease[];
   properties?: Property[];
+  propertyLots?: PropertyLot[];
   tenants?: Tenant[];
   propertyFinance?: PropertyFinance[];
   onRefresh?: () => Promise<void>;
@@ -635,18 +636,25 @@ function openBlankPdfWindow() {
 // =========================
 // BLOCK 2/4
 // =========================
-export function SectionEtatDesLieux({ userId, leases, properties, tenants, propertyFinance, onRefresh, onNavigateToBaux, onNavigateToInventaire }: Props) {
+export function SectionEtatDesLieux({ userId, leases, properties, propertyLots, tenants, propertyFinance, onRefresh, onNavigateToBaux, onNavigateToInventaire }: Props) {
   const { plan } = usePermissions();
   const canShareDocuments = planAllowsDocumentSharing(plan);
   const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
   const safeProps = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
   const safeTenants = useMemo(() => (Array.isArray(tenants) ? tenants : []), [tenants]);
+  const safePropertyLots = useMemo(() => (Array.isArray(propertyLots) ? propertyLots : []), [propertyLots]);
 
   const propertyById = useMemo(() => {
     const m = new Map<string, Property>();
     for (const p of safeProps) m.set(p.id, p);
     return m;
   }, [safeProps]);
+
+  const lotById = useMemo(() => {
+    const m = new Map<string, PropertyLot>();
+    for (const lot of safePropertyLots) m.set(lot.id, lot);
+    return m;
+  }, [safePropertyLots]);
 
   const tenantById = useMemo(() => {
     const m = new Map<string, Tenant>();
@@ -656,14 +664,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
 
   const activeLeases = useMemo(() => safeLeases.filter(isEDLSelectableLease), [safeLeases]);
 
-  const leaseLabel = (l: Lease) => {
+  // Sur un immeuble, plusieurs baux partagent le même bien — sans le nom du
+  // lot, impossible de savoir quel logement l'état des lieux concerne.
+  const propertyLabelForLease = (l: Pick<Lease, "property_id" | "lot_id">) => {
     const p = propertyById.get(l.property_id);
-    const t = tenantById.get(l.tenant_id);
-    return `${p?.label || "Logement"} — ${t?.full_name || "Locataire"}`;
+    const lot = l.lot_id ? lotById.get(l.lot_id) : null;
+    return lot ? `${p?.label || "Logement"} · ${lot.label}` : p?.label || "Logement";
   };
 
-  const propertyPlaceLabel = (p?: Property | null) =>
-    [p?.address_line1, p?.address_line2, [p?.postal_code, p?.city].filter(Boolean).join(" ")]
+  const leaseLabel = (l: Lease) => {
+    const t = tenantById.get(l.tenant_id);
+    return `${propertyLabelForLease(l)} — ${t?.full_name || "Locataire"}`;
+  };
+
+  const propertyPlaceLabel = (p?: Property | null, lot?: PropertyLot | null) =>
+    [p?.address_line1, lot?.label || p?.address_line2, [p?.postal_code, p?.city].filter(Boolean).join(" ")]
       .filter((part) => String(part || "").trim())
       .join(", ");
 
@@ -799,6 +814,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   };
   const startWizardStep3 = (type: "entry" | "exit") => startOrCreateReport(type, "lease");
   const selectedProperty = selectedLease ? propertyById.get(selectedLease.property_id) || null : null;
+  const selectedLot = selectedLease?.lot_id ? lotById.get(selectedLease.lot_id) || null : null;
 
   // Le bien est-il censé être suivi en LMNP, mais sans aucun élément
   // obligatoire encore configuré dans la section Inventaire ? Dans ce cas,
@@ -833,7 +849,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
         .filter((part) => String(part || "").trim())
         .join(", ")
     : "";
-  const defaultReportPlace = propertyPlaceLabel(selectedProperty) || standalonePlaceLabel;
+  const defaultReportPlace = propertyPlaceLabel(selectedProperty, selectedLot) || standalonePlaceLabel;
 
   const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease) : "—";
   const selectedStandaloneLabel = selectedReport
@@ -4592,7 +4608,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                               placeholder="— Sélectionner un bail —"
                               options={[...activeOnlyLeases, ...endedPendingLeases].map((l) => ({
                                 value: l.id,
-                                label: propertyById.get(l.property_id)?.label || "Logement",
+                                label: propertyLabelForLease(l),
                                 subtitle: tenantById.get(l.tenant_id)?.full_name || "Locataire",
                               }))}
                             />
@@ -4952,7 +4968,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                 placeholder="Rattacher à un bail actif…"
                 options={activeLeases.map((lease) => ({
                   value: lease.id,
-                  label: propertyById.get(lease.property_id)?.label || "Logement",
+                  label: propertyLabelForLease(lease),
                   subtitle: tenantById.get(lease.tenant_id)?.full_name || "Locataire",
                 }))}
               />
