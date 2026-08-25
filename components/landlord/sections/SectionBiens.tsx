@@ -599,14 +599,11 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           setPendingLots([]);
         }
 
+        closePropertyModal();
         setOk("Bien créé ✅");
-        setCreateForm(EMPTY);
       }
 
       await safeRefresh();
-      // Le nouveau bien n'existe dans `properties` (prop) qu'après ce refresh — ouvrir la
-      // modale avant provoquerait un rendu avec activeProperty introuvable.
-      if (newPropertyId) setExpandedId(newPropertyId);
     } catch (e: any) {
       console.error("[saveProperty] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
