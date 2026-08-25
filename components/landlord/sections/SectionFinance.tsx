@@ -3757,8 +3757,10 @@ function MonthYearPicker({
   }, [open]);
 
   const label =
-    year != null && month != null
-      ? new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+    year != null
+      ? month != null
+        ? new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+        : String(year)
       : placeholder;
 
   return (
