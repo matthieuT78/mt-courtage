@@ -3631,19 +3631,10 @@ function PropertyFinanceForm({
             <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
             <div>
               <label className="text-xs text-slate-600">Fin du crédit</label>
-              <input
-                type="month"
-                value={s.loan_end_year != null ? `${s.loan_end_year}-${String(s.loan_end_month ?? 12).padStart(2, "0")}` : ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (!v) {
-                    setS((p) => ({ ...p, loan_end_year: null, loan_end_month: null }));
-                    return;
-                  }
-                  const [y, m] = v.split("-").map(Number);
-                  setS((p) => ({ ...p, loan_end_year: y, loan_end_month: m }));
-                }}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              <MonthYearPicker
+                year={s.loan_end_year ?? null}
+                month={s.loan_end_month ?? null}
+                onChange={(y, m) => setS((p) => ({ ...p, loan_end_year: y, loan_end_month: m }))}
               />
               {fieldErrors.loan_end_year && <p className="mt-1 text-xs text-red-600">{fieldErrors.loan_end_year}</p>}
             </div>
@@ -3733,6 +3724,93 @@ function PropertyFinanceForm({
         </button>
       </div>
     </form>
+  );
+}
+
+const MONTH_SHORT_LABELS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+
+// Sélecteur mois/année maison — l'input natif type="month" n'a pas de calendrier sur Safari
+// desktop (juste un champ texte), contrairement à Chrome/Firefox. Ce composant offre la même
+// expérience (bouton + popover mois/année) sur tous les navigateurs.
+function MonthYearPicker({
+  year,
+  month,
+  onChange,
+  placeholder = "Non renseignée",
+}: {
+  year: number | null;
+  month: number | null;
+  onChange: (year: number, month: number) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(year ?? new Date().getFullYear());
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const label =
+    year != null && month != null
+      ? new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+      : placeholder;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => {
+          setViewYear(year ?? new Date().getFullYear());
+          setOpen((o) => !o);
+        }}
+        className="mt-1 flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-left text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+      >
+        <span className={year == null ? "text-slate-400" : ""}>{label}</span>
+        <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="3" y="4" width="14" height="13" rx="2" />
+          <path d="M3 8h14M7 2v4M13 2v4" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => setViewYear((y) => y - 1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100" aria-label="Année précédente">
+              ‹
+            </button>
+            <span className="text-sm font-semibold text-slate-900">{viewYear}</span>
+            <button type="button" onClick={() => setViewYear((y) => y + 1)} className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100" aria-label="Année suivante">
+              ›
+            </button>
+          </div>
+          <div className="mt-2 grid grid-cols-4 gap-1.5">
+            {MONTH_SHORT_LABELS.map((m, i) => {
+              const isSelected = year === viewYear && month === i + 1;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    onChange(viewYear, i + 1);
+                    setOpen(false);
+                  }}
+                  className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
+                    isSelected ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
