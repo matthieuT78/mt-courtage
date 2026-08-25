@@ -43,6 +43,10 @@ export type PropertyLot = {
   user_id: string;
   label: string;
   surface_m2?: number | null;
+  rooms?: number | null;
+  energy_class?: string | null;
+  energy_value?: number | null;
+  ghg_class?: string | null;
   status?: string | null;
   sort_order?: number;
   created_at: string;

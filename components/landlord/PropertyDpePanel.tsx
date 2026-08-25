@@ -7,6 +7,7 @@ import { UploadProgressBar } from "../UploadProgressBar";
 type DpeDocument = {
   id: string;
   property_id: string;
+  lot_id: string | null;
   file_name: string;
   size_bytes: number;
 };
@@ -27,7 +28,15 @@ async function post(path: string, body: unknown) {
 
 const fmt = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
 
-export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: string; propertyLabel: string }) {
+export function PropertyDpePanel({
+  propertyId,
+  propertyLabel,
+  lotId = null,
+}: {
+  propertyId: string;
+  propertyLabel: string;
+  lotId?: string | null;
+}) {
   const [dpes, setDpes] = useState<DpeDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -40,13 +49,17 @@ export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: st
       const response = await fetch("/api/account/storage", { headers: await authHeaders() });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json?.error || "Chargement impossible.");
-      setDpes((json.dpes || []).filter((dpe: DpeDocument) => dpe.property_id === propertyId));
+      setDpes(
+        (json.dpes || []).filter((dpe: DpeDocument) =>
+          dpe.property_id === propertyId && (lotId ? dpe.lot_id === lotId : !dpe.lot_id)
+        )
+      );
     } catch (error: any) {
       setErr(error?.message || "Chargement impossible.");
     } finally {
       setLoading(false);
     }
-  }, [propertyId]);
+  }, [propertyId, lotId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -55,10 +68,10 @@ export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: st
     if (file.type !== "application/pdf") return setErr("Sélectionne un DPE au format PDF.");
     try {
       setLoading(true); setErr(null); setOk(null); setUploadProgress(0);
-      const signed = await post("/api/account/dpe-upload-url", { propertyId, fileName: file.name, sizeBytes: file.size });
+      const signed = await post("/api/account/dpe-upload-url", { propertyId, lotId, fileName: file.name, sizeBytes: file.size });
       await xhrUploadToSignedUrl(signed.signedUrl, file, (pct) => setUploadProgress(pct));
       setUploadProgress(null);
-      await post("/api/account/dpe-confirm", { propertyId, bucket: signed.bucket, path: signed.path, fileName: file.name, sizeBytes: file.size });
+      await post("/api/account/dpe-confirm", { propertyId, lotId, bucket: signed.bucket, path: signed.path, fileName: file.name, sizeBytes: file.size });
       setOk("DPE archivé avec succès.");
       await load();
     } catch (error: any) {

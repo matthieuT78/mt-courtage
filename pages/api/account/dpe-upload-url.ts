@@ -13,12 +13,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
     const propertyId = String(req.body?.propertyId || "");
+    const lotId = req.body?.lotId ? String(req.body.lotId) : null;
     const fileName = String(req.body?.fileName || "dpe.pdf").slice(0, 180);
     const sizeBytes = Number(req.body?.sizeBytes || 0);
     if (!propertyId) return res.status(400).json({ error: "Choisis un logement." });
     if (!sizeBytes || sizeBytes > 10 * 1024 * 1024) return res.status(400).json({ error: "Le PDF DPE doit peser au maximum 10 Mo." });
     const { data: property } = await supabaseAdmin.from("properties").select("id").eq("id", propertyId).eq("user_id", auth.userId).maybeSingle();
     if (!property) return res.status(403).json({ error: "Logement introuvable." });
+    if (lotId) {
+      const { data: lot } = await supabaseAdmin.from("property_lots").select("id").eq("id", lotId).eq("property_id", propertyId).eq("user_id", auth.userId).maybeSingle();
+      if (!lot) return res.status(403).json({ error: "Lot introuvable." });
+    }
     const usage = await getUserStorageUsage(auth.userId);
     if (usage.usedBytes + sizeBytes > usage.quotaBytes) return res.status(409).json({ error: "Espace de stockage insuffisant. Supprime un document ou augmente ton offre." });
     const path = `${auth.userId}/${propertyId}/${crypto.randomUUID()}.pdf`;

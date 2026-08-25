@@ -740,6 +740,8 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
 
   const [newLotLabel, setNewLotLabel] = useState<Record<string, string>>({});
   const [lotBusyId, setLotBusyId] = useState<string | null>(null);
+  const [expandedLotId, setExpandedLotId] = useState<string | null>(null);
+  const [lotNumDrafts, setLotNumDrafts] = useState<Record<string, { surface_m2?: string; rooms?: string; energy_value?: string }>>({});
 
   const addLot = async (propertyId: string) => {
     const label = (newLotLabel[propertyId] || "").trim();
@@ -786,6 +788,17 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Impossible de renommer ce lot.");
+    }
+  };
+
+  const updateLot = async (lotId: string, patch: Record<string, any>) => {
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+      const { error } = await supabase.from("property_lots").update(patch).eq("id", lotId).eq("user_id", userId);
+      if (error) throw error;
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de mettre à jour ce lot.");
     }
   };
 
@@ -894,43 +907,75 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           {fErr.address_line1 ? <p className="text-xs font-medium text-red-600">{fErr.address_line1}</p> : null}
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="space-y-1">
-            <span className="text-xs text-slate-700">Surface</span>
-            <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.surface_m2 ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-              placeholder="Surface (m²)"
-              value={form.surface_m2}
-              onChange={(e) => { clearFieldError(formId, "surface_m2"); setForm((s) => ({ ...s, surface_m2: e.target.value })); }}
-            />
-            {fErr.surface_m2 ? <p className="text-xs font-medium text-red-600">{fErr.surface_m2}</p> : null}
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-slate-700">Pièces</span>
-            <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.rooms ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-              placeholder="Nb. de pièces"
-              value={form.rooms}
-              onChange={(e) => { clearFieldError(formId, "rooms"); setForm((s) => ({ ...s, rooms: e.target.value })); }}
-            />
-            {fErr.rooms ? <p className="text-xs font-medium text-red-600">{fErr.rooms}</p> : null}
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs text-slate-700">DPE</span>
-            <NiceSelect
-              placeholder="Classe (A–G)"
-              value={form.energy_class}
-              onChange={(value) => setForm((s) => ({ ...s, energy_class: value }))}
-              options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
-                value: o,
-                label: `Classe ${o}`,
-                subtitle: DPE_RANGES[o],
-                badgeText: o,
-                badgeClassName: DPE_COLORS[o],
-              }))}
-            />
-          </label>
-        </div>
+        {form.type === "building" ? (
+          <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+            Surface, pièces et DPE se renseignent par lot ci-dessous — un immeuble n’a pas une surface ou un DPE unique représentatif de tous ses logements.
+          </p>
+        ) : (
+          <>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="space-y-1">
+                <span className="text-xs text-slate-700">Surface</span>
+                <input
+                  className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.surface_m2 ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
+                  placeholder="Surface (m²)"
+                  value={form.surface_m2}
+                  onChange={(e) => { clearFieldError(formId, "surface_m2"); setForm((s) => ({ ...s, surface_m2: e.target.value })); }}
+                />
+                {fErr.surface_m2 ? <p className="text-xs font-medium text-red-600">{fErr.surface_m2}</p> : null}
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-slate-700">Pièces</span>
+                <input
+                  className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.rooms ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
+                  placeholder="Nb. de pièces"
+                  value={form.rooms}
+                  onChange={(e) => { clearFieldError(formId, "rooms"); setForm((s) => ({ ...s, rooms: e.target.value })); }}
+                />
+                {fErr.rooms ? <p className="text-xs font-medium text-red-600">{fErr.rooms}</p> : null}
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-slate-700">DPE</span>
+                <NiceSelect
+                  placeholder="Classe (A–G)"
+                  value={form.energy_class}
+                  onChange={(value) => setForm((s) => ({ ...s, energy_class: value }))}
+                  options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                    value: o,
+                    label: `Classe ${o}`,
+                    subtitle: DPE_RANGES[o],
+                    badgeText: o,
+                    badgeClassName: DPE_COLORS[o],
+                  }))}
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <input
+                  className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.energy_value ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
+                  placeholder="kWh/m²/an"
+                  value={form.energy_value}
+                  onChange={(e) => { clearFieldError(formId, "energy_value"); setForm((s) => ({ ...s, energy_value: e.target.value })); }}
+                />
+                {fErr.energy_value ? <p className="text-xs font-medium text-red-600">{fErr.energy_value}</p> : null}
+              </div>
+              <NiceSelect
+                placeholder="GES (A–G)"
+                value={form.ghg_class}
+                onChange={(value) => setForm((s) => ({ ...s, ghg_class: value }))}
+                options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                  value: o,
+                  label: `Classe ${o}`,
+                  subtitle: GES_RANGES[o],
+                  badgeText: o,
+                  badgeClassName: GES_COLORS[o],
+                }))}
+              />
+            </div>
+          </>
+        )}
 
         <textarea
           className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
@@ -939,30 +984,6 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           value={form.description}
           onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
         />
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.energy_value ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-              placeholder="kWh/m²/an"
-              value={form.energy_value}
-              onChange={(e) => { clearFieldError(formId, "energy_value"); setForm((s) => ({ ...s, energy_value: e.target.value })); }}
-            />
-            {fErr.energy_value ? <p className="text-xs font-medium text-red-600">{fErr.energy_value}</p> : null}
-          </div>
-          <NiceSelect
-            placeholder="GES (A–G)"
-            value={form.ghg_class}
-            onChange={(value) => setForm((s) => ({ ...s, ghg_class: value }))}
-            options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
-              value: o,
-              label: `Classe ${o}`,
-              subtitle: GES_RANGES[o],
-              badgeText: o,
-              badgeClassName: GES_COLORS[o],
-            }))}
-          />
-        </div>
 
         {/* ── Gestion de ce bien ── */}
         <div
@@ -1033,26 +1054,108 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
             </p>
 
             <div className="space-y-1.5">
-              {(activeLotsByProperty.get(propertyId) || []).map((lot: any) => (
-                <div key={lot.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                  <input
-                    className="flex-1 border-none bg-transparent text-sm text-slate-900 focus:outline-none"
-                    defaultValue={lot.label}
-                    onBlur={(e) => {
-                      if (e.target.value.trim() && e.target.value.trim() !== lot.label) renameLot(lot.id, e.target.value);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeLot(lot.id)}
-                    disabled={lotBusyId === lot.id}
-                    className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                    aria-label={`Retirer ${lot.label}`}
-                  >
-                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              ))}
+              {(activeLotsByProperty.get(propertyId) || []).map((lot: any) => {
+                const isExpanded = expandedLotId === lot.id;
+                const draft = lotNumDrafts[lot.id] || {};
+                return (
+                  <div key={lot.id} className="rounded-xl border border-slate-200 bg-white">
+                    <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                      <input
+                        className="min-w-[8rem] flex-1 border-none bg-transparent text-sm font-medium text-slate-900 focus:outline-none"
+                        defaultValue={lot.label}
+                        onBlur={(e) => {
+                          if (e.target.value.trim() && e.target.value.trim() !== lot.label) renameLot(lot.id, e.target.value);
+                        }}
+                      />
+                      <input
+                        className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                        placeholder="m²"
+                        inputMode="decimal"
+                        value={draft.surface_m2 ?? (lot.surface_m2 != null ? String(lot.surface_m2) : "")}
+                        onChange={(e) => setLotNumDrafts((prev) => ({ ...prev, [lot.id]: { ...prev[lot.id], surface_m2: e.target.value } }))}
+                        onBlur={(e) => {
+                          setLotNumDrafts((prev) => { const { [lot.id]: _drop, ...rest } = prev; return rest; });
+                          const parsed = e.target.value.trim() === "" ? null : toNumOrNull(e.target.value);
+                          if (parsed !== (lot.surface_m2 ?? null)) updateLot(lot.id, { surface_m2: parsed });
+                        }}
+                      />
+                      <input
+                        className="w-16 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                        placeholder="pièces"
+                        inputMode="numeric"
+                        value={draft.rooms ?? (lot.rooms != null ? String(lot.rooms) : "")}
+                        onChange={(e) => setLotNumDrafts((prev) => ({ ...prev, [lot.id]: { ...prev[lot.id], rooms: e.target.value } }))}
+                        onBlur={(e) => {
+                          setLotNumDrafts((prev) => { const { [lot.id]: _drop, ...rest } = prev; return rest; });
+                          const parsed = e.target.value.trim() === "" ? null : Math.round(toNumOrNull(e.target.value) ?? 0);
+                          if (parsed !== (lot.rooms ?? null)) updateLot(lot.id, { rooms: parsed });
+                        }}
+                      />
+                      <select
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
+                        value={lot.energy_class || ""}
+                        onChange={(e) => updateLot(lot.id, { energy_class: e.target.value || null })}
+                      >
+                        <option value="">DPE —</option>
+                        {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                          <option key={o} value={o}>DPE {o}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedLotId(isExpanded ? null : lot.id)}
+                        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+                        aria-label={isExpanded ? "Réduire" : "Plus de détails (GES, DPE)"}
+                      >
+                        <ChevronDownIcon className={cx("h-4 w-4 transition-transform", isExpanded ? "rotate-180" : "")} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeLot(lot.id)}
+                        disabled={lotBusyId === lot.id}
+                        className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        aria-label={`Retirer ${lot.label}`}
+                      >
+                        <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    {isExpanded ? (
+                      <div className="border-t border-slate-100 px-3 py-3 space-y-3">
+                        <div className="grid max-w-md gap-3 sm:grid-cols-2">
+                          <label className="block space-y-1">
+                            <span className="text-xs text-slate-700">GES</span>
+                            <select
+                              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                              value={lot.ghg_class || ""}
+                              onChange={(e) => updateLot(lot.id, { ghg_class: e.target.value || null })}
+                            >
+                              <option value="">GES —</option>
+                              {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                                <option key={o} value={o}>GES {o}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block space-y-1">
+                            <span className="text-xs text-slate-700">kWh/m²/an</span>
+                            <input
+                              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                              inputMode="decimal"
+                              value={draft.energy_value ?? (lot.energy_value != null ? String(lot.energy_value) : "")}
+                              onChange={(e) => setLotNumDrafts((prev) => ({ ...prev, [lot.id]: { ...prev[lot.id], energy_value: e.target.value } }))}
+                              onBlur={(e) => {
+                                setLotNumDrafts((prev) => { const { [lot.id]: _drop, ...rest } = prev; return rest; });
+                                const parsed = e.target.value.trim() === "" ? null : toNumOrNull(e.target.value);
+                                if (parsed !== (lot.energy_value ?? null)) updateLot(lot.id, { energy_value: parsed });
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <PropertyDpePanel propertyId={propertyId} lotId={lot.id} propertyLabel={lot.label} />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex items-center gap-2">
@@ -1074,7 +1177,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           </div>
         ) : null}
 
-        {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
+        {propertyId && form.type !== "building" ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
 
         {propertyId ? (
           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
