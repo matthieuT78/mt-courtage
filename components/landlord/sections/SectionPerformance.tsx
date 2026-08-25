@@ -54,6 +54,7 @@ type PropertyFinance = {
   notary_fees: number | null;
   agency_fees: number | null;
   works: number | null;
+  down_payment?: number | null;
   loan_monthly: number | null;
   loan_insurance_monthly: number | null;
   loan_rate_percent?: number | null;
@@ -798,6 +799,10 @@ type PropertyRow = {
   loanMonthlyPI: number;
   loanInsuranceMonthly: number;
   loanPrincipalRemaining: number | null;
+  loanOriginalPrincipal: number | null;
+  loanRepaidAmount: number | null;
+  loanRepaidPercent: number | null;
+  cashflowAfterLoan: number | null;
   paymentDelay: { avgDelayDays: number; lateCount: number; totalCount: number } | null;
   depositUncollected: { amount: number; leaseId: string } | null;
   archived: boolean;
@@ -1105,6 +1110,20 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           loanRatePct != null && loanRemainingMonths != null
             ? estimateRemainingPrincipal(loanMonthlyPI, loanRatePct, loanRemainingMonths)
             : null;
+        // Progression du remboursement — basée sur le capital (emprunté vs restant dû estimé),
+        // pas sur une date de départ du prêt qu'on ne connaît pas forcément : évite d'inventer
+        // une ancienneté de crédit à partir d'un champ qui ne la représente pas nécessairement.
+        const loanOriginalPrincipal = investment > 0 ? Math.max(0, investment - Number(fin?.down_payment || 0)) : null;
+        const loanRepaidAmount =
+          loanOriginalPrincipal != null && loanOriginalPrincipal > 0 && loanPrincipalRemaining != null
+            ? Math.max(0, loanOriginalPrincipal - loanPrincipalRemaining)
+            : null;
+        const loanRepaidPercent =
+          loanOriginalPrincipal != null && loanOriginalPrincipal > 0 && loanRepaidAmount != null
+            ? Math.min(100, (loanRepaidAmount / loanOriginalPrincipal) * 100)
+            : null;
+        // Cashflow projeté une fois la mensualité de crédit disparue (prêt soldé).
+        const cashflowAfterLoan = loanMonthly > 0 ? cashflow + loanMonthly : null;
 
         const grossYield = investment > 0 ? (incomeMonthly * 12 * 100) / investment : null;
         const earliestMs = earliestDateByProperty.get(id);
@@ -1180,6 +1199,10 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           loanMonthlyPI,
           loanInsuranceMonthly,
           loanPrincipalRemaining,
+          loanOriginalPrincipal,
+          loanRepaidAmount,
+          loanRepaidPercent,
+          cashflowAfterLoan,
           paymentDelay,
           depositUncollected,
           archived,
@@ -1996,6 +2019,35 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                         value={row.latentGain != null ? `${row.latentGain >= 0 ? "+" : ""}${money(row.latentGain)}` : "—"}
                         strong={row.latentGain != null ? (row.latentGain >= 0 ? "good" : "bad") : undefined}
                       />
+                    </div>
+                  )}
+
+                  {row.loanRepaidPercent != null && (
+                    <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Remboursement du crédit (estimation)</p>
+                        <p className="text-sm font-semibold text-slate-900">{Math.round(row.loanRepaidPercent)} %</p>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-[#635bff] transition-all duration-700"
+                          style={{ width: `${Math.max(2, Math.min(100, row.loanRepaidPercent))}%` }}
+                        />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-500">
+                        <span>{money(row.loanRepaidAmount ?? 0)} remboursés sur {money(row.loanOriginalPrincipal ?? 0)} (capital estimé)</span>
+                        {row.loanRemainingMonths != null && (
+                          <span>
+                            {Math.round(row.loanRemainingMonths / 12)} an{Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""} restant{Math.round(row.loanRemainingMonths / 12) > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      {row.cashflowAfterLoan != null && (
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Cashflow visé une fois le crédit remboursé :{" "}
+                          <span className="font-semibold text-emerald-700">{money(row.cashflowAfterLoan)} / mois</span>
+                        </p>
+                      )}
                     </div>
                   )}
 
