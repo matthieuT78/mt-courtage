@@ -577,6 +577,28 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
 
         newPropertyId = (data as any)?.id ?? null;
 
+        // Les lots saisis avant que l'immeuble n'existe (formulaire de création)
+        // sont insérés d'un coup ici, une fois le bien créé — c'est ce qui évite
+        // à l'utilisateur de valider une première fois puis de tout re-saisir.
+        if (newPropertyId && pendingLots.length > 0) {
+          const { error: lotsError } = await supabase.from("property_lots").insert(
+            pendingLots.map((lot, index) => ({
+              property_id: newPropertyId,
+              user_id: userId,
+              label: lot.label,
+              surface_m2: lot.surface_m2,
+              rooms: lot.rooms,
+              energy_class: lot.energy_class,
+              ghg_class: lot.ghg_class,
+              energy_value: lot.energy_value,
+              description: lot.description,
+              sort_order: index,
+            }))
+          );
+          if (lotsError) throw lotsError;
+          setPendingLots([]);
+        }
+
         setOk("Bien créé ✅");
         setCreateForm(EMPTY);
       }
@@ -753,15 +775,61 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   const [expandedLotId, setExpandedLotId] = useState<string | null>(null);
   const [lotNumDrafts, setLotNumDrafts] = useState<Record<string, { surface_m2?: string; rooms?: string; energy_value?: string }>>({});
 
+  // Lots saisis pendant la création d'un immeuble, avant que le bien
+  // n'existe en base — insérés en une seule fois avec le bien à la
+  // validation, pour ne jamais forcer un premier enregistrement juste
+  // pour "débloquer" la saisie des lots.
+  type PendingLot = {
+    id: string;
+    label: string;
+    surface_m2: number | null;
+    rooms: number | null;
+    energy_class: string | null;
+    ghg_class: string | null;
+    energy_value: number | null;
+    description: string | null;
+  };
+  const [pendingLots, setPendingLots] = useState<PendingLot[]>([]);
+
   // Un lot est un bien à part entière : on lui demande les mêmes caractéristiques
   // qu'un appartement classique (surface, pièces, DPE, GES, description) dès sa
   // création — pas seulement un nom à compléter plus tard.
-  const addLot = async (propertyId: string) => {
-    const form = newLotForm[propertyId] || EMPTY_NEW_LOT;
+  const addLot = async (propertyId: string | null) => {
+    const key = propertyId || "create";
+    const form = newLotForm[key] || EMPTY_NEW_LOT;
     const label = form.label.trim();
     if (!label) return;
     setErr(null);
     setOk(null);
+
+    const lotData = {
+      label,
+      surface_m2: form.surface_m2 ? toNumOrNull(form.surface_m2) : null,
+      rooms: form.rooms ? Math.round(toNumOrNull(form.rooms) ?? 0) : null,
+      energy_class: form.energy_class || null,
+      ghg_class: form.ghg_class || null,
+      energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
+      description: form.description.trim() || null,
+    };
+
+    if (!propertyId) {
+      // Le bien n'existe pas encore : mêmes règles de limite de plan que pour un
+      // lot ajouté après coup, mais calculées sur les lots déjà saisis localement.
+      if (pendingLots.length > 0) {
+        const otherUnits = actifs.reduce((sum, p) => {
+          const lots = activeLotsByProperty.get(p.id) || [];
+          return sum + (lots.length > 0 ? lots.length : 1);
+        }, 0);
+        if (otherUnits + pendingLots.length + 1 > activePropertyLimit) {
+          setErr(upgradeMessage);
+          return;
+        }
+      }
+      setPendingLots((prev) => [...prev, { id: `pending-${Date.now()}-${prev.length}`, ...lotData }]);
+      setNewLotForm((prev) => ({ ...prev, [key]: EMPTY_NEW_LOT }));
+      return;
+    }
+
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
       const existing = activeLotsByProperty.get(propertyId) || [];
@@ -781,19 +849,13 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
       const { error } = await supabase.from("property_lots").insert({
         property_id: propertyId,
         user_id: userId,
-        label,
-        surface_m2: form.surface_m2 ? toNumOrNull(form.surface_m2) : null,
-        rooms: form.rooms ? Math.round(toNumOrNull(form.rooms) ?? 0) : null,
-        energy_class: form.energy_class || null,
-        ghg_class: form.ghg_class || null,
-        energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
-        description: form.description.trim() || null,
+        ...lotData,
         sort_order: existing.length,
       });
       if (error) throw error;
       // Le formulaire reste ouvert, vidé, pour enchaîner rapidement l'ajout des
       // lots suivants d'un même immeuble sans avoir à rouvrir le bloc à chaque fois.
-      setNewLotForm((prev) => ({ ...prev, [propertyId]: EMPTY_NEW_LOT }));
+      setNewLotForm((prev) => ({ ...prev, [key]: EMPTY_NEW_LOT }));
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter ce lot.");
@@ -803,6 +865,10 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   const renameLot = async (lotId: string, label: string) => {
     const trimmed = label.trim();
     if (!trimmed) return;
+    if (pendingLots.some((l) => l.id === lotId)) {
+      setPendingLots((prev) => prev.map((l) => (l.id === lotId ? { ...l, label: trimmed } : l)));
+      return;
+    }
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
       const { error } = await supabase.from("property_lots").update({ label: trimmed }).eq("id", lotId).eq("user_id", userId);
@@ -814,6 +880,10 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   };
 
   const updateLot = async (lotId: string, patch: Record<string, any>) => {
+    if (pendingLots.some((l) => l.id === lotId)) {
+      setPendingLots((prev) => prev.map((l) => (l.id === lotId ? { ...l, ...patch } : l)));
+      return;
+    }
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
       const { error } = await supabase.from("property_lots").update(patch).eq("id", lotId).eq("user_id", userId);
@@ -825,6 +895,10 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   };
 
   const removeLot = async (lotId: string) => {
+    if (pendingLots.some((l) => l.id === lotId)) {
+      setPendingLots((prev) => prev.filter((l) => l.id !== lotId));
+      return;
+    }
     const hasLease = safeLeases.some((l) => l?.lot_id === lotId);
     if (hasLease) {
       setErr("Suppression impossible : ce lot a un historique de bail. Archivez-le pour le masquer — les données sont conservées.");
@@ -1007,76 +1081,24 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
         />
 
-        {/* ── Gestion de ce bien ── */}
-        <div
-          id="biens-delegation-section"
-          className={cx(
-            "mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 transition",
-            highlightDelegation ? "ring-2 ring-orange-400 ring-offset-2" : ""
-          )}
-        >
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Comment ce bien est géré ?</p>
-            <p className="mt-0.5 text-xs text-slate-500">Cochez les services pris en charge par un tiers. lokt désactivera les alertes correspondantes pour ce bien.</p>
-          </div>
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Nom de l'agence ou du gestionnaire (optionnel)"
-            value={form.delegation_agency_name}
-            onChange={(e) => setForm((s) => ({ ...s, delegation_agency_name: e.target.value }))}
-          />
-          <div className="space-y-2">
-            {DELEGATED_SERVICES.map((svc) => {
-              const checked = (form.delegated_services || []).includes(svc.key);
-              return (
-                <label key={svc.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 hover:border-[#635bff]/40 transition">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[#635bff]"
-                    checked={checked}
-                    onChange={() =>
-                      setForm((s) => ({
-                        ...s,
-                        delegated_services: checked
-                          ? (s.delegated_services || []).filter((k) => k !== svc.key)
-                          : [...(s.delegated_services || []), svc.key],
-                      }))
-                    }
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900">{svc.label}</p>
-                    <p className="text-xs text-slate-500">{svc.desc}</p>
-                    {checked && (
-                      <p className="mt-1 text-xs font-medium text-[#635bff]">
-                        → Pris en charge par un tiers, alertes lokt désactivées pour ce service.
-                      </p>
-                    )}
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-          {(form.delegated_services || []).length > 0 && (
-            <p className="text-xs text-[#635bff] font-medium">
-              {(form.delegated_services || []).length === DELEGATED_SERVICES.length
-                ? "Toutes les alertes liées à ce bien sont désactivées."
-                : `${(form.delegated_services || []).length} service(s) délégué(s) — alertes correspondantes désactivées.`}
-            </p>
-          )}
-        </div>
-
-        {propertyId && form.type === "building" ? (
+        {(() => {
+          // En création, l'immeuble n'existe pas encore : les lots saisis restent
+          // en mémoire (pendingLots) jusqu'à la validation du formulaire.
+          const lotsList: any[] = propertyId ? activeLotsByProperty.get(propertyId) || [] : pendingLots;
+          return form.type === "building" ? (
           <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-slate-900">Lots de cet immeuble</p>
-              {badge("emerald", `${(activeLotsByProperty.get(propertyId) || []).length} lot(s)`)}
+              {badge("emerald", `${lotsList.length} lot(s)`)}
             </div>
             <p className="text-xs text-slate-600">
-              Un crédit et une fiche finance pour tout l’immeuble, mais un bail par lot — chaque lot pourra avoir son propre locataire.
+              {propertyId
+                ? "Un crédit et une fiche finance pour tout l’immeuble, mais un bail par lot — chaque lot pourra avoir son propre locataire."
+                : "Renseigne tous les lots maintenant : ils seront créés en même temps que l’immeuble, en un seul clic sur « Créer le bien »."}
             </p>
 
             <div className="space-y-1.5">
-              {(activeLotsByProperty.get(propertyId) || []).map((lot: any) => {
+              {lotsList.map((lot: any) => {
                 const isExpanded = expandedLotId === lot.id;
                 const draft = lotNumDrafts[lot.id] || {};
                 return (
@@ -1184,7 +1206,13 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                             }}
                           />
                         </label>
-                        <PropertyDpePanel propertyId={propertyId} lotId={lot.id} propertyLabel={lot.label} />
+                        {propertyId ? (
+                          <PropertyDpePanel propertyId={propertyId} lotId={lot.id} propertyLabel={lot.label} />
+                        ) : (
+                          <p className="text-xs text-slate-500">
+                            Le DPE pourra être importé une fois l’immeuble créé.
+                          </p>
+                        )}
                       </div>
                     ) : null}
                   </div>
@@ -1192,35 +1220,35 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
               })}
             </div>
 
-            {addLotOpenFor === propertyId ? (
+            {addLotOpenFor === formId ? (
               <div className="rounded-xl border-2 border-dashed border-[#635bff]/40 bg-indigo-50/30 p-3 space-y-2">
                 <p className="text-xs font-semibold text-slate-700">Nouveau lot — mêmes infos qu’un bien classique, sauf l’adresse (héritée de l’immeuble)</p>
                 <input
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                   placeholder="Nom du lot * — Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
-                  value={newLotForm[propertyId]?.label ?? ""}
-                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), label: e.target.value } }))}
-                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addLot(propertyId); } }}
+                  value={newLotForm[formId]?.label ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), label: e.target.value } }))}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addLot(propertyId ?? null); } }}
                 />
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   <input
                     className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
                     placeholder="Surface (m²)"
                     inputMode="decimal"
-                    value={newLotForm[propertyId]?.surface_m2 ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), surface_m2: e.target.value } }))}
+                    value={newLotForm[formId]?.surface_m2 ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), surface_m2: e.target.value } }))}
                   />
                   <input
                     className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
                     placeholder="Pièces"
                     inputMode="numeric"
-                    value={newLotForm[propertyId]?.rooms ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), rooms: e.target.value } }))}
+                    value={newLotForm[formId]?.rooms ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), rooms: e.target.value } }))}
                   />
                   <select
                     className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
-                    value={newLotForm[propertyId]?.energy_class ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), energy_class: e.target.value } }))}
+                    value={newLotForm[formId]?.energy_class ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), energy_class: e.target.value } }))}
                   >
                     <option value="">DPE —</option>
                     {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
@@ -1229,8 +1257,8 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                   </select>
                   <select
                     className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
-                    value={newLotForm[propertyId]?.ghg_class ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), ghg_class: e.target.value } }))}
+                    value={newLotForm[formId]?.ghg_class ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), ghg_class: e.target.value } }))}
                   >
                     <option value="">GES —</option>
                     {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
@@ -1242,24 +1270,24 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                   className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
                   placeholder="kWh/m²/an"
                   inputMode="decimal"
-                  value={newLotForm[propertyId]?.energy_value ?? ""}
-                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), energy_value: e.target.value } }))}
+                  value={newLotForm[formId]?.energy_value ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), energy_value: e.target.value } }))}
                 />
                 <textarea
                   className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
                   rows={2}
                   placeholder="Description (étage, balcon, etc.)"
-                  value={newLotForm[propertyId]?.description ?? ""}
-                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), description: e.target.value } }))}
+                  value={newLotForm[formId]?.description ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), description: e.target.value } }))}
                 />
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => addLot(propertyId)}
-                    disabled={!(newLotForm[propertyId]?.label ?? "").trim()}
+                    onClick={() => addLot(propertyId ?? null)}
+                    disabled={!(newLotForm[formId]?.label ?? "").trim()}
                     className="rounded-xl bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
                   >
-                    Créer ce lot
+                    {propertyId ? "Créer ce lot" : "Ajouter ce lot"}
                   </button>
                   <button
                     type="button"
@@ -1273,7 +1301,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
             ) : (
               <button
                 type="button"
-                onClick={() => { setAddLotOpenFor(propertyId); setNewLotForm((prev) => ({ ...prev, [propertyId]: prev[propertyId] || EMPTY_NEW_LOT })); }}
+                onClick={() => { setAddLotOpenFor(formId); setNewLotForm((prev) => ({ ...prev, [formId]: prev[formId] || EMPTY_NEW_LOT })); }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-600 hover:border-[#635bff]/50 hover:bg-indigo-50/40 hover:text-[#635bff]"
               >
                 <PlusIcon className="h-4 w-4" aria-hidden="true" />
@@ -1281,7 +1309,66 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
               </button>
             )}
           </div>
-        ) : null}
+          ) : null;
+        })()}
+
+        {/* ── Gestion de ce bien ── */}
+        <div
+          id="biens-delegation-section"
+          className={cx(
+            "mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 transition",
+            highlightDelegation ? "ring-2 ring-orange-400 ring-offset-2" : ""
+          )}
+        >
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Comment ce bien est géré ?</p>
+            <p className="mt-0.5 text-xs text-slate-500">Cochez les services pris en charge par un tiers. lokt désactivera les alertes correspondantes pour ce bien.</p>
+          </div>
+          <input
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            placeholder="Nom de l'agence ou du gestionnaire (optionnel)"
+            value={form.delegation_agency_name}
+            onChange={(e) => setForm((s) => ({ ...s, delegation_agency_name: e.target.value }))}
+          />
+          <div className="space-y-2">
+            {DELEGATED_SERVICES.map((svc) => {
+              const checked = (form.delegated_services || []).includes(svc.key);
+              return (
+                <label key={svc.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 hover:border-[#635bff]/40 transition">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[#635bff]"
+                    checked={checked}
+                    onChange={() =>
+                      setForm((s) => ({
+                        ...s,
+                        delegated_services: checked
+                          ? (s.delegated_services || []).filter((k) => k !== svc.key)
+                          : [...(s.delegated_services || []), svc.key],
+                      }))
+                    }
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{svc.label}</p>
+                    <p className="text-xs text-slate-500">{svc.desc}</p>
+                    {checked && (
+                      <p className="mt-1 text-xs font-medium text-[#635bff]">
+                        → Pris en charge par un tiers, alertes lokt désactivées pour ce service.
+                      </p>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          {(form.delegated_services || []).length > 0 && (
+            <p className="text-xs text-[#635bff] font-medium">
+              {(form.delegated_services || []).length === DELEGATED_SERVICES.length
+                ? "Toutes les alertes liées à ce bien sont désactivées."
+                : `${(form.delegated_services || []).length} service(s) délégué(s) — alertes correspondantes désactivées.`}
+            </p>
+          )}
+        </div>
 
         {propertyId && form.type !== "building" ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
 
@@ -1355,6 +1442,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
   const closePropertyModal = () => {
     setExpandedId(null);
     setCreateForm(EMPTY);
+    setPendingLots([]);
     setConfirmDeleteId(null);
     setArchiveBlockedId(null);
     setErr(null);
@@ -1647,6 +1735,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
           onClick={() => {
             setErr(null);
             setOk(null);
+            if (expandedId !== CREATE_ID) setPendingLots([]);
             setExpandedId(expandedId === CREATE_ID ? null : CREATE_ID);
           }}
           className={cx(
