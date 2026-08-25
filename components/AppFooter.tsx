@@ -59,48 +59,55 @@ export default function AppFooter() {
         <BadgeFrance />
       </div>
 
-      <p className="mt-5">© {new Date().getFullYear()} lokt.fr</p>
+      <div className="mx-auto mt-6 h-px w-full max-w-3xl bg-slate-100" />
 
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        <Link href="/rendement-locatif" className="underline hover:text-slate-700">
-          Rendement locatif par ville
-        </Link>
-        <Link href="/investissement-locatif" className="underline hover:text-slate-700">
-          Investissement locatif
-        </Link>
-        <Link href="/calculettes" className="underline hover:text-slate-700">
-          Calculettes
-        </Link>
-        <Link href="/comparatif-logiciel-gestion-locative" className="underline hover:text-slate-700">
-          Comparatif logiciels
-        </Link>
-        <Link href="/blog" className="underline hover:text-slate-700">
-          Blog immobilier
-        </Link>
-        <Link href="/guides" className="underline hover:text-slate-700">
-          Guides bailleurs
-        </Link>
+      <div className="mt-5">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Ressources</p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link href="/rendement-locatif" className="underline hover:text-slate-700">
+            Rendement locatif par ville
+          </Link>
+          <Link href="/investissement-locatif" className="underline hover:text-slate-700">
+            Investissement locatif
+          </Link>
+          <Link href="/calculettes" className="underline hover:text-slate-700">
+            Calculettes
+          </Link>
+          <Link href="/comparatif-logiciel-gestion-locative" className="underline hover:text-slate-700">
+            Comparatif logiciels
+          </Link>
+          <Link href="/blog" className="underline hover:text-slate-700">
+            Blog immobilier
+          </Link>
+          <Link href="/guides" className="underline hover:text-slate-700">
+            Guides bailleurs
+          </Link>
+        </div>
       </div>
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        <Link href="/a-propos" className="underline hover:text-slate-700">
-          À propos
-        </Link>
-        <Link href="/cgu" className="underline hover:text-slate-700">
-          CGU / CGV
-        </Link>
-        <Link href="/confidentialite" className="underline hover:text-slate-700">
-          Confidentialité (RGPD)
-        </Link>
-        <button type="button" onClick={() => reopenCookieConsent()} className="underline hover:text-slate-700">
-          Gérer les cookies
-        </button>
-        <a href="mailto:contact@lokt.fr" className="underline hover:text-slate-700">
-          Contact
-        </a>
-        <a href="https://outils-immo.fr" target="_blank" rel="noopener" className="underline hover:text-slate-700">
-          outils-immo.fr
-        </a>
+
+      <div className="mt-4">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Lokt.fr</p>
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <Link href="/a-propos" className="underline hover:text-slate-700">
+            À propos
+          </Link>
+          <a href="mailto:contact@lokt.fr" className="underline hover:text-slate-700">
+            Contact
+          </a>
+          <Link href="/cgu" className="underline hover:text-slate-700">
+            CGU / CGV
+          </Link>
+          <Link href="/confidentialite" className="underline hover:text-slate-700">
+            Confidentialité (RGPD)
+          </Link>
+          <button type="button" onClick={() => reopenCookieConsent()} className="underline hover:text-slate-700">
+            Gérer les cookies
+          </button>
+        </div>
       </div>
+
+      <p className="mt-5 text-slate-400">© {new Date().getFullYear()} lokt.fr</p>
+
       <div className="mt-4">
         <a
           href="https://www.outils-immo.fr/outils/lokt-fr/?utm_source=badge&utm_medium=website"
