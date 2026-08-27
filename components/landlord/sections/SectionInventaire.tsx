@@ -752,7 +752,7 @@ export function SectionInventaire({ userId, properties, propertyLots, leases }: 
               disabled={safeProperties.length === 0}
             >
               {safeProperties.length === 0
-                ? <option value="">Aucun bien LMNP — configurez le régime fiscal dans Finance</option>
+                ? <option value="">Aucun bien à inventorier — il faut un bail meublé actif, et que "Bail & états des lieux" ne soit pas délégué à une agence</option>
                 : safeProperties.map((property) => (
                     <option key={property.id} value={property.id}>
                       {property.label || `${property.address_line1 || "Bien"} ${property.city || ""}`.trim()}
