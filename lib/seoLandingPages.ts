@@ -717,7 +717,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "modele-mise-en-demeure-loyer-impaye",
     title: "Modèle mise en demeure loyer impayé 2026 — Lettre officielle à envoyer en LRAR",
-    metaTitle: "Modèle mise en demeure loyer impayé 2026 : lettre officielle LRAR | lokt.fr",
+    metaTitle: "Mise en demeure loyer impayé 2026 : modèle LRAR | lokt.fr",
     description:
       "Mise en demeure pour loyer impayé : contenu obligatoire, délai de règlement, procédure. Modèle conforme à l'article 24 de la loi de 1989, prêt en 2 min.",
     eyebrow: "Loyer impayé",
@@ -1065,7 +1065,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "modele-lettre-conge-bailleur",
     title: "Modèle lettre de congé bailleur 2026 — Reprise, vente, motif légitime",
-    metaTitle: "Lettre de congé bailleur 2026 : modèle PDF gratuit, prêt en 2 min | lokt.fr",
+    metaTitle: "Lettre de congé bailleur 2026 : modèle PDF gratuit | lokt.fr",
     description:
       "Congé pour reprise, vente ou motif légitime : générez la lettre conforme à la loi de 1989 en 2 min. PDF prêt à envoyer, sans erreur sur les délais.",
     eyebrow: "Congé bailleur",

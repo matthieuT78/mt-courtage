@@ -31,7 +31,7 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "checklist-mise-en-location",
     category: "preparer",
-    title: "Mettre un logement en location : la checklist complète du bailleur",
+    title: "Mise en location 2026 : la checklist complète du bailleur",
     shortTitle: "Checklist de mise en location",
     description: "Les contrôles, documents et décisions à traiter avant de publier l'annonce, signer le bail et remettre les clés.",
     updatedAt: "2026-06-28",
@@ -177,7 +177,7 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "dpe-diagnostics-location",
     category: "preparer",
-    title: "DPE et diagnostics locatifs : comprendre le dossier à remettre au locataire",
+    title: "DPE et diagnostics locatifs 2026 : le dossier complet",
     shortTitle: "DPE et diagnostics",
     description: "À quoi sert le DPE, quels diagnostics réunir, leurs durées de validité et ce qui change selon la classe énergétique du logement.",
     updatedAt: "2026-06-28",
@@ -531,7 +531,7 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "choisir-son-locataire",
     category: "arrivee",
-    title: "Choisir son locataire : critères légaux, analyse du dossier et décision",
+    title: "Choisir son locataire : critères légaux et solvabilité",
     shortTitle: "Choisir son locataire",
     description: "Comment sélectionner un locataire dans le respect de la loi : pièces autorisées, taux d'effort, comparaison des dossiers, garant, GLI et notification de la décision.",
     updatedAt: "2026-07-23",
@@ -1285,7 +1285,7 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "charges-regularisation-annuelle",
     category: "gestion",
-    title: "Charges locatives : récupérer ce qui est dû et régulariser sans litige",
+    title: "Charges locatives 2026 : liste et régularisation annuelle",
     shortTitle: "Charges et régularisation",
     description: "Provisions vs forfait, liste des charges récupérables, calcul de la régularisation annuelle et délais légaux pour éviter tout litige.",
     updatedAt: "2026-07-08",
@@ -1678,7 +1678,7 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "declarer-revenus-locatifs",
     category: "fiscal",
-    title: "Déclarer ses revenus locatifs en 2026 : guide complet par régime",
+    title: "Déclarer ses revenus locatifs 2026 : LMNP ou nu",
     shortTitle: "Déclaration revenus locatifs",
     description:
       "Comprendre les régimes fiscaux, les formulaires, les dates limites et les pénalités pour déclarer correctement ses revenus locatifs meublés (LMNP) ou nus en 2026.",
