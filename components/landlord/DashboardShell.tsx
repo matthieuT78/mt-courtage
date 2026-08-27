@@ -390,9 +390,28 @@ export function DashboardShell(props: any) {
       setActive("outils");
       return;
     }
+    // Un tab absent (URL "/espace-bailleur" nue) doit revenir au cockpit — sinon
+    // le retour arrière (swipe/bouton) depuis un autre onglet vers cette URL ne
+    // remet pas visuellement la section dashboard, faute de correspondance ici.
+    if (!tab) {
+      setActive("dashboard");
+      return;
+    }
     const validTabs: LandlordSectionKey[] = [...DEFAULT_LANDLORD_NAV_ORDER];
     if (validTabs.includes(tab as LandlordSectionKey)) setActive(tab as LandlordSectionKey);
   }, [router.query.tab]);
+
+  // Un changement d'onglet doit créer une vraie entrée d'historique : sinon le
+  // geste de retour natif (swipe iOS, bouton Android) saute par-dessus le
+  // cockpit et renvoie directement hors de l'app, sur la page d'accueil
+  // publique — puisque "/espace-bailleur" reste alors la même unique entrée
+  // pour toutes les sections visitées.
+  const pushTabUrl = (k: LandlordSectionKey) => {
+    const nextUrl = k === "dashboard" ? "/espace-bailleur" : `/espace-bailleur?tab=${k}`;
+    if (router.asPath !== nextUrl) {
+      router.push(nextUrl, undefined, { shallow: true });
+    }
+  };
 
   const onChangeTab = (k: LandlordSectionKey) => {
     setActive(k);
@@ -402,12 +421,14 @@ export function DashboardShell(props: any) {
     setDeepLink(null);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    pushTabUrl(k);
   };
 
   function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    pushTabUrl(section);
     let resolvedLink = link;
     if (link?.prefillCandidatureEmail && !link?.prefillTenantId) {
       const email = link.prefillCandidatureEmail.toLowerCase().trim();
