@@ -296,16 +296,23 @@ export function SectionInventaire({ userId, properties, propertyLots, leases }: 
 
   const summary = useMemo(() => {
     const required = propertyItems.filter((item) => item.is_required_lmnp);
+    // Un élément obligatoire supprimé de l'inventaire (au lieu d'être mis à
+    // quantité 0) ne doit pas simplement sortir du calcul : sinon la
+    // conformité peut afficher 100% alors qu'une catégorie légalement
+    // obligatoire n'est plus suivie du tout.
+    const requiredLabels = new Set(required.map((item) => item.label.trim().toLowerCase()));
+    const missingCanonical = LMNP_REQUIRED_ITEMS.filter((canonical) => !requiredLabels.has(canonical.label.toLowerCase()));
     const missing = propertyItems.filter((item) => ["missing", "partial"].includes(statusOf(item)));
     const replace = propertyItems.filter((item) => statusOf(item) === "replace");
     const replacementBudget = calcReplacementBudget(propertyItems);
     const requiredOk = required.filter((item) => statusOf(item) === "ok").length;
-    const compliance = required.length ? Math.round((requiredOk / required.length) * 100) : 0;
+    const requiredTotal = required.length + missingCanonical.length;
+    const compliance = requiredTotal ? Math.round((requiredOk / requiredTotal) * 100) : 0;
     return {
       total: propertyItems.length,
-      required: required.length,
+      required: requiredTotal,
       compliance,
-      missing: missing.length,
+      missing: missing.length + missingCanonical.length,
       replace: replace.length,
       replacementBudget,
     };
@@ -831,7 +838,7 @@ export function SectionInventaire({ userId, properties, propertyLots, leases }: 
         <div className={cx("rounded-2xl border p-4", summary.missing > 0 ? "border-red-200 bg-red-50" : "border-slate-200 bg-white")}>
           <p className={cx("text-[0.7rem] uppercase tracking-[0.18em]", summary.missing > 0 ? "text-red-700" : "text-slate-500")}>Manquants</p>
           <p className={cx("mt-1 text-2xl font-bold", summary.missing > 0 ? "text-red-900" : "text-slate-900")}>{summary.missing}</p>
-          <p className={cx("mt-1 text-xs", summary.missing > 0 ? "text-red-600" : "text-slate-500")}>quantité insuffisante</p>
+          <p className={cx("mt-1 text-xs", summary.missing > 0 ? "text-red-600" : "text-slate-500")}>absents ou quantité insuffisante</p>
         </div>
         <div className={cx("rounded-2xl border p-4", summary.replacementBudget > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white")}>
           <p className={cx("text-[0.7rem] uppercase tracking-[0.18em]", summary.replacementBudget > 0 ? "text-amber-700" : "text-slate-500")}>Budget</p>
