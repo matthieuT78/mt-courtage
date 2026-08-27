@@ -57,6 +57,9 @@ type PropertyFinance = {
   notary_fees?: number | null;
   agency_fees?: number | null;
   works?: number | null;
+  loan_interest_monthly?: number | null;
+  loan_insurance_monthly?: number | null;
+  cfe_yearly?: number | null;
 };
 
 type Props = {
@@ -203,6 +206,20 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return new Set<string>();
   }, [regime, fiscalGroups]);
 
+  // Intérêts d'emprunt, assurance emprunteur et CFE sont saisis une fois pour toutes dans
+  // Finance (mensualités) mais n'apparaissent jamais dans les transactions importées ci-dessous
+  // (aucune catégorie de transaction ne correspond aux intérêts seuls) — sans ce calcul, ces
+  // charges pourtant réelles et déductibles restent invisibles ici et finissent oubliées de la
+  // déclaration transmise au comptable.
+  const financeEstimates = useMemo(() => {
+    const relevant = (propertyFinance || []).filter((f) => relevantPropertyIds.has(f.property_id));
+    return {
+      interestAnnual: relevant.reduce((sum, f) => sum + toNumber(f.loan_interest_monthly) * 12, 0),
+      loanInsuranceAnnual: relevant.reduce((sum, f) => sum + toNumber(f.loan_insurance_monthly) * 12, 0),
+      cfeAnnual: relevant.reduce((sum, f) => sum + toNumber(f.cfe_yearly), 0),
+    };
+  }, [propertyFinance, relevantPropertyIds]);
+
   const [locationKind, setLocationKind] = useState<LocationKind>("meuble_longue");
   // Recettes
   const [grossRent, setGrossRent] = useState(0);
@@ -274,8 +291,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const microFoncierBase = Math.max(0, receiptsTotal * 0.7);
 
   // LMNP réel : calcul en deux étapes (règle fiscale : amortissements ne peuvent pas créer un déficit BIC non-pro)
-  // Étape 1 : résultat avant amortissements
-  const resultBeforeAmort = receiptsTotal - commonCharges;
+  // Étape 1 : résultat avant amortissements — la CFE est déductible en LMNP réel comme en nu réel,
+  // d'où son champ commun aux deux régimes (auparavant réservé au nu réel par erreur).
+  const resultBeforeAmort = receiptsTotal - commonCharges - cfe;
   // Étape 2 : déficit BIC réel (charges > recettes, hors amortissements) — reportable 10 ans sur BIC non-pro
   const lmnpBicDeficit = Math.min(0, resultBeforeAmort);
   // Étape 3 : amortissements disponibles = mobilier N + stock reporté des années précédentes
@@ -309,7 +327,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Charges affichées dans la stat "Charges" (contextualisées)
   const chargesStatDisplay =
     regime === "nu_reel" ? commonCharges + cfe :
-    regime === "lmnp_reel" ? commonCharges + amortizationUsed :
+    regime === "lmnp_reel" ? commonCharges + cfe + amortizationUsed :
     commonCharges;
 
   const recommendedMode = isLmnp
@@ -700,7 +718,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         ["Amortissements effectivement déduits", csvNum(amortizationUsed)],
         ["Amortissements à reporter N+1", csvNum(amortizationDeferred)],
       ] as Array<[string, string]> : []),
-      ...(regime === "nu_reel" ? [["CFE (Cotisation Foncière)", csvNum(cfe)]] as Array<[string, string]> : []),
+      ...(isReal ? [["CFE (Cotisation Foncière)", csvNum(cfe)]] as Array<[string, string]> : []),
       ["---", "---"],
       ["Micro-BIC (base imposable)", csvNum(microBicBase)],
       ["Micro-foncier (base imposable)", csvNum(microFoncierBase)],
@@ -730,7 +748,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Guide de déclaration : montant exact à reporter + formulaire + cases (indicatifs)
   const declarationGuide = useMemo(() => {
     // En LMNP réel, même sans recettes on peut avoir un déficit BIC ou des amortissements à reporter
-    const lmnpReelHasData = regime === "lmnp_reel" && (receiptsTotal > 0 || commonCharges > 0 || amortizationTotal > 0);
+    const lmnpReelHasData = regime === "lmnp_reel" && (receiptsTotal > 0 || commonCharges > 0 || amortizationTotal > 0 || cfe > 0);
     if (receiptsTotal === 0 && regime !== "pinel" && !lmnpReelHasData) return null;
     if (regime === "pinel" && pinelAcqPrice === 0) return null;
     if (regime === "lmnp_micro") return {
@@ -748,7 +766,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       if (lmnpBicDeficit < 0) return {
         montantLabel: "Déficit BIC à reporter",
         montant: Math.abs(lmnpBicDeficit),
-        montantNote: `Vos charges (${eur(commonCharges)}) dépassent vos recettes (${eur(receiptsTotal)}). Ce déficit BIC non-professionnel n'est pas imputable sur le revenu global — il se reporte 10 ans sur les BIC non-pro.${amortizationTotal > 0 ? ` Les ${eur(amortizationTotal)} d'amortissements sont mis en réserve et reportés sans limite de durée.` : ""}`,
+        montantNote: `Vos charges (${eur(commonCharges + cfe)}) dépassent vos recettes (${eur(receiptsTotal)}). Ce déficit BIC non-professionnel n'est pas imputable sur le revenu global — il se reporte 10 ans sur les BIC non-pro.${amortizationTotal > 0 ? ` Les ${eur(amortizationTotal)} d'amortissements sont mis en réserve et reportés sans limite de durée.` : ""}`,
         formulaire: "2031 + 2042-C-PRO",
         caseHint: "Section « BIC non professionnels / Réel » — case déficit (ex : 5NL)",
         isDeficit: true,
@@ -839,7 +857,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
           ["Amortissements effectivement déduits", eur(amortizationUsed)],
           ["Amortissements à reporter N+1", eur(amortizationDeferred)],
         ] as Array<[string, string]> : []),
-        ...(regime === "nu_reel" ? [["CFE (Cotisation Foncière)", eur(cfe)]] as Array<[string, string]> : []),
+        ...(isReal ? [["CFE (Cotisation Foncière)", eur(cfe)]] as Array<[string, string]> : []),
         ...(isPinel ? [
           ["Prix d'acquisition retenu (plafonné)", eur(pinelAcqPriceCapped)],
           ["Réduction Pinel totale", eur(pinelTotalReduction)],
@@ -1002,6 +1020,37 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
           <div className="mt-3 flex gap-2">
             <button type="button" onClick={() => applyImportPreview()} className={cx("rounded-full px-4 py-1.5 text-sm font-semibold", brandBg, brandText)}>Appliquer</button>
             <button type="button" onClick={() => setImportPreview(null)} className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ignorer</button>
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions Finance : intérêts / assurance emprunteur / CFE — jamais couverts par
+          l'import de transactions ci-dessus (voir commentaire sur financeEstimates). */}
+      {isReal && !isPinel && (financeEstimates.interestAnnual > 0 || financeEstimates.loanInsuranceAnnual > 0 || financeEstimates.cfeAnnual > 0) && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p className="text-sm font-semibold text-amber-900">Suggestions depuis vos réglages Finance</p>
+          <p className="mt-1 text-xs text-amber-800">
+            Estimés à partir de vos mensualités renseignées dans Finance (× 12) — à vérifier avec votre relevé d'intérêts bancaire annuel avant de transmettre au comptable, le montant réel varie légèrement d'une mensualité à l'autre.
+          </p>
+          <div className="mt-3 space-y-2">
+            {financeEstimates.interestAnnual > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2">
+                <span className="text-sm text-slate-800">Intérêts d'emprunt estimés : <strong>{eur(financeEstimates.interestAnnual)}</strong> (actuellement saisi : {eur(interest)})</span>
+                <button type="button" onClick={() => setInterest(financeEstimates.interestAnnual)} className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100">Appliquer</button>
+              </div>
+            )}
+            {financeEstimates.loanInsuranceAnnual > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2">
+                <span className="text-sm text-slate-800">Assurance emprunteur estimée : <strong>{eur(financeEstimates.loanInsuranceAnnual)}</strong> (s'ajoute à l'assurance déjà saisie : {eur(insurance)})</span>
+                <button type="button" onClick={() => setInsurance(insurance + financeEstimates.loanInsuranceAnnual)} className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100">Ajouter</button>
+              </div>
+            )}
+            {financeEstimates.cfeAnnual > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2">
+                <span className="text-sm text-slate-800">CFE estimée : <strong>{eur(financeEstimates.cfeAnnual)}</strong> (actuellement saisi : {eur(cfe)})</span>
+                <button type="button" onClick={() => setCfe(financeEstimates.cfeAnnual)} className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100">Appliquer</button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1178,7 +1227,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                   <Field label="Autres charges (€)" value={otherExpenses} onChange={setOtherExpenses} hint="Tout autre frais réel lié à la location non listé ci-dessus." />
                   {isLmnp && <Field label="Amortissements mobilier N (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements de l'année — déductible en LMNP non-pro (l'immobilier ne l'est pas)." />}
                   {isLmnp && <Field label="Amortissements reportés N-1 (€)" value={lmnpCarryForward} onChange={setLmnpCarryForward} hint="Stock non utilisé des exercices précédents (reportable sans limite) — pré-rempli automatiquement depuis l'année dernière." />}
-                  {isNu && <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises, si vous y êtes soumis en location nue au réel." />}
+                  <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises, si vous y êtes soumis — déductible en réel foncier comme en LMNP réel." />
                 </div>
               </div>
             )}
