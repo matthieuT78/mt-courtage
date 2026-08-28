@@ -36,6 +36,7 @@ import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing, planAllowsCandidatures } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
+import AssistantChat from "./AssistantChat";
 import { ReviewPrompt } from "../ReviewPrompt";
 
 function MobileBottomNav({
@@ -196,9 +197,15 @@ export function DashboardShell(props: any) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPad, setSidebarPad] = useState("0px");
   const [contactOpen, setContactOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantPreset, setAssistantPreset] = useState<{ key: number; text: string } | null>(null);
+  const openAssistant = (presetMessage?: string) => {
+    if (presetMessage) setAssistantPreset({ key: Date.now(), text: presetMessage });
+    setAssistantOpen(true);
+  };
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; lotId?: string; highlightDelegation?: boolean } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -424,7 +431,7 @@ export function DashboardShell(props: any) {
     pushTabUrl(k);
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string; prefillCandidatureEmail?: string; propertyId?: string; lotId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -564,7 +571,7 @@ export function DashboardShell(props: any) {
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
         cta: "Débloquer le pilotage performance",
-        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 5 logements actifs"],
+        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 15 logements actifs"],
         preview: (
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="Rendement brut" value="6,2 %" tone="emerald" />
@@ -683,6 +690,7 @@ export function DashboardShell(props: any) {
             onGo={onChangeTab}
             onNavigateDeep={navigateDeep}
             onRefresh={refresh}
+            onOpenAssistant={openAssistant}
             planLabel={planLabel}
             // Toujours affiché : la caution à restituer est une obligation légale
             // indépendante de l'accès aux candidatures, qui ne doit pas la masquer.
@@ -805,10 +813,10 @@ export function DashboardShell(props: any) {
         return <SectionOutils userId={userId} properties={properties} leases={leases} tenants={tenants} plan={plan} onRefresh={refresh} />;
 
       case "etat_des_lieux":
-        return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} propertyLots={propertyLots} tenants={tenants} propertyFinance={propertyFinance} onRefresh={refresh} onNavigateToBaux={() => onChangeTab("baux")} onNavigateToInventaire={() => onChangeTab("inventaire")} />;
+        return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} propertyLots={propertyLots} tenants={tenants} propertyFinance={propertyFinance} onRefresh={refresh} onNavigateToBaux={() => onChangeTab("baux")} onNavigateToInventaire={() => onChangeTab("inventaire")} deepLink={deepLink} />;
 
       case "inventaire":
-        return <SectionInventaire userId={userId} properties={properties} propertyLots={propertyLots} propertyFinance={propertyFinance} leases={leases} />;
+        return <SectionInventaire userId={userId} properties={properties} propertyLots={propertyLots} propertyFinance={propertyFinance} leases={leases} deepLink={deepLink} />;
 
       case "candidatures":
         return <SectionCandidatures userId={userId} onNavigate={setActive} onNavigateDeep={navigateDeep} onRefresh={refresh} />;
@@ -978,6 +986,25 @@ export function DashboardShell(props: any) {
 
       {/* ── Modal contact (desktop + mobile) ─────────────────── */}
       <ContactChat open={contactOpen} onClose={() => setContactOpen(false)} />
+
+      {/* ── Loky — bouton flottant, visible sur toutes les sections ── */}
+      {!assistantOpen && (
+        <button
+          type="button"
+          onClick={() => setAssistantOpen(true)}
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-4 z-40 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 shadow-[0_18px_40px_rgba(79,70,229,0.35)] transition hover:opacity-95 lg:bottom-6 lg:right-6"
+          aria-label="Ouvrir Loky"
+          title="Loky"
+        >
+          <img src="/loky-avatar.png" alt="Loky" className="h-full w-full object-cover" />
+        </button>
+      )}
+      <AssistantChat
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        onNavigate={(section, link) => navigateDeep(section as LandlordSectionKey, link)}
+        initialMessage={assistantPreset}
+      />
 
       {/* ── Popup notation ───────────────────────────────────── */}
       <ReviewPrompt user={props?.user} />

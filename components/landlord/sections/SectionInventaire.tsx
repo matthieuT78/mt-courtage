@@ -16,7 +16,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, PropertyFinance, PropertyLot } from "../../../lib/landlord/types";
-import { getLmnpItemStatus, lotRequiresLmnpInventory, propertyRequiresLmnpInventory, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
+import { getLmnpItemStatus, lotRequiresLmnpInventory, propertyRequiresLmnpInventory, LMNP_REQUIRED_ITEMS, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
 
 type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
 type InventoryStatus = LmnpInventoryStatus;
@@ -45,31 +45,8 @@ type Props = {
   propertyLots?: PropertyLot[];
   propertyFinance?: PropertyFinance[];
   leases?: Lease[];
+  deepLink?: { key: number; propertyId?: string; lotId?: string } | null;
 };
-
-const LMNP_REQUIRED_ITEMS = [
-  { room: "Chambre", category: "Literie", label: "Literie avec couette ou couverture", required_quantity: 1 },
-  { room: "Chambre", category: "Occultation", label: "Volets, stores ou rideaux dans les chambres", required_quantity: 1 },
-  { room: "Cuisine", category: "Cuisson", label: "Plaques de cuisson", required_quantity: 1 },
-  { room: "Cuisine", category: "Cuisson", label: "Four ou four micro-ondes", required_quantity: 1 },
-  { room: "Cuisine", category: "Froid", label: "Réfrigérateur avec congélateur ou freezer", required_quantity: 1 },
-  // Le décret n° 2015-981 impose une "vaisselle nécessaire à la prise des repas"
-  // sans fixer de quantité — la pratique du secteur retient 4 à 6 couverts pour
-  // un studio (majorité du parc LMNP) ; on part sur 4, borne basse prudente.
-  { room: "Cuisine", category: "Vaisselle", label: "Assiettes", required_quantity: 4 },
-  { room: "Cuisine", category: "Vaisselle", label: "Verres", required_quantity: 4 },
-  { room: "Cuisine", category: "Vaisselle", label: "Bols", required_quantity: 4 },
-  { room: "Cuisine", category: "Ustensiles", label: "Fourchettes", required_quantity: 4 },
-  { room: "Cuisine", category: "Ustensiles", label: "Couteaux", required_quantity: 4 },
-  { room: "Cuisine", category: "Ustensiles", label: "Cuillères", required_quantity: 4 },
-  { room: "Cuisine", category: "Ustensiles", label: "Ustensiles de cuisine", required_quantity: 1 },
-  { room: "Cuisine", category: "Cuisson", label: "Casseroles et poêles", required_quantity: 1 },
-  { room: "Séjour", category: "Mobilier", label: "Table", required_quantity: 1 },
-  { room: "Séjour", category: "Mobilier", label: "Sièges", required_quantity: 2 },
-  { room: "Rangement", category: "Mobilier", label: "Étagères ou rangements", required_quantity: 1 },
-  { room: "Toutes pièces", category: "Éclairage", label: "Luminaires", required_quantity: 1 },
-  { room: "Entretien", category: "Ménage", label: "Matériel d’entretien adapté au logement", required_quantity: 1 },
-];
 
 const EXTRA_PRESETS = [
   { room: "Entretien", category: "Ménage", label: "Aspirateur", required_quantity: 1 },
@@ -191,7 +168,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function SectionInventaire({ userId, properties, propertyLots, leases }: Props) {
+export function SectionInventaire({ userId, properties, propertyLots, leases, deepLink }: Props) {
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -418,6 +395,15 @@ export function SectionInventaire({ userId, properties, propertyLots, leases }: 
   useEffect(() => {
     if (!selectedPropertyId && safeProperties.length > 0) setSelectedPropertyId(safeProperties[0].id);
   }, [safeProperties, selectedPropertyId]);
+
+  // Arrivée depuis l'assistant IA (ou tout autre lien profond) : sélectionne
+  // directement le bien (et le lot) visés, comme si l'utilisateur les avait cliqués.
+  useEffect(() => {
+    if (!deepLink?.propertyId) return;
+    setSelectedPropertyId(deepLink.propertyId);
+    if (deepLink.lotId) setSelectedLotId(deepLink.lotId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLink]);
 
   // Sélectionne automatiquement le premier lot éligible quand le bien change,
   // ou si le lot actuellement retenu ne fait plus partie du bien sélectionné.

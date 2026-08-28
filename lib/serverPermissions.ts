@@ -42,3 +42,24 @@ export async function userCanUseReceiptAutomation(userId: string): Promise<boole
   const plan = await getServerUserPlan(userId);
   return planAllowsReceiptAutomation(plan);
 }
+
+// Un plan peut être accordé manuellement (compte de test, geste commercial)
+// sans abonnement Stripe réel derrière. Pour tout ce qui touche à un coût
+// API externe direct (Loky), on ne veut accorder le quota du plan qu'aux
+// abonnements réellement payants — le reste du produit continue de suivre
+// le plan accordé normalement, seul le quota de messages IA est concerné.
+export async function hasStripeLinkedSubscription(userId: string): Promise<boolean> {
+  if (!supabaseAdmin || !userId) return false;
+
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("stripe_subscription_id,status,ends_at")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (error || !Array.isArray(data) || !data[0]) return false;
+
+  const latest = data[0] as any;
+  return isSubscriptionActive(latest?.status) && isStillValid(latest?.ends_at) && !!latest?.stripe_subscription_id;
+}

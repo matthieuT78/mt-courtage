@@ -755,6 +755,7 @@ export default function Home() {
                 <p className="mt-2 text-sm leading-6 text-slate-400">Baux, loyers, quittances, alertes, relances, messagerie, EDL, signature électronique, documents et finance — au même endroit.</p>
                 <ul className="mt-6 flex-1 space-y-3">
                   {[
+                    ["Loky, assistant IA", "Décrivez ce que vous voulez faire, il s'en occupe"],
                     ["Candidatures en ligne", "Lien unique, dossiers scorés automatiquement, RGPD géré"],
                     ["Quittances automatiques", "Loyer confirmé → PDF généré → envoyé au locataire"],
                     ["Alertes & relances", "IRL, retards, baux expirants — zéro oubli"],
@@ -828,6 +829,59 @@ export default function Home() {
               <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
                 Pas un tableur. Pas un dossier de mails. Un outil qui suit le cycle locatif et vous pousse ce qui mérite une action.
               </p>
+            </div>
+
+            {/* Loky — assistant IA, tuile pleine largeur en tête de section */}
+            <div data-scroll-reveal data-reveal-delay="0" className="mb-5 overflow-hidden rounded-[1.75rem] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-7 shadow-sm">
+              <div className="grid gap-8 lg:grid-cols-[1fr,1.1fr] lg:items-center">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <img src="/loky-avatar.png" alt="Loky" className="h-11 w-11 shrink-0 rounded-2xl object-cover shadow-sm" />
+                    <div>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-indigo-600">Nouveau · Assistant IA</span>
+                      <h3 className="text-lg font-semibold text-slate-950">Loky fait la gestion à ta place</h3>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    Décris ce que tu veux en une phrase — Loky retrouve le bon bien, le bon locataire, résume l'action et te demande de confirmer avant de créer quoi que ce soit. Comme un assistant humain, mais disponible tout de suite.
+                  </p>
+                  <ul className="mt-4 space-y-1.5">
+                    {[
+                      "« Crée un bail pour Julien » → bail préparé, confirmation en un clic",
+                      "« Marie a payé son loyer » → paiement confirmé, quittance générée automatiquement",
+                      "« Je cherche un locataire » → annonce publiée pour recevoir des candidatures",
+                      "Toujours une confirmation avant d'écrire quoi que ce soit sur votre compte",
+                    ].map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="mt-0.5 text-indigo-600">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5">
+                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                      Inclus dans tous les plans payants, dès 6,90 €/mois →
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Flow visuel */}
+                <div className="space-y-2.5">
+                  {[
+                    { step: "01", label: "Tu écris ce que tu veux", sub: "« Crée un bail pour Julien, loyer 750€ »", color: "bg-slate-100 text-slate-600" },
+                    { step: "02", label: "Loky retrouve tes données", sub: "Bien, locataire, lot — résolus automatiquement", color: "bg-sky-100 text-sky-700" },
+                    { step: "03", label: "Il résume l'action prévue", sub: "Bien · Locataire · Loyer · Date de début", color: "bg-violet-100 text-violet-700" },
+                    { step: "04", label: "Tu confirmes, c'est fait", sub: "Bail créé + prochaines étapes proposées", color: "bg-indigo-100 text-indigo-700" },
+                  ].map(({ step, label, sub, color }) => (
+                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-500">{sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
@@ -1288,9 +1342,9 @@ export default function Home() {
                 {
                   name: "lokt·plus",
                   price: "11,90 €",
-                  cadence: "/ mois · 5 logements",
+                  cadence: "/ mois · 15 logements",
                   desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, déclaration.",
-                  features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "5 logements actifs"],
+                  features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "15 logements actifs"],
                   cta: "Souscrire",
                   href: "/tarifs",
                   card: "border-slate-200 bg-white",

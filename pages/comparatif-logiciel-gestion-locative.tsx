@@ -164,8 +164,8 @@ const tools = [
   {
     name: "lokt.fr",
     icon: "🔑",
-    price: "Gratuit (1 logement) · 6,90 €/mois (lokt·one, 2 logements) · 11,90 €/mois (lokt·plus, 5 logements)",
-    ideal: "Bailleur particulier avec 1 à 10 biens cherchant gestion, sélection locataire et simulateurs dans un seul outil",
+    price: "Gratuit (1 logement) · 6,90 €/mois (lokt·one, 2 logements) · 11,90 €/mois (lokt·plus, 15 logements)",
+    ideal: "Bailleur particulier avec 1 à 15 biens cherchant gestion, sélection locataire et simulateurs dans un seul outil",
     pros: [
       "Seul outil du comparatif avec dossiers de candidature en ligne (lien, scoring automatique, RGPD)",
       "Simulateurs immobiliers intégrés (rentabilité, capacité d'emprunt, prêt relais, plus-value)",

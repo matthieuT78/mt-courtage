@@ -30,6 +30,7 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     audience: "Candidatures & automatisation",
     features: [
       "Tout le plan Gratuit",
+      "Loky, ton assistant IA : crée un bail, confirme un paiement, cherche un locataire... en lui parlant",
       "Dossier de candidature en ligne : lien dédié, scoring automatique, suppression RGPD",
       "Quittances PDF envoyées automatiquement au locataire",
       "Validation du paiement par email avant génération",
@@ -53,10 +54,11 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     priceLabel: "11,90 € / mois",
     monthlyPrice: 11.9,
     yearlyPrice: 119,
-    limitLabel: "Jusqu’à 5 logements actifs",
+    limitLabel: "Jusqu’à 15 logements actifs",
     audience: "Pilotage & déclaration",
     features: [
       "Tout le plan lokt·one",
+      "Loky, ton assistant IA — usage étendu",
       "Boîte à outils bailleur : eau, charges, TEOM et régularisation",
       "Simulateurs bailleur : LMNP, IRL et arbitrages",
       "Performance et rentabilité par logement",
@@ -79,6 +81,7 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     limitLabel: "Module en préparation",
     audience: "Coffre-fort documentaire",
     features: [
+      "Loky, ton assistant IA — usage étendu",
       "Dossiers locataires et garants encadrés",
       "Pièces d’identité, assurances, diagnostics et justificatifs",
       "Checklist documentaire par bien, bail et locataire",

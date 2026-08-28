@@ -1,0 +1,310 @@
+// pages/api/landlord/assistant/chat.ts
+//
+// Orchestration de l'assistant IA du cockpit bailleur : boucle d'appels à
+// Claude (tool use) où les outils en lecture s'exécutent automatiquement et
+// tout outil qui écrit en base ("mutates: true") s'arrête pour demander une
+// confirmation explicite au tour suivant. Conversation gérée côté client
+// (le tableau complet de messages est renvoyé et transmis à chaque appel) :
+// pas de persistance côté serveur pour cette v1.
+import type { NextApiRequest, NextApiResponse } from "next";
+import Anthropic from "@anthropic-ai/sdk";
+import { requireApiUser } from "../../../../lib/apiAuth";
+import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { getServerUserPlan, hasStripeLinkedSubscription } from "../../../../lib/serverPermissions";
+import { ASSISTANT_TRIAL_LIFETIME_LIMIT } from "../../../../lib/permissions";
+import { callCostUsd, usdToMicros, microsToUsd, landlordAssistantMonthlyBudgetUsd } from "../../../../lib/landlord/assistantCost";
+import { assistantToolDefinitionsForClaude, getAssistantTool, type AssistantToolContext } from "../../../../lib/landlord/assistantTools";
+
+type Json = Record<string, any>;
+type QuotaScope = "trial" | "monthly_budget";
+
+// Comptes internes (tests manuels) exemptés du quota Loky — jamais d'email en
+// dur dans le code, la liste vit dans une variable d'env (ASSISTANT_UNLIMITED_EMAILS,
+// séparés par des virgules). L'usage reste enregistré pour le monitoring, seul
+// le blocage est désactivé.
+function isAssistantUnlimitedEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const list = String(process.env.ASSISTANT_UNLIMITED_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.toLowerCase());
+}
+
+const MAX_ITERATIONS = 8;
+
+// Haiku : moitié prix de Sonnet (input et output), qualité suffisante pour
+// ces outils une fois le disclaimer fiscal déplacé sur la page elle-même
+// (SectionDeclaration.tsx) plutôt que reposé sur le modèle à chaque réponse.
+// Ajustable sans changement de code via ANTHROPIC_ASSISTANT_MODEL si besoin.
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
+
+function buildSystemPrompt(today: string): string {
+  return `Tu es Loky, l'assistant intégré au cockpit bailleur de lokt.fr. Nous sommes le ${today} (format YYYY-MM-DD) : utilise cette date pour résoudre toute référence relative ("le mois actuel", "ce mois-ci", "l'année dernière"...) sans jamais la demander à l'utilisateur. Tu aides le bailleur connecté à réaliser des actions sur SON compte : créer un bien (y compris un immeuble à plusieurs lots), une fiche locataire, un bail, vérifier si un loyer a été payé, confirmer un loyer reçu (ce qui génère automatiquement la quittance), relancer un locataire en impayé, chercher un locataire (en publiant une annonce pour recevoir des candidatures).
+
+Tu n'es PAS un chatbot immobilier généraliste : tu ne réponds pas toi-même aux questions de culture générale sur l'immobilier, la fiscalité, le droit locatif ou l'investissement (ex. "dois-je faire du LMNP micro-BIC ou réel ?", "comment calculer un rendement ?"), même si elles semblent liées au métier de bailleur. Ton rôle se limite strictement aux actions listées ci-dessus sur le compte de l'utilisateur. Pour ce type de question, précise d'abord en une phrase que tu n'es ni juriste ni comptable et que ta réponse ne remplace pas un avis professionnel, puis redirige concrètement :
+  - si la question touche au choix de régime fiscal ou à la préparation d'une déclaration, appelle open_declaration_helper (l'outil calcule avec les vrais chiffres du compte, ne tente jamais d'estimer toi-même) ;
+  - sinon, appelle find_help_content et cite 1-2 titres/liens réels renvoyés par l'outil — n'invente jamais un titre ou une url de guide/article qui n'a pas été retourné par cet outil.
+
+Règles impératives :
+- Dès que l'utilisateur exprime une intention d'action (ex. "je veux créer un bail"), appelle IMMÉDIATEMENT les outils de lecture pertinents (list_properties, list_tenants, list_leases, list_lots) AVANT de poser la moindre question — ce sont des lectures gratuites et instantanées, il ne faut jamais demander à l'utilisateur une information que ces outils peuvent déjà donner. Utilise ensuite ce que tu as trouvé pour poser des questions concrètes et déjà orientées plutôt que des questions génériques : ex. si un seul locataire existe ("Julien Martin"), demande "C'est pour Julien Martin, ou un nouveau locataire ?" plutôt que "Qui est le locataire ?" ; si plusieurs biens existent, propose la liste avec leurs noms/adresses plutôt que de demander "quel bien ?" dans le vide. Le but est de minimiser le nombre d'allers-retours en s'appuyant sur les données réelles du compte à chaque étape.
+- Ne jamais inventer un identifiant (bien, lot, locataire, bail). Avant d'appeler un outil de création qui référence un id, résous-le d'abord via les outils de lecture ci-dessus à partir du nom/adresse donné par l'utilisateur. S'il y a une ambiguïté (plusieurs biens possibles), demande de préciser en listant les options réelles.
+- Si le bien concerné est un immeuble (type "building"), le lot loué est toujours obligatoire pour un bail ou une annonce : appelle list_lots et demande lequel si ce n'est pas clair.
+- Ne demande jamais d'identifiant utilisateur : le compte actif est géré automatiquement par le système.
+- Pose une question à la fois quand une information obligatoire manque, plutôt que de deviner une valeur.
+- Pour l'inventaire LMNP (obligations de mobilier d'un logement meublé), n'appelle jamais list_properties seul pour proposer une liste : appelle list_lmnp_inventory_status, qui filtre déjà aux seuls biens/lots réellement éligibles (bail meublé actif) et te donne le détail de ce qui manque. Si un seul bien éligible existe, donne directement son état (% de conformité + liste des éléments manquants) sans redemander lequel. Utilise open_inventaire_lmnp seulement pour proposer d'aller compléter/corriger l'inventaire dans le cockpit, jamais pour éviter de répondre toi-même à "qu'est-ce qui manque ?".
+- Pour savoir si un loyer a été payé (ex. "est-ce que X a payé son loyer ?"), résous d'abord le bail concerné puis appelle list_rent_payments avec le mois demandé (calculé toi-même à partir de la date du jour ci-dessus si l'utilisateur dit "ce mois-ci"/"le mois actuel") : ne redirige jamais vers open_quittances pour cette question précise, l'outil te donne directement la réponse (payé ou non, montant, date).
+- Pour une relance d'impayé, appelle toujours preview_payment_reminder avant send_payment_reminder, et montre le texte proposé à l'utilisateur avant de l'envoyer.
+- Pour créer un bail, demande toujours explicitement le type de location (meublé résidence principale, meublé étudiant, mobilité, nu résidence principale, professionnel, autre) si l'utilisateur ne l'a pas précisé — ne suppose jamais "meublé" par défaut.
+- Il n'existe pas d'action "générer une quittance" isolée : une quittance n'existe qu'une fois le loyer confirmé comme payé (confirm_payment), qui génère automatiquement le PDF dans la foulée. Si l'utilisateur demande "je veux une quittance" ou dit qu'un locataire a payé, résous le bail et la période concernés puis appelle confirm_payment. S'il te manque des infos pour savoir de quel bail/période il parle, ou si l'utilisateur veut juste consulter ses quittances existantes, appelle plutôt open_quittances (ça ouvre l'écran dédié) et explique en une phrase que la quittance apparaît automatiquement dès qu'un paiement y est confirmé.
+- Dès que tu as toutes les informations nécessaires pour un outil qui écrit en base (create_property, create_tenant, create_lease, confirm_payment, send_payment_reminder, create_listing), appelle-le IMMÉDIATEMENT, dans le même message que ta phrase d'explication — n'attends jamais une confirmation textuelle de l'utilisateur avant d'appeler l'outil. C'est l'interface qui affiche automatiquement un bouton "Confirmer" à partir de ton appel d'outil ; si tu attends une réponse de l'utilisateur avant d'appeler l'outil, ce bouton n'apparaît jamais et la conversation reste bloquée. La phrase d'explication qui accompagne l'appel doit utiliser des noms lisibles (jamais d'identifiants techniques) puisqu'elle est affichée juste au-dessus du bouton de confirmation.
+- Après la création d'un bail, l'interface affiche déjà automatiquement des boutons vers les étapes suivantes pertinentes (contrat, état des lieux, inventaire LMNP si meublé) : n'appelle pas toi-même open_lease_contract / open_etat_des_lieux / open_inventaire_lmnp dans ce cas, contente-toi d'une phrase courte du type "tu trouveras juste en dessous les prochaines étapes". Ces trois outils de navigation restent disponibles pour une demande explicite plus tard dans la conversation (ex. "ouvre le contrat du bail de Julien" pour un bail déjà existant) : dans ce cas, résous le bail concerné puis appelle l'outil correspondant.
+- Réponds en français, de façon concise, chaleureuse et directe.`;
+}
+
+function extractBearerToken(req: NextApiRequest): string {
+  const header = String(req.headers.authorization || "");
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || "";
+}
+
+function findToolUseBlock(messages: Anthropic.MessageParam[], toolUseId: string): Anthropic.ToolUseBlock | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "assistant" || !Array.isArray(message.content)) continue;
+    const block = (message.content as any[]).find((b) => b?.type === "tool_use" && b.id === toolUseId);
+    if (block) return block as Anthropic.ToolUseBlock;
+  }
+  return null;
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
+  try {
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(500).json({ error: "Assistant IA non configuré (ANTHROPIC_API_KEY manquante côté serveur)." });
+
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+    const userId = auth.userId;
+    const bearerToken = extractBearerToken(req);
+
+    const { messages, confirmedToolUseId, cancelledToolUseId } = (req.body || {}) as {
+      messages?: Anthropic.MessageParam[];
+      confirmedToolUseId?: string;
+      cancelledToolUseId?: string;
+    };
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "messages requis." });
+    }
+
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
+    const plan = await getServerUserPlan(userId);
+    // Un plan accordé à la main (compte de test, geste commercial) sans
+    // abonnement Stripe réel derrière n'a droit qu'à un essai unique à vie
+    // de Loky. Un vrai abonné est plafonné par un budget mensuel en dollars
+    // (pas un nombre de messages) : le coût réel de Loky ne doit jamais
+    // dépasser une part fixe de ce qu'il paie — voir assistantCost.ts.
+    const isRealSubscriber = await hasStripeLinkedSubscription(userId);
+    const unlimited = isAssistantUnlimitedEmail(auth.email);
+    const today = new Date().toISOString().slice(0, 10);
+    const currentMonth = today.slice(0, 7); // YYYY-MM
+
+    const { data: usageRows, error: usageError } = await supabaseAdmin
+      .from("assistant_usage_daily")
+      .select("usage_date,message_count,cost_usd_micros")
+      .eq("user_id", userId);
+    if (usageError) return res.status(500).json({ error: usageError.message });
+    const rows = usageRows || [];
+    const todayRow = rows.find((r: any) => r.usage_date === today) as any;
+    const usedTodayMessages = todayRow?.message_count || 0;
+    const usedTodayCostMicros = todayRow?.cost_usd_micros || 0;
+    const usedLifetimeMessages = rows.reduce((sum: number, r: any) => sum + (r.message_count || 0), 0);
+    const usedThisMonthCostUsd = rows
+      .filter((r: any) => String(r.usage_date).startsWith(currentMonth))
+      .reduce((sum: number, r: any) => sum + microsToUsd(r.cost_usd_micros || 0), 0);
+
+    const quotaScope: QuotaScope = isRealSubscriber ? "monthly_budget" : "trial";
+    const monthlyBudgetUsd = landlordAssistantMonthlyBudgetUsd(plan);
+
+    if (!unlimited && quotaScope === "trial" && usedLifetimeMessages >= ASSISTANT_TRIAL_LIFETIME_LIMIT) {
+      return res.status(200).json({
+        messages,
+        done: true,
+        limitReached: true,
+        remaining: 0,
+        quotaScope,
+        quotaLimit: ASSISTANT_TRIAL_LIFETIME_LIMIT,
+        limitMessage:
+          "Tu as utilisé ton essai gratuit de Loky. L'accès complet à l'assistant IA est réservé aux abonnements lokt payants — merci de passer par Stripe pour en profiter pleinement.",
+      });
+    }
+    if (!unlimited && quotaScope === "monthly_budget" && (monthlyBudgetUsd <= 0 || usedThisMonthCostUsd >= monthlyBudgetUsd)) {
+      return res.status(200).json({
+        messages,
+        done: true,
+        limitReached: true,
+        remaining: 0,
+        quotaScope,
+        quotaLimit: monthlyBudgetUsd,
+        limitMessage:
+          monthlyBudgetUsd <= 0
+            ? "Loky est réservé aux comptes bailleur — passe à un abonnement lokt pour en profiter."
+            : "Tu as atteint l'usage de Loky inclus dans ton abonnement ce mois-ci. Ça se remet à jour le mois prochain.",
+      });
+    }
+
+    const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0];
+    const baseUrl = `${proto}://${req.headers.host}`;
+    const ctx: AssistantToolContext = { userId, bearerToken, baseUrl };
+
+    let working: Anthropic.MessageParam[] = messages;
+    let costIncurredUsd = 0;
+    // Accumulé au fil des outils exécutés (celui confirmé ci-dessous, puis
+    // ceux de la boucle plus bas) : un bail créé peut suggérer plusieurs
+    // étapes suivantes (contrat, état des lieux, inventaire LMNP) d'un coup.
+    const suggestedNavigations: Array<{ section: string; link: Record<string, any>; label: string }> = [];
+
+    // Persiste le message + le coût réel de cette requête (une seule ligne
+    // par jour, upsert) et renvoie les champs de quota à inclure dans la
+    // réponse JSON — appelé à chaque point de sortie une fois le coût connu.
+    async function recordUsageAndQuota() {
+      const newCostMicros = usedTodayCostMicros + usdToMicros(costIncurredUsd);
+      await supabaseAdmin!
+        .from("assistant_usage_daily")
+        .upsert(
+          {
+            user_id: userId,
+            usage_date: today,
+            message_count: usedTodayMessages + 1,
+            cost_usd_micros: newCostMicros,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,usage_date" }
+        );
+
+      if (quotaScope === "trial") {
+        const limit = ASSISTANT_TRIAL_LIFETIME_LIMIT;
+        return { remaining: unlimited ? limit : Math.max(0, limit - (usedLifetimeMessages + 1)), quotaScope, quotaLimit: limit };
+      }
+      const usedThisMonthAfter = usedThisMonthCostUsd + costIncurredUsd;
+      const limit = Math.round(monthlyBudgetUsd * 100) / 100;
+      return {
+        remaining: unlimited ? limit : Math.max(0, Math.round((monthlyBudgetUsd - usedThisMonthAfter) * 100) / 100),
+        quotaScope,
+        quotaLimit: limit,
+      };
+    }
+
+    if (confirmedToolUseId || cancelledToolUseId) {
+      const toolUseId = String(confirmedToolUseId || cancelledToolUseId);
+      const toolUseBlock = findToolUseBlock(working, toolUseId);
+      if (!toolUseBlock) {
+        return res.status(400).json({ error: "Action à confirmer introuvable (conversation trop ancienne ?)." });
+      }
+
+      let resultContent: string;
+      if (cancelledToolUseId) {
+        resultContent = JSON.stringify({ cancelled: true, message: "Action annulée par l'utilisateur." });
+      } else {
+        const tool = getAssistantTool(toolUseBlock.name);
+        if (!tool) {
+          resultContent = JSON.stringify({ error: `Outil inconnu: ${toolUseBlock.name}` });
+        } else {
+          try {
+            const result = await tool.execute(ctx, (toolUseBlock.input as Record<string, any>) || {});
+            if (Array.isArray(result?.next_steps)) suggestedNavigations.push(...result.next_steps);
+            resultContent = JSON.stringify(result);
+          } catch (err: any) {
+            resultContent = JSON.stringify({ error: err?.message || "Erreur lors de l'exécution de l'action." });
+          }
+        }
+      }
+
+      working = [
+        ...working,
+        { role: "user", content: [{ type: "tool_result", tool_use_id: toolUseId, content: resultContent }] },
+      ];
+    }
+
+    const client = new Anthropic({ apiKey });
+    // Le prompt système et la liste d'outils sont strictement identiques à
+    // chaque appel (y compris les multiples appels internes d'un même
+    // message) : marquer un point de cache dessus évite de repayer plein
+    // tarif ces ~1700-2000 tokens à chaque itération de la boucle.
+    const tools = assistantToolDefinitionsForClaude();
+    if (tools.length > 0) {
+      (tools[tools.length - 1] as Anthropic.Tool).cache_control = { type: "ephemeral" };
+    }
+    const cachedSystem: Anthropic.TextBlockParam[] = [{ type: "text", text: buildSystemPrompt(today), cache_control: { type: "ephemeral" } }];
+    const model = process.env.ANTHROPIC_ASSISTANT_MODEL || DEFAULT_MODEL;
+
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+      const response = await client.messages.create({
+        model,
+        max_tokens: 1024,
+        system: cachedSystem,
+        tools: tools as Anthropic.Tool[],
+        // Un seul appel d'outil par tour : évite qu'un outil de lecture et un
+        // outil d'écriture soient regroupés dans la même réponse, ce qui
+        // laissait un tool_use sans tool_result quand on s'arrêtait pour
+        // demander confirmation (erreur 400 côté API sur le tour suivant).
+        tool_choice: { type: "auto", disable_parallel_tool_use: true },
+        messages: working,
+      });
+      costIncurredUsd += callCostUsd(response.usage as any, model);
+
+      working = [...working, { role: "assistant", content: response.content }];
+
+      const toolUseBlocks = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
+      if (toolUseBlocks.length === 0) {
+        const quota = await recordUsageAndQuota();
+        return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations });
+      }
+
+      const mutatingBlock = toolUseBlocks.find((block) => getAssistantTool(block.name)?.mutates);
+      if (mutatingBlock) {
+        const tool = getAssistantTool(mutatingBlock.name)!;
+        const summary = tool.summarize
+          ? await tool.summarize(ctx, (mutatingBlock.input as Record<string, any>) || {}).catch(() => null)
+          : null;
+        const quota = await recordUsageAndQuota();
+        return res.status(200).json({
+          messages: working,
+          done: false,
+          ...quota,
+          suggestedNavigations,
+          pendingAction: {
+            toolUseId: mutatingBlock.id,
+            toolName: mutatingBlock.name,
+            args: mutatingBlock.input,
+            description: tool.description,
+            summary,
+          },
+        });
+      }
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block) => {
+          const tool = getAssistantTool(block.name);
+          try {
+            const result = tool ? await tool.execute(ctx, (block.input as Record<string, any>) || {}) : { error: `Outil inconnu: ${block.name}` };
+            if (tool?.navigate && result?.navigation) suggestedNavigations.push(result.navigation);
+            if (Array.isArray(result?.next_steps)) suggestedNavigations.push(...result.next_steps);
+            return { type: "tool_result" as const, tool_use_id: block.id, content: JSON.stringify(result) };
+          } catch (err: any) {
+            return { type: "tool_result" as const, tool_use_id: block.id, content: JSON.stringify({ error: err?.message || "Erreur." }) };
+          }
+        })
+      );
+      working = [...working, { role: "user", content: toolResults }];
+    }
+
+    const quota = await recordUsageAndQuota();
+    return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations, warning: "Nombre maximum d'étapes atteint pour cette réponse." });
+  } catch (error: any) {
+    console.error("[api/landlord/assistant/chat] error:", error);
+    return res.status(500).json({ error: error?.message || "Erreur interne." });
+  }
+}

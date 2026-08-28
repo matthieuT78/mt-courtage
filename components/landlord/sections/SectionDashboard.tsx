@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, PropertyLot, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -190,6 +190,7 @@ export function SectionDashboard({
   onNavigateDeep,
   onPrepareDeparture,
   onRefresh,
+  onOpenAssistant,
   userId,
   planLabel,
   showTransitionPanel = true,
@@ -220,6 +221,7 @@ export function SectionDashboard({
   onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   onRefresh?: () => Promise<void>;
+  onOpenAssistant?: (presetMessage?: string) => void;
   userId?: string;
   planLabel?: string;
   showTransitionPanel?: boolean;
@@ -919,6 +921,10 @@ export function SectionDashboard({
         incompletePayment: paymentState.incomplete,
         dueDate,
         hasReceipt: !!receipt,
+        // Bail délégué à une agence (bail_edl) : aucune quittance lokt n'est
+        // jamais générée par conception, l'absence de quittance n'est donc
+        // pas une anomalie à signaler pour ce bail.
+        receiptsDisabled: !!(lease as any).receipts_disabled,
         receiptSent: !!receipt?.sent_at,
         leaseEndingSoon,
         watchDate,
@@ -1112,7 +1118,7 @@ export function SectionDashboard({
       });
     }
 
-    const missingReceiptCards = leaseCards.filter((card) => card.paymentStatus === "Encaissé" && !card.hasReceipt);
+    const missingReceiptCards = leaseCards.filter((card) => card.paymentStatus === "Encaissé" && !card.hasReceipt && !card.receiptsDisabled);
     if (missingReceiptCards.length > 0) {
       const missingReceiptDetails = missingReceiptCards.slice(0, 3).map((card) => `${card.propertyLabel} · ${card.tenantName}`);
 
@@ -1416,6 +1422,42 @@ export function SectionDashboard({
             </div>
           </div>
         </div>
+
+        {/* ── Loky — entrée principale, juste sous l'en-tête ── */}
+        {onOpenAssistant && (
+          <div className="border-t border-slate-100 bg-white px-3 py-4 sm:px-5">
+            <button
+              type="button"
+              onClick={() => onOpenAssistant()}
+              className="flex w-full items-center gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-indigo-50 to-cyan-50 p-3.5 text-left transition hover:border-indigo-200 hover:from-indigo-100 hover:to-cyan-100 sm:p-4"
+            >
+              <img src="/loky-avatar.png" alt="Loky" className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold text-slate-900 sm:text-lg">Loky, ton assistant IA</span>
+                <span className="mt-0.5 block text-sm text-slate-600">Dis-moi ce que tu veux faire, je m'en occupe — bail, paiement, locataire…</span>
+              </span>
+              <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+            </button>
+
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {[
+                "Créer un bail",
+                "Confirmer un paiement reçu",
+                "Chercher un locataire",
+                "Créer un bien",
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => onOpenAssistant(suggestion)}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── KPI strip — tuiles individuelles avec coins arrondis ── */}
         <div className="grid grid-cols-2 gap-2 bg-[#f1f5f9] px-3 pb-3 pt-2 sm:grid-cols-4">
@@ -1971,10 +2013,11 @@ export function SectionDashboard({
                       }`}>{card.paymentStatus}</span>
                       <span className={`rounded-full px-2.5 py-0.5 text-[0.6rem] font-semibold ${
                         card.hasReceipt ? "bg-emerald-50 text-emerald-600" :
+                        card.receiptsDisabled ? "bg-slate-100 text-slate-400" :
                         card.paymentStatus === "Encaissé" ? "bg-amber-50 text-amber-600" :
                         "bg-slate-100 text-slate-400"
                       }`}>
-                        {card.hasReceipt ? "Quittance ✓" : card.paymentStatus === "Encaissé" ? "Quittance ⚠" : "Quittance —"}
+                        {card.hasReceipt ? "Quittance ✓" : card.receiptsDisabled ? "Déléguée" : card.paymentStatus === "Encaissé" ? "Quittance ⚠" : "Quittance —"}
                       </span>
                     </div>
                   </button>
@@ -2156,6 +2199,8 @@ export function SectionDashboard({
                           ? card.receiptSent
                             ? "emerald"
                             : "indigo"
+                          : card.receiptsDisabled
+                          ? "slate"
                           : card.paymentStatus === "Encaissé"
                           ? "amber"
                           : "slate"
@@ -2165,6 +2210,8 @@ export function SectionDashboard({
                         ? card.receiptSent
                           ? "Prête & envoyée"
                           : "Prête"
+                        : card.receiptsDisabled
+                        ? "Déléguée"
                         : card.paymentStatus === "Encaissé"
                         ? "À générer"
                         : "Après paiement"}

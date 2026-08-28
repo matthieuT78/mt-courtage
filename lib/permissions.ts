@@ -60,7 +60,7 @@ export function landlordMaxActiveLeases(plan: Plan): number {
     case "landlord_5":
       return 2;
     case "landlord_15":
-      return 5;
+      return 15;
     case "landlord_unlimited":
       return 999999;
     case "calc_full":
@@ -75,7 +75,7 @@ export function landlordMaxActiveProperties(plan: Plan): number {
     case "landlord_5":
       return 2;
     case "landlord_15":
-      return 5;
+      return 15;
     case "landlord_unlimited":
       return 999999;
     case "calc_full":
@@ -84,6 +84,11 @@ export function landlordMaxActiveProperties(plan: Plan): number {
       return 0;
   }
 }
+
+// Compte sans abonnement Stripe réel (essai, compte gratuit, test accordé à
+// la main) : quota unique à vie, jamais renouvelé — le but est de faire
+// essayer Loky une fois, pas d'offrir un accès gratuit permanent en boucle.
+export const ASSISTANT_TRIAL_LIFETIME_LIMIT = 8;
 
 export function storageQuotaBytes(plan: Plan): number {
   switch (plan) {

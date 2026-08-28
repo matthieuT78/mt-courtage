@@ -108,6 +108,7 @@ type Props = {
   onRefresh?: () => Promise<void>;
   onNavigateToBaux?: () => void;
   onNavigateToInventaire?: () => void;
+  deepLink?: { key: number; leaseId?: string } | null;
 };
 
 async function authJsonHeaders() {
@@ -636,7 +637,7 @@ function openBlankPdfWindow() {
 // =========================
 // BLOCK 2/4
 // =========================
-export function SectionEtatDesLieux({ userId, leases, properties, propertyLots, tenants, propertyFinance, onRefresh, onNavigateToBaux, onNavigateToInventaire }: Props) {
+export function SectionEtatDesLieux({ userId, leases, properties, propertyLots, tenants, propertyFinance, onRefresh, onNavigateToBaux, onNavigateToInventaire, deepLink }: Props) {
   const { plan } = usePermissions();
   const canShareDocuments = planAllowsDocumentSharing(plan);
   const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
@@ -1077,6 +1078,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, propertyLots, 
     loadReportsForLease(selectedLeaseId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeaseId, userId]);
+
+  // Arrivée depuis l'assistant IA (ou tout autre lien profond) : sélectionne
+  // directement le bail visé, comme si l'utilisateur l'avait cliqué.
+  useEffect(() => {
+    if (!deepLink?.leaseId) return;
+    setSelectedLeaseId(deepLink.leaseId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLink]);
 
   // Effet séparé : si le bail sélectionné disparaît (suppression, archivage),
   // on le désélectionne proprement sans toucher aux données déjà chargées.

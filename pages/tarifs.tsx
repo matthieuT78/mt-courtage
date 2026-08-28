@@ -287,6 +287,7 @@ export default function TarifsPage() {
               </p>
               <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
                 <li>✓ Bien, bail et locataire</li>
+                <li>✓ Loky, ton assistant IA</li>
                 <li>✓ Quittances manuelles et PDF</li>
                 <li>✓ Contrat de bail et EDL numériques</li>
                 <li>✓ Signature électronique du bail et de l'EDL</li>
@@ -348,8 +349,9 @@ export default function TarifsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-700">
                   {[
-                    ["Logements actifs", "1", "Jusqu’à 2", "Jusqu’à 5"],
+                    ["Logements actifs", "1", "Jusqu’à 2", "Jusqu’à 15"],
                     ["Biens, locataires et baux", "Inclus", "Inclus", "Inclus"],
+                    ["Loky, assistant IA", "Inclus", "Inclus", "Usage étendu"],
                     ["Quittances PDF manuelles", "Inclus", "Inclus", "Inclus"],
                     ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
                     ["Signature électronique du bail et de l'EDL (eIDAS)", "Inclus", "Inclus", "Inclus"],

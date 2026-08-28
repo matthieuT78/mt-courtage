@@ -1005,6 +1005,10 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         </div>
       </div>
 
+      <p className="text-xs leading-5 text-slate-500">
+        lokt.fr n'est ni juriste ni expert-comptable : cette page aide à préparer votre déclaration, elle ne remplace pas l'avis d'un professionnel. Vérifiez les montants avant de déclarer.
+      </p>
+
       {err && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{err}</div>}
       {info && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{info}</div>}
 

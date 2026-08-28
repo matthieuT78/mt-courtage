@@ -431,15 +431,20 @@ export function useLandlordDashboard() {
   const receiptExpectedCount = useMemo(() => {
     const currentMonth = monthRange.startISO.slice(0, 7);
     return activeLeases.filter((lease) => {
+      if ((lease as any).receipts_disabled) return false;
       const expected = Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0);
       const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
       return !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= expected;
     }).length;
   }, [activeLeases, monthRange.startISO, paymentsThisMonth]);
 
+  // Un bail délégué (receipts_disabled) ne génère jamais de quittance par
+  // conception (voir confirm_payment/assistantTools.ts et /api/payments/confirm) :
+  // l'absence de quittance n'est donc jamais une anomalie à signaler pour lui.
   const missingReceiptsAfterPaymentCount = useMemo(() => {
     const receiptLeaseIds = new Set(receiptsThisMonth.map((receipt) => receipt.lease_id));
     return activeLeases.filter((lease) => {
+      if ((lease as any).receipts_disabled) return false;
       if (receiptLeaseIds.has(lease.id)) return false;
       const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
       const expected = Number(getLeaseRentPeriod(lease, monthRange.startISO.slice(0, 7))?.total || 0);
