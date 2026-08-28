@@ -420,6 +420,154 @@ export const assistantTools: AssistantTool[] = [
     ],
   },
   {
+    name: "update_tenant",
+    description: "Modifie le nom, l'email, le téléphone ou les notes d'une fiche locataire existante.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tenant_id: { type: "string" },
+        full_name: { type: "string" },
+        email: { type: "string" },
+        phone: { type: "string" },
+        notes: { type: "string" },
+      },
+      required: ["tenant_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const patch: Record<string, any> = {};
+      if (args.full_name) patch.full_name = String(args.full_name).trim();
+      if (args.email !== undefined) patch.email = args.email ? String(args.email).trim() : null;
+      if (args.phone !== undefined) patch.phone = args.phone ? String(args.phone).trim() : null;
+      if (args.notes !== undefined) patch.notes = args.notes ? String(args.notes).trim() : null;
+      if (Object.keys(patch).length === 0) throw new Error("Indique au moins un champ à modifier (nom, email, téléphone, notes).");
+      const { data, error } = await admin.from("tenants").update(patch).eq("id", args.tenant_id).eq("user_id", ctx.userId).select("id,full_name").maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Locataire introuvable ou non autorisé.");
+      return { tenant_id: data.id, full_name: data.full_name };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const tenantName = await resolveTenantName(admin, ctx.userId, args.tenant_id);
+      const rows: Array<{ label: string; value: string }> = [{ label: "Locataire", value: tenantName }];
+      if (args.full_name) rows.push({ label: "Nouveau nom", value: String(args.full_name) });
+      if (args.email !== undefined) rows.push({ label: "Nouvel email", value: args.email ? String(args.email) : "(supprimé)" });
+      if (args.phone !== undefined) rows.push({ label: "Nouveau téléphone", value: args.phone ? String(args.phone) : "(supprimé)" });
+      if (args.notes !== undefined) rows.push({ label: "Notes", value: args.notes ? String(args.notes) : "(supprimées)" });
+      return rows;
+    },
+  },
+  {
+    name: "delete_tenant",
+    description: "Supprime définitivement une fiche locataire. Refusé si ce locataire a le moindre historique de bail (même terminé) — dans ce cas, propose d'archiver la fiche à la place (via terminate_lease si un bail est encore actif, ou explique que l'historique doit être conservé).",
+    input_schema: {
+      type: "object",
+      properties: { tenant_id: { type: "string" } },
+      required: ["tenant_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { count } = await admin.from("leases").select("id", { count: "exact", head: true }).eq("tenant_id", args.tenant_id).eq("user_id", ctx.userId);
+      if ((count || 0) > 0) {
+        throw new Error("Suppression impossible : ce locataire a un historique de bail (même terminé). Les données (quittances, comptabilité) doivent être conservées — le bail archivé suffit à le masquer du cockpit actif.");
+      }
+      const { error } = await admin.from("tenants").delete().eq("id", args.tenant_id).eq("user_id", ctx.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const tenantName = await resolveTenantName(admin, ctx.userId, args.tenant_id);
+      return [{ label: "Locataire", value: tenantName }, { label: "Conséquence", value: "Suppression définitive de la fiche" }];
+    },
+  },
+  {
+    name: "restore_tenant",
+    description: "Restaure une fiche locataire archivée (ne réactive pas un bail terminé pour autant).",
+    input_schema: {
+      type: "object",
+      properties: { tenant_id: { type: "string" } },
+      required: ["tenant_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data, error } = await admin
+        .from("tenants")
+        .update({ archived_at: null, archived_reason: null })
+        .eq("id", args.tenant_id)
+        .eq("user_id", ctx.userId)
+        .select("id,full_name")
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("Locataire introuvable ou non autorisé.");
+      return { tenant_id: data.id, full_name: data.full_name };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const tenantName = await resolveTenantName(admin, ctx.userId, args.tenant_id);
+      return [{ label: "Locataire", value: tenantName }];
+    },
+  },
+  {
+    name: "invite_tenant_portal",
+    description: "Invite un locataire à créer son espace locataire lokt.fr (quittances, documents, suivi de loyer, et messagerie si activée). Nécessite que le locataire ait un email enregistré. Réservé aux abonnements payants.",
+    input_schema: {
+      type: "object",
+      properties: {
+        tenant_id: { type: "string" },
+        messaging_enabled: { type: "boolean", description: "Active aussi la messagerie avec ce locataire. Vrai par défaut." },
+      },
+      required: ["tenant_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const data = await callInternalApi(ctx, "/api/tenant-portal/invite", {
+        tenantId: args.tenant_id,
+        messagingEnabled: args.messaging_enabled !== false,
+      });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const tenantName = await resolveTenantName(admin, ctx.userId, args.tenant_id);
+      return [
+        { label: "Locataire", value: tenantName },
+        { label: "Messagerie", value: args.messaging_enabled === false ? "Désactivée" : "Activée" },
+      ];
+    },
+  },
+  {
+    name: "toggle_tenant_messaging",
+    description: "Active ou désactive la messagerie avec un locataire déjà invité au portail (n'invite pas au portail lui-même : utiliser invite_tenant_portal si ce n'est pas encore fait).",
+    input_schema: {
+      type: "object",
+      properties: {
+        tenant_id: { type: "string" },
+        messaging_enabled: { type: "boolean" },
+      },
+      required: ["tenant_id", "messaging_enabled"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const data = await callInternalApi(ctx, "/api/tenant-portal/toggle-messaging", {
+        tenantId: args.tenant_id,
+        messagingEnabled: !!args.messaging_enabled,
+      });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const tenantName = await resolveTenantName(admin, ctx.userId, args.tenant_id);
+      return [
+        { label: "Locataire", value: tenantName },
+        { label: "Messagerie", value: args.messaging_enabled ? "Activée" : "Désactivée" },
+      ];
+    },
+  },
+  {
     name: "create_lease",
     description: "Crée un bail entre un bien (ou un lot d'immeuble) et un locataire. Pour un immeuble, lot_id est obligatoire. Toutes les règles existantes s'appliquent (un seul bail actif par lot, limite de baux actifs selon le plan).",
     input_schema: {

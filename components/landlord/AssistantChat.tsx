@@ -27,6 +27,11 @@ type SuggestedNavigation = {
 const TOOL_ACTION_LABEL: Record<string, string> = {
   create_property: "Créer ce bien",
   create_tenant: "Créer cette fiche locataire",
+  update_tenant: "Modifier cette fiche locataire",
+  delete_tenant: "Supprimer cette fiche locataire",
+  restore_tenant: "Restaurer ce locataire",
+  invite_tenant_portal: "Inviter ce locataire au portail",
+  toggle_tenant_messaging: "Modifier la messagerie de ce locataire",
   create_lease: "Créer ce bail",
   confirm_payment: "Confirmer ce paiement",
   cancel_payment: "Annuler ce paiement",
