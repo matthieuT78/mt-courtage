@@ -9,6 +9,7 @@ import { getServerUserPlan } from "../serverPermissions";
 import { landlordMaxActiveProperties } from "../permissions";
 import { getLeaseRentPeriod } from "../rentPeriod";
 import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
+import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../irlData";
 
 export type AssistantToolContext = {
   userId: string;
@@ -96,6 +97,52 @@ async function resolveLeaseSummary(admin: NonNullable<typeof supabaseAdmin>, use
   ]);
   return { propertyLabel, tenantName };
 }
+
+async function resolvePropertyAddress(admin: NonNullable<typeof supabaseAdmin>, userId: string, propertyId?: string | null, lotId?: string | null) {
+  if (!propertyId) return "";
+  const { data: property } = await admin.from("properties").select("label,address_line1,postal_code,city").eq("id", propertyId).eq("user_id", userId).maybeSingle();
+  if (!property) return "";
+  const address = [property.address_line1, property.postal_code, property.city].filter(Boolean).join(", ");
+  return address || property.label || "";
+}
+
+// Même logique de trimestre IRL par défaut que le panneau de révision du
+// cockpit (IrlRevisionPanel dans SectionRevision.tsx) : le trimestre de la
+// date de signature, avec repli sur le trimestre disponible le plus proche si
+// pas de correspondance exacte — pour ne jamais faire deviner un trimestre à
+// Claude. Note : irl_reference (lu par le panneau via un cast "as any") n'est
+// pas une colonne de la table leases — vit uniquement dans le payload JSON du
+// contrat de bail — donc jamais utilisable ici sans une requête séparée.
+function computeDefaultRefQuarter(lease: { start_date?: string | null }): string {
+  if (!lease.start_date) return "";
+  const exact = dateToIrlQuarter(lease.start_date);
+  if (irlByQuarter(exact)) return exact;
+  const [sy, sq] = exact.split("-T").map(Number);
+  const startNum = sy * 4 + sq;
+  for (const entry of IRL_TABLE) {
+    const [ey, eq] = entry.quarter.split("-T").map(Number);
+    if (ey * 4 + eq <= startNum) return entry.quarter;
+  }
+  return IRL_TABLE[IRL_TABLE.length - 1].quarter;
+}
+
+// Catégories Finance exposées à Loky — hors "rent" (géré uniquement via les
+// quittances, jamais une écriture manuelle qui compterait le loyer deux fois)
+// et "deposit_*" (gérées par le tool manage_deposit dédié, qui garde la
+// cohérence avec les champs deposit_* du bail).
+const FINANCE_CATEGORY_LABEL: Record<string, string> = {
+  fees: "Frais plateforme / conciergerie",
+  management: "Gestion / agence",
+  repairs: "Entretien / travaux",
+  copro: "Copropriété (non récupérable)",
+  insurance: "Assurance (PNO/GLI…)",
+  tax: "Taxe foncière",
+  utilities: "Eau/élec/internet",
+  charges_recovered: "Charges récupérées / refacturées",
+  regularization: "Régularisation de charges",
+  loan: "Crédit (mensualité)",
+  other: "Autre",
+};
 
 export const assistantTools: AssistantTool[] = [
   {
@@ -623,6 +670,489 @@ export const assistantTools: AssistantTool[] = [
         { label: "Bien", value: propertyLabel },
         { label: "Loyer", value: euro(args.rent_amount) + (args.charges_amount ? ` + ${euro(args.charges_amount)} charges` : "") },
       ];
+    },
+  },
+  {
+    name: "terminate_lease",
+    description: "Résilie un bail : fixe la date de sortie, passe le bail en 'terminé', arrête les relances/quittances automatiques et archive la fiche locataire. Action significative et peu réversible : à utiliser seulement quand l'utilisateur confirme clairement vouloir mettre fin au bail (ex. 'résilie le bail de Julien', 'il part le 30/09'), jamais pour une simple question sur la date de fin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        exit_date: { type: "string", description: "Date de sortie effective, YYYY-MM-DD." },
+        reason: { type: "string", description: "Motif du départ (optionnel)." },
+      },
+      required: ["lease_id", "exit_date"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,tenant_id,start_date,status")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+      if (lease.status === "ended") throw new Error("Ce bail est déjà terminé.");
+      const exitDate = String(args.exit_date);
+      if (exitDate < lease.start_date) throw new Error("La date de sortie doit être postérieure au début du bail.");
+
+      const now = new Date().toISOString();
+      const { error: leaseErr } = await admin
+        .from("leases")
+        .update({ status: "ended", end_date: exitDate, auto_reminder_enabled: false, auto_quittance_enabled: false, updated_at: now })
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId);
+      if (leaseErr) throw new Error(leaseErr.message);
+
+      const { error: tenantErr } = await admin
+        .from("tenants")
+        .update({ archived_at: now, archived_reason: args.reason ? String(args.reason) : "Départ du locataire" })
+        .eq("id", lease.tenant_id)
+        .eq("user_id", ctx.userId);
+      if (tenantErr) throw new Error(tenantErr.message);
+
+      return {
+        ok: true,
+        next_steps: [{ section: "etat_des_lieux", link: { leaseId: args.lease_id }, label: "Faire l'état des lieux de sortie" }],
+      };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Date de sortie", value: String(args.exit_date || "—") });
+      rows.push({ label: "Conséquence", value: "Bail clôturé, locataire archivé, quittances/relances automatiques arrêtées" });
+      return rows;
+    },
+  },
+  {
+    name: "cancel_payment",
+    description: "Annule un paiement confirmé par erreur pour un bail et une période donnés : remet le loyer en attente et supprime la quittance/écriture Finance associée. À utiliser quand l'utilisateur dit s'être trompé en confirmant un paiement.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        period_start: { type: "string", description: "YYYY-MM-DD" },
+        period_end: { type: "string", description: "YYYY-MM-DD" },
+      },
+      required: ["lease_id", "period_start", "period_end"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const data = await callInternalApi(ctx, "/api/receipts/cancel-payment", {
+        userId: ctx.userId,
+        leaseId: args.lease_id,
+        periodStart: args.period_start,
+        periodEnd: args.period_end,
+      });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Période", value: `${args.period_start || "—"} → ${args.period_end || "—"}` });
+      return rows;
+    },
+  },
+  {
+    name: "resend_receipt",
+    description: "Renvoie par email une quittance déjà générée pour un bail et un mois donnés. Nécessite qu'un paiement ait déjà été confirmé pour ce mois (confirm_payment) — sinon il n'y a pas de quittance à renvoyer.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        period_month: { type: "string", description: "Mois de la quittance, YYYY-MM." },
+      },
+      required: ["lease_id", "period_month"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const yyyymm = String(args.period_month);
+      const [y, m] = yyyymm.split("-").map(Number);
+      // Borne haute exclusive (1er jour du mois suivant) plutôt qu'un "-31"
+      // fixe : invalide pour les mois à 28/29/30 jours (ex. "2026-06-31"
+      // fait échouer la comparaison de date côté Postgres).
+      const nextMonthStart = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+      const { data: receipt } = await admin
+        .from("rent_receipts")
+        .select("id,pdf_url")
+        .eq("lease_id", args.lease_id)
+        .gte("period_start", `${yyyymm}-01`)
+        .lt("period_start", nextMonthStart)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!receipt) throw new Error("Aucune quittance trouvée pour cette période — confirme d'abord le paiement (confirm_payment).");
+      const data = await callInternalApi(ctx, "/api/receipts/send", { userId: ctx.userId, receiptId: receipt.id, resendOnly: true });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Mois", value: String(args.period_month || "—") });
+      return rows;
+    },
+  },
+  {
+    name: "manage_deposit",
+    description: "Encaisse, restitue ou annule une opération sur le dépôt de garantie d'un bail. action='collect' encaisse la caution ; action='return' la restitue (avec retenue éventuelle et motif obligatoire si retenue) ; action='cancel_collect'/'cancel_return' annule l'opération correspondante déjà enregistrée.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        action: { type: "string", enum: ["collect", "return", "cancel_collect", "cancel_return"] },
+        paid_at: { type: "string", description: "Date d'encaissement YYYY-MM-DD (action='collect')." },
+        paid_amount: { type: "number", description: "Montant encaissé, sinon le montant du dépôt prévu au bail (action='collect')." },
+        returned_at: { type: "string", description: "Date de restitution YYYY-MM-DD (action='return')." },
+        returned_amount: { type: "number", description: "Montant restitué au locataire (action='return')." },
+        retained_amount: { type: "number", description: "Montant retenu, si applicable (action='return')." },
+        retained_reason: { type: "string", description: "Motif de la retenue — obligatoire si retained_amount > 0 (action='return')." },
+      },
+      required: ["lease_id", "action"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const action = String(args.action);
+      const data = await callInternalApi(ctx, "/api/deposits", {
+        userId: ctx.userId,
+        leaseId: args.lease_id,
+        action,
+        paid_at: args.paid_at,
+        paid_amount: args.paid_amount,
+        returned_at: args.returned_at,
+        returned_amount: args.returned_amount,
+        retained_amount: args.retained_amount,
+        retained_reason: args.retained_reason,
+      });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      const action = String(args.action);
+      rows.push({ label: "Action", value: { collect: "Encaisser la caution", return: "Restituer la caution", cancel_collect: "Annuler l'encaissement", cancel_return: "Annuler la restitution" }[action] || action });
+      if (action === "collect") {
+        rows.push({ label: "Montant", value: args.paid_amount != null ? euro(args.paid_amount) : "Montant prévu au bail" });
+        rows.push({ label: "Date", value: String(args.paid_at || "—") });
+      }
+      if (action === "return") {
+        if (args.returned_amount != null) rows.push({ label: "Restitué", value: euro(args.returned_amount) });
+        if (args.retained_amount != null) rows.push({ label: "Retenu", value: euro(args.retained_amount) });
+        if (args.retained_reason) rows.push({ label: "Motif retenue", value: String(args.retained_reason) });
+        rows.push({ label: "Date", value: String(args.returned_at || "—") });
+      }
+      return rows;
+    },
+  },
+  {
+    name: "add_finance_transaction",
+    description: "Ajoute une écriture manuelle dans Finance (charge ou recette hors loyer, ex. travaux, assurance, taxe foncière, crédit). Ne jamais utiliser pour un loyer (géré uniquement via confirm_payment/quittances) ni pour le dépôt de garantie (voir manage_deposit).",
+    input_schema: {
+      type: "object",
+      properties: {
+        property_id: { type: "string", description: "Optionnel : bien concerné." },
+        lease_id: { type: "string", description: "Optionnel : bail concerné." },
+        direction: { type: "string", enum: ["in", "out"], description: "'in' = recette, 'out' = dépense." },
+        category: { type: "string", enum: ["fees", "management", "repairs", "copro", "insurance", "tax", "utilities", "charges_recovered", "regularization", "loan", "other"] },
+        label: { type: "string", description: "Libellé court de l'écriture." },
+        amount: { type: "number" },
+        occurred_at: { type: "string", description: "Date de l'écriture, YYYY-MM-DD." },
+        notes: { type: "string" },
+      },
+      required: ["direction", "category", "amount", "occurred_at"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const payload = {
+        user_id: ctx.userId,
+        property_id: args.property_id || null,
+        lease_id: args.lease_id || null,
+        receipt_id: null,
+        direction: String(args.direction),
+        status: args.direction === "in" ? "received" : "paid",
+        category: String(args.category),
+        label: args.label ? String(args.label).trim() : null,
+        amount: Number(args.amount),
+        notes: args.notes ? String(args.notes).trim() : null,
+        occurred_at: String(args.occurred_at),
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await admin.from("transactions").insert(payload).select("id").single();
+      if (error) throw new Error(error.message);
+      return { transaction_id: data.id };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const rows: Array<{ label: string; value: string }> = [];
+      if (args.property_id) rows.push({ label: "Bien", value: await resolvePropertyLabel(admin, ctx.userId, args.property_id) });
+      rows.push({ label: "Catégorie", value: FINANCE_CATEGORY_LABEL[String(args.category)] || String(args.category || "—") });
+      rows.push({ label: "Sens", value: args.direction === "in" ? "Recette" : "Dépense" });
+      rows.push({ label: "Montant", value: euro(args.amount) });
+      rows.push({ label: "Date", value: String(args.occurred_at || "—") });
+      if (args.label) rows.push({ label: "Libellé", value: String(args.label) });
+      return rows;
+    },
+  },
+  {
+    name: "send_rent_revision",
+    description: "Envoie au locataire la notification de révision annuelle du loyer selon l'IRL (Indice de Référence des Loyers). Résout automatiquement le trimestre de référence et le dernier IRL publié si non précisés — ne demande les trimestres à l'utilisateur que s'il veut les changer explicitement.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        ref_quarter: { type: "string", description: "Trimestre IRL de référence (ex. '2023-T2'). Calculé automatiquement si omis." },
+        new_quarter: { type: "string", description: "Nouveau trimestre IRL à appliquer. Dernier publié par défaut si omis." },
+      },
+      required: ["lease_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,start_date,rent_amount,irl_sent_at")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+      if (lease.irl_sent_at) throw new Error("Une révision est déjà en cours pour ce bail — annule-la d'abord (cancel_rent_revision) pour en renvoyer une nouvelle.");
+
+      const refQuarter = String(args.ref_quarter || computeDefaultRefQuarter(lease));
+      const newQuarter = String(args.new_quarter || LATEST_IRL.quarter);
+      if (!irlByQuarter(refQuarter)) throw new Error(`Trimestre IRL de référence inconnu : ${refQuarter}`);
+      if (!irlByQuarter(newQuarter)) throw new Error(`Trimestre IRL inconnu : ${newQuarter}`);
+
+      const data = await callInternalApi(ctx, "/api/landlord/send-revision", { userId: ctx.userId, leaseId: args.lease_id, refQuarter, newQuarter });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin.from("leases").select("start_date,rent_amount").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const refQuarter = String(args.ref_quarter || (lease ? computeDefaultRefQuarter(lease) : ""));
+      const newQuarter = String(args.new_quarter || LATEST_IRL.quarter);
+      const refEntry = irlByQuarter(refQuarter);
+      const newEntry = irlByQuarter(newQuarter);
+      const currentRent = Number(lease?.rent_amount || 0);
+      const newRent = refEntry && newEntry && refEntry.value > 0 ? Math.round(((currentRent * newEntry.value) / refEntry.value) * 100) / 100 : null;
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "IRL référence", value: refEntry?.label || refQuarter || "—" });
+      rows.push({ label: "Nouvel IRL", value: newEntry?.label || newQuarter });
+      rows.push({ label: "Loyer actuel", value: euro(currentRent) });
+      if (newRent != null) rows.push({ label: "Nouveau loyer", value: euro(newRent) });
+      return rows;
+    },
+  },
+  {
+    name: "cancel_rent_revision",
+    description: "Annule une révision de loyer IRL envoyée mais pas encore appliquée.",
+    input_schema: {
+      type: "object",
+      properties: { lease_id: { type: "string" } },
+      required: ["lease_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const data = await callInternalApi(ctx, "/api/landlord/cancel-revision", { userId: ctx.userId, leaseId: args.lease_id });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      return leaseInfo ? [{ label: "Bien", value: leaseInfo.propertyLabel }, { label: "Locataire", value: leaseInfo.tenantName }] : [];
+    },
+  },
+  {
+    name: "generate_mise_en_demeure",
+    description: "Génère une mise en demeure de payer (PDF) pour un locataire en impayé. Calcule lui-même les mois impayés réels du bail sur la période demandée — ne jamais laisser Claude inventer les montants ou les mois.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        months: { type: "number", description: "Nombre de mois à vérifier en remontant depuis aujourd'hui pour détecter les impayés, 6 par défaut (max 24)." },
+        signature_place: { type: "string", description: "Ville depuis laquelle le courrier est signé. Par défaut la ville du bien." },
+      },
+      required: ["lease_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,property_id,lot_id,tenant_id,rent_amount,charges_amount")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      const { data: tenant } = await admin.from("tenants").select("full_name").eq("id", lease.tenant_id).eq("user_id", ctx.userId).maybeSingle();
+      const propertyAddress = await resolvePropertyAddress(admin, ctx.userId, lease.property_id, lease.lot_id);
+      const { data: property } = await admin.from("properties").select("city").eq("id", lease.property_id).eq("user_id", ctx.userId).maybeSingle();
+
+      const monthsCount = Math.min(24, Math.max(1, Number(args.months) || 6));
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const [by, bm] = currentMonth.split("-").map(Number);
+      const months = Array.from({ length: monthsCount }, (_, i) => {
+        const d = new Date(Date.UTC(by, bm - 1 - i, 1));
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      });
+      const periods = months.map((m) => getLeaseRentPeriod(lease, m)).filter((p): p is NonNullable<typeof p> => !!p);
+      const { data: paymentsRows } = await admin
+        .from("rent_payments")
+        .select("period_start,paid_at,total_amount")
+        .eq("lease_id", args.lease_id)
+        .in("period_start", periods.map((p) => p.periodStart));
+      const byStart = new Map((paymentsRows || []).map((r: any) => [r.period_start, r]));
+
+      const unpaidRows = periods
+        .filter((p) => {
+          const row = byStart.get(p.periodStart) as any;
+          return !row?.paid_at || Number(row.total_amount || 0) + 0.01 < p.total;
+        })
+        .map((p) => {
+          const row = byStart.get(p.periodStart) as any;
+          const missing = Math.round((p.total - Number(row?.total_amount || 0)) * 100) / 100;
+          return { period: new Date(`${p.periodStart}T00:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }), amount: missing };
+        });
+
+      if (unpaidRows.length === 0) {
+        throw new Error("Aucun impayé détecté sur cette période pour ce bail — vérifie la situation avant d'envoyer une mise en demeure.");
+      }
+
+      const totalAmount = Math.round(unpaidRows.reduce((s, r) => s + r.amount, 0) * 100) / 100;
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 8);
+      const signaturePlace = args.signature_place || property?.city || "";
+      if (!signaturePlace) throw new Error("Indique la ville depuis laquelle envoyer ce courrier (lieu de signature).");
+
+      const data = await callInternalApi(ctx, "/api/lease-contracts/generate-mise-en-demeure", {
+        userId: ctx.userId,
+        tenantName: tenant?.full_name || "Locataire",
+        propertyAddress,
+        unpaidRows,
+        totalAmount,
+        deadlineDate: deadline.toISOString().slice(0, 10),
+        signaturePlace,
+        signatureDate: todayISO,
+      });
+      return { ...data, unpaid_rows: unpaidRows, total_amount: totalAmount };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Document", value: "Mise en demeure de payer (PDF), montants calculés depuis les paiements réels" });
+      return rows;
+    },
+  },
+  {
+    name: "generate_conge",
+    description: "Génère une lettre de congé bailleur (PDF) : reprise, vente ou motif légitime. Effet légal fort et délais de préavis stricts — ne jamais inventer le motif, le bénéficiaire ou le prix de vente : les demander explicitement à l'utilisateur si absents. Toujours confirmer avec l'utilisateur la date d'effet exacte du congé (échéance ou anniversaire du bail) avant d'appeler cet outil.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        kind: { type: "string", enum: ["reprise", "vente", "motif"] },
+        lease_end_date: { type: "string", description: "Date d'effet du congé (échéance/anniversaire du bail), YYYY-MM-DD — à confirmer explicitement avec l'utilisateur, jamais devinée." },
+        signature_place: { type: "string", description: "Ville depuis laquelle le courrier est signé. Par défaut la ville du bien." },
+        beneficiary_name: { type: "string", description: "Obligatoire si kind='reprise'." },
+        beneficiary_relationship: { type: "string", description: "Lien avec le bailleur (kind='reprise')." },
+        beneficiary_current_address: { type: "string" },
+        sale_price: { type: "number", description: "Obligatoire si kind='vente'." },
+        sale_conditions: { type: "string" },
+        motif_description: { type: "string", description: "Obligatoire si kind='motif' : description précise et réelle donnée par l'utilisateur, jamais inventée." },
+      },
+      required: ["lease_id", "kind", "lease_end_date"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,property_id,lot_id,tenant_id,start_date,lease_kind")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      const kind = String(args.kind);
+      if (!["reprise", "vente", "motif"].includes(kind)) throw new Error("Motif de congé invalide.");
+      if (kind === "reprise" && !args.beneficiary_name) throw new Error("Le nom du bénéficiaire de la reprise est requis.");
+      if (kind === "vente" && !args.sale_price) throw new Error("Le prix de vente est requis pour un congé pour vente.");
+      if (kind === "motif" && !args.motif_description) throw new Error("La description précise du motif légitime est requise.");
+
+      const { data: tenant } = await admin.from("tenants").select("full_name").eq("id", lease.tenant_id).eq("user_id", ctx.userId).maybeSingle();
+      const propertyAddress = await resolvePropertyAddress(admin, ctx.userId, lease.property_id, lease.lot_id);
+      const { data: property } = await admin.from("properties").select("city").eq("id", lease.property_id).eq("user_id", ctx.userId).maybeSingle();
+      const signaturePlace = args.signature_place || property?.city || "";
+      if (!signaturePlace) throw new Error("Indique la ville depuis laquelle envoyer ce courrier (lieu de signature).");
+
+      const data = await callInternalApi(ctx, "/api/lease-contracts/generate-conge", {
+        userId: ctx.userId,
+        leaseId: args.lease_id,
+        kind,
+        tenantName: tenant?.full_name || "Locataire",
+        propertyAddress,
+        leaseStartDate: lease.start_date,
+        leaseEndDate: args.lease_end_date,
+        bailType: lease.lease_kind,
+        signaturePlace,
+        signatureDate: new Date().toISOString().slice(0, 10),
+        beneficiaryName: args.beneficiary_name,
+        beneficiaryRelationship: args.beneficiary_relationship,
+        beneficiaryCurrentAddress: args.beneficiary_current_address,
+        salePrice: args.sale_price != null ? Number(args.sale_price) : undefined,
+        saleConditions: args.sale_conditions,
+        motifDescription: args.motif_description,
+      });
+      return data;
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Motif", value: { reprise: "Reprise du logement", vente: "Vente du logement", motif: "Motif légitime et sérieux" }[String(args.kind)] || String(args.kind) });
+      rows.push({ label: "Date d'effet", value: String(args.lease_end_date || "—") });
+      if (args.kind === "reprise" && args.beneficiary_name) rows.push({ label: "Bénéficiaire", value: String(args.beneficiary_name) });
+      if (args.kind === "vente" && args.sale_price != null) rows.push({ label: "Prix de vente", value: euro(args.sale_price) });
+      if (args.kind === "motif" && args.motif_description) rows.push({ label: "Motif détaillé", value: String(args.motif_description) });
+      return rows;
     },
   },
   {

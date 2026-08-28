@@ -29,7 +29,16 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   create_tenant: "Créer cette fiche locataire",
   create_lease: "Créer ce bail",
   confirm_payment: "Confirmer ce paiement",
+  cancel_payment: "Annuler ce paiement",
+  resend_receipt: "Renvoyer cette quittance",
   send_payment_reminder: "Envoyer cette relance",
+  terminate_lease: "Résilier ce bail",
+  manage_deposit: "Confirmer cette opération sur le dépôt",
+  add_finance_transaction: "Ajouter cette écriture",
+  send_rent_revision: "Envoyer cette révision de loyer",
+  cancel_rent_revision: "Annuler cette révision",
+  generate_mise_en_demeure: "Générer cette mise en demeure",
+  generate_conge: "Générer cette lettre de congé",
   create_listing: "Publier cette annonce",
 };
 
