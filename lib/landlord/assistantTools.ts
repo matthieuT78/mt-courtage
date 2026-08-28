@@ -142,6 +142,10 @@ const FINANCE_CATEGORY_LABEL: Record<string, string> = {
   regularization: "Régularisation de charges",
   loan: "Crédit (mensualité)",
   other: "Autre",
+  rent: "Loyer (quittance)",
+  deposit_collected: "Caution reçue",
+  deposit_returned: "Caution restituée",
+  deposit_retained: "Retenue sur caution",
 };
 
 export const assistantTools: AssistantTool[] = [
@@ -915,6 +919,51 @@ export const assistantTools: AssistantTool[] = [
       if (args.label) rows.push({ label: "Libellé", value: String(args.label) });
       return rows;
     },
+  },
+  {
+    name: "list_finance_transactions",
+    description: "Liste les écritures Finance existantes (charges, recettes, loyers, dépôts), avec filtre optionnel par bien/bail et par écritures récurrentes uniquement. À utiliser pour répondre à toute question sur les écritures/charges déjà enregistrées (ex. 'quelles sont mes écritures récurrentes pour tel bien ?') — jamais open_declaration_helper pour ce type de question, qui sert uniquement à préparer une déclaration fiscale.",
+    input_schema: {
+      type: "object",
+      properties: {
+        property_id: { type: "string", description: "Optionnel : filtrer sur un bien." },
+        lease_id: { type: "string", description: "Optionnel : filtrer sur un bail." },
+        recurring_only: { type: "boolean", description: "Si vrai, ne renvoie que les écritures récurrentes (modèles), pas leurs occurrences passées générées." },
+        limit: { type: "number", description: "Nombre maximum d'écritures renvoyées, 30 par défaut (max 100)." },
+      },
+      required: [],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      let query = admin
+        .from("transactions")
+        .select("id,property_id,lease_id,direction,status,category,label,amount,occurred_at,is_recurring,recurrence_frequency,recurrence_since,recurrence_end_date,notes")
+        .eq("user_id", ctx.userId)
+        .order("occurred_at", { ascending: false })
+        .limit(Math.min(100, Math.max(1, Number(args.limit) || 30)));
+      if (args.property_id) query = query.eq("property_id", String(args.property_id));
+      if (args.lease_id) query = query.eq("lease_id", String(args.lease_id));
+      if (args.recurring_only) query = query.eq("is_recurring", true);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      return {
+        transactions: (data || []).map((t: any) => ({
+          ...t,
+          category_label: FINANCE_CATEGORY_LABEL[t.category] || t.category,
+        })),
+      };
+    },
+  },
+  {
+    name: "open_finance",
+    description: "Ouvre l'écran Finance (grand livre des écritures, trésorerie). À utiliser quand l'utilisateur veut consulter/gérer lui-même ses écritures plutôt que d'obtenir la réponse directement via list_finance_transactions.",
+    input_schema: { type: "object", properties: {}, required: [] },
+    mutates: false,
+    navigate: true,
+    execute: async () => ({
+      navigation: { section: "finance", link: { financeTab: "finance" }, label: "Ouvrir Finance" },
+    }),
   },
   {
     name: "send_rent_revision",
