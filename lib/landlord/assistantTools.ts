@@ -966,6 +966,137 @@ export const assistantTools: AssistantTool[] = [
     }),
   },
   {
+    name: "delete_finance_transaction",
+    description: "Supprime une écriture Finance simple (non récurrente). Refuse si l'écriture est liée à une quittance automatique (utiliser cancel_payment) ou à une opération de dépôt de garantie (utiliser manage_deposit) ou si elle fait partie d'une série récurrente (utiliser stop_recurring_transaction).",
+    input_schema: {
+      type: "object",
+      properties: { transaction_id: { type: "string" } },
+      required: ["transaction_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin
+        .from("transactions")
+        .select("id,receipt_id,category,is_recurring,recurrence_parent_id")
+        .eq("id", args.transaction_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!tx) throw new Error("Écriture introuvable ou non autorisée.");
+      if (tx.receipt_id) throw new Error("Cette écriture est liée à une quittance automatique — annule le paiement concerné via cancel_payment plutôt que de la supprimer directement.");
+      if (["deposit_collected", "deposit_returned", "deposit_retained"].includes(String(tx.category))) {
+        throw new Error("Cette écriture concerne un dépôt de garantie — utilise manage_deposit pour l'annuler proprement.");
+      }
+      if (tx.is_recurring || tx.recurrence_parent_id) throw new Error("Cette écriture fait partie d'une série récurrente — utilise stop_recurring_transaction pour l'arrêter proprement.");
+      const { error } = await admin.from("transactions").delete().eq("id", args.transaction_id).eq("user_id", ctx.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("label,category,amount,occurred_at,property_id").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!tx) return [];
+      const rows: Array<{ label: string; value: string }> = [];
+      if (tx.property_id) rows.push({ label: "Bien", value: await resolvePropertyLabel(admin, ctx.userId, tx.property_id) });
+      rows.push({ label: "Écriture", value: tx.label || FINANCE_CATEGORY_LABEL[tx.category] || tx.category });
+      rows.push({ label: "Montant", value: euro(tx.amount) });
+      rows.push({ label: "Date", value: String(tx.occurred_at || "—") });
+      return rows;
+    },
+  },
+  {
+    name: "stop_recurring_transaction",
+    description: "Arrête une écriture Finance récurrente à partir d'aujourd'hui : ferme la série et supprime les occurrences futures pas encore échues. Les occurrences passées restent inchangées.",
+    input_schema: {
+      type: "object",
+      properties: { transaction_id: { type: "string", description: "Id de l'écriture récurrente (le modèle, pas une occurrence générée)." } },
+      required: ["transaction_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("id,is_recurring").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!tx) throw new Error("Écriture introuvable ou non autorisée.");
+      if (!tx.is_recurring) throw new Error("Cette écriture n'est pas une récurrente — utilise delete_finance_transaction pour la supprimer directement.");
+      const today = new Date().toISOString().slice(0, 10);
+      const { error: upErr } = await admin
+        .from("transactions")
+        .update({ recurrence_end_date: today, updated_at: new Date().toISOString() })
+        .eq("id", args.transaction_id)
+        .eq("user_id", ctx.userId);
+      if (upErr) throw new Error(upErr.message);
+      const { error: delErr } = await admin
+        .from("transactions")
+        .delete()
+        .eq("recurrence_parent_id", args.transaction_id)
+        .eq("user_id", ctx.userId)
+        .gt("occurred_at", today);
+      if (delErr) throw new Error(delErr.message);
+      return { ok: true };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("label,category,amount,property_id").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!tx) return [];
+      const rows: Array<{ label: string; value: string }> = [];
+      if (tx.property_id) rows.push({ label: "Bien", value: await resolvePropertyLabel(admin, ctx.userId, tx.property_id) });
+      rows.push({ label: "Écriture", value: tx.label || FINANCE_CATEGORY_LABEL[tx.category] || tx.category });
+      rows.push({ label: "Montant", value: euro(tx.amount) });
+      rows.push({ label: "Conséquence", value: "Arrêtée à partir d'aujourd'hui, occurrences futures supprimées" });
+      return rows;
+    },
+  },
+  {
+    name: "update_recurring_transaction",
+    description: "Modifie le montant et/ou le libellé d'une écriture Finance récurrente. scope='future' (par défaut) ne change que les prochaines occurrences, scope='all' modifie aussi les occurrences déjà enregistrées.",
+    input_schema: {
+      type: "object",
+      properties: {
+        transaction_id: { type: "string" },
+        amount: { type: "number" },
+        label: { type: "string" },
+        scope: { type: "string", enum: ["future", "all"], description: "'future' par défaut." },
+      },
+      required: ["transaction_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("id,is_recurring").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!tx) throw new Error("Écriture introuvable ou non autorisée.");
+      if (!tx.is_recurring) throw new Error("Cette écriture n'est pas une récurrente.");
+      if (args.amount == null && !args.label) throw new Error("Indique au moins un montant ou un libellé à modifier.");
+
+      const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (args.amount != null) patch.amount = Number(args.amount);
+      if (args.label) patch.label = String(args.label).trim();
+
+      const { error: pErr } = await admin.from("transactions").update(patch).eq("id", args.transaction_id).eq("user_id", ctx.userId);
+      if (pErr) throw new Error(pErr.message);
+
+      const scope = args.scope === "all" ? "all" : "future";
+      let childQuery = admin.from("transactions").update(patch).eq("recurrence_parent_id", args.transaction_id).eq("user_id", ctx.userId);
+      if (scope === "future") {
+        const today = new Date().toISOString().slice(0, 10);
+        childQuery = childQuery.gt("occurred_at", today);
+      }
+      const { error: cErr } = await childQuery;
+      if (cErr) throw new Error(cErr.message);
+      return { ok: true };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("label,category,amount,property_id").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      const rows: Array<{ label: string; value: string }> = [];
+      if (tx?.property_id) rows.push({ label: "Bien", value: await resolvePropertyLabel(admin, ctx.userId, tx.property_id) });
+      rows.push({ label: "Écriture", value: tx?.label || FINANCE_CATEGORY_LABEL[String(tx?.category)] || String(tx?.category || "—") });
+      if (args.amount != null) rows.push({ label: "Nouveau montant", value: euro(args.amount) });
+      if (args.label) rows.push({ label: "Nouveau libellé", value: String(args.label) });
+      rows.push({ label: "Portée", value: args.scope === "all" ? "Toutes les occurrences" : "Occurrences futures uniquement" });
+      return rows;
+    },
+  },
+  {
     name: "send_rent_revision",
     description: "Envoie au locataire la notification de révision annuelle du loyer selon l'IRL (Indice de Référence des Loyers). Résout automatiquement le trimestre de référence et le dernier IRL publié si non précisés — ne demande les trimestres à l'utilisateur que s'il veut les changer explicitement.",
     input_schema: {
