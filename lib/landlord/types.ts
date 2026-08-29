@@ -68,6 +68,15 @@ export type PropertyFinance = {
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
   loan_end_month?: number | null;
+  // Calculateur d'amortissement (voir lib/landlord/loanAmortization.ts) : si loan_amount
+  // est renseigné, mensualité/fin de crédit/intérêts sont calculés automatiquement et
+  // écrits dans les champs ci-dessus (loan_monthly, loan_end_year/month) pour que le reste
+  // de l'app n'ait rien à changer. Sinon, comportement inchangé (saisie manuelle).
+  loan_amount?: number | null;
+  loan_start_date?: string | null;
+  loan_duration_months?: number | null;
+  loan_deferral_type?: "partial" | "total" | null;
+  loan_deferral_months?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly?: number | null;
   fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;

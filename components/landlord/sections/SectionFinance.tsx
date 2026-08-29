@@ -34,6 +34,7 @@ import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
+import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
@@ -114,6 +115,11 @@ type PropertyFinance = {
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
   loan_end_month?: number | null;
+  loan_amount?: number | null;
+  loan_start_date?: string | null;
+  loan_duration_months?: number | null;
+  loan_deferral_type?: "partial" | "total" | null;
+  loan_deferral_months?: number | null;
   tax_regime?: string | null;
 
   fixed_charges_monthly: number | null;
@@ -659,7 +665,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   );
   const activePropertyOptions = useMemo(() => propertyOptions.filter(isActivePropertyLike), [propertyOptions]);
   const financeConfiguredCount = useMemo(
-    () => activePropertyOptions.filter((p) => { const f = pf.get(p.id); return !!f?.purchase_price && !!f?.loan_rate_percent; }).length,
+    () => activePropertyOptions.filter((p) => { const f = pf.get(p.id); return !!f?.purchase_price && (!!f?.loan_rate_percent || !!f?.loan_amount); }).length,
     [activePropertyOptions, pf]
   );
   const financeAllConfigured = activePropertyOptions.length > 0 && financeConfiguredCount === activePropertyOptions.length;
@@ -668,7 +674,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const focusFinanceConfig = () => {
     const incompleteIds = activePropertyOptions
-      .filter((p) => { const f = pf.get(p.id); return !f?.purchase_price || !f?.loan_rate_percent; })
+      .filter((p) => { const f = pf.get(p.id); return !f?.purchase_price || (!f?.loan_rate_percent && !f?.loan_amount); })
       .map((p) => p.id);
     if (incompleteIds.length) {
       setOpenFinanceProps((prev) => {
@@ -2150,7 +2156,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 const monthlyTotal = loanMonthly + taxesMonthly + operatingMonthly;
                 const missing = [
                   !existing?.purchase_price ? "prix d'achat" : "",
-                  !existing?.loan_rate_percent ? "taux crédit" : "",
+                  !existing?.loan_rate_percent && !existing?.loan_amount ? "taux crédit" : "",
                 ].filter(Boolean);
                 const optionalMissing = [
                   !hasLoanRecurringTx && !existing?.loan_monthly ? "crédit" : "",
@@ -3497,6 +3503,11 @@ function PropertyFinanceForm({
     loan_remaining_months: ex?.loan_remaining_months ?? null,
     loan_end_year: ex?.loan_end_year ?? estimatedLoanEndYear(ex?.loan_remaining_months),
     loan_end_month: ex?.loan_end_month ?? null,
+    loan_amount: ex?.loan_amount ?? null,
+    loan_start_date: ex?.loan_start_date ?? null,
+    loan_duration_months: ex?.loan_duration_months ?? null,
+    loan_deferral_type: ex?.loan_deferral_type ?? null,
+    loan_deferral_months: ex?.loan_deferral_months ?? null,
     tax_regime: ex?.tax_regime ?? null,
     fixed_charges_monthly: ex?.fixed_charges_monthly ?? null,
     fixed_charges_frequency: ex?.fixed_charges_frequency || "monthly",
@@ -3520,24 +3531,66 @@ function PropertyFinanceForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing]);
 
+  // Calculateur d'amortissement : dès que le montant emprunté est renseigné, la mensualité,
+  // la date de fin et les intérêts ne sont plus saisis à la main mais calculés ici — voir
+  // lib/landlord/loanAmortization.ts. Un bien sans loan_amount garde l'ancien comportement
+  // (saisie manuelle) inchangé plus bas dans ce composant.
+  const loanSchedule = useMemo(() => {
+    if (!s.loan_amount || s.loan_amount <= 0) return null;
+    return computeLoanAmortization({
+      amount: s.loan_amount,
+      ratePercent: s.loan_rate_percent || 0,
+      startDate: s.loan_start_date || "",
+      durationMonths: s.loan_duration_months || 0,
+      deferralType: s.loan_deferral_type,
+      deferralMonths: s.loan_deferral_months,
+    });
+  }, [s.loan_amount, s.loan_rate_percent, s.loan_start_date, s.loan_duration_months, s.loan_deferral_type, s.loan_deferral_months]);
+
+  const isAutoLoanMode = !!s.loan_amount && s.loan_amount > 0;
+  const currentYearInterest = loanSchedule ? loanSchedule.interestForYear(new Date().getFullYear()) : null;
+
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (hasFieldErrors) return;
     setSaving(true);
     setSaved(false);
     try {
+      // Mode calculateur actif : on écrit les valeurs calculées dans les colonnes
+      // historiques (loan_monthly, loan_end_year/month) pour que Performance et
+      // Dashboard n'aient rien à changer — ils continuent de lire ces mêmes champs,
+      // simplement justes au lieu d'être saisis à la main. loan_interest_monthly
+      // n'est plus écrit dans ce mode : Déclaration calcule l'année en cours
+      // directement depuis le tableau d'amortissement.
+      const computedPatch = loanSchedule
+        ? {
+            loan_monthly: loanSchedule.monthlyPayment,
+            loan_end_year: loanSchedule.endYear,
+            loan_end_month: loanSchedule.endMonth,
+            loan_interest_monthly: null,
+          }
+        : {
+            loan_monthly: s.loan_monthly,
+            loan_end_year: s.loan_end_year,
+            loan_end_month: s.loan_end_month,
+            loan_interest_monthly: s.loan_interest_monthly,
+          };
+
       await onSave(propertyId, {
         purchase_price: s.purchase_price,
         notary_fees: s.notary_fees,
         agency_fees: s.agency_fees,
         works: s.works,
         down_payment: s.down_payment,
-        loan_monthly: s.loan_monthly,
         loan_insurance_monthly: s.loan_insurance_monthly,
         loan_rate_percent: s.loan_rate_percent,
-        loan_end_year: s.loan_end_year,
-        loan_end_month: s.loan_end_month,
         loan_remaining_months: null,
+        loan_amount: s.loan_amount,
+        loan_start_date: s.loan_start_date || null,
+        loan_duration_months: s.loan_duration_months,
+        loan_deferral_type: s.loan_deferral_months ? s.loan_deferral_type : null,
+        loan_deferral_months: s.loan_deferral_months,
+        ...computedPatch,
         tax_regime: s.tax_regime,
         fixed_charges_monthly: s.fixed_charges_monthly,
         fixed_charges_frequency: s.fixed_charges_frequency || "monthly",
@@ -3545,7 +3598,6 @@ function PropertyFinanceForm({
         pno_insurance_monthly: s.pno_insurance_monthly,
         copro_charges_monthly: s.copro_charges_monthly,
         cfe_yearly: s.cfe_yearly,
-        loan_interest_monthly: s.loan_interest_monthly,
         bank_fees_monthly: s.bank_fees_monthly,
         maintenance_monthly: s.maintenance_monthly,
         rental_tax_monthly: s.rental_tax_monthly,
@@ -3585,6 +3637,17 @@ function PropertyFinanceForm({
   if (s.loan_monthly != null && s.loan_monthly < 0) fieldErrors.loan_monthly = "Ne peut pas être négatif.";
   if (s.loan_interest_monthly != null && s.loan_interest_monthly < 0) {
     fieldErrors.loan_interest_monthly = "Ne peut pas être négatif.";
+  }
+  if (s.loan_amount != null && s.loan_amount < 0) fieldErrors.loan_amount = "Ne peut pas être négatif.";
+  if (s.loan_duration_months != null && (s.loan_duration_months <= 0 || s.loan_duration_months > 600)) {
+    fieldErrors.loan_duration_months = "Durée entre 1 et 600 mois.";
+  }
+  if (
+    s.loan_deferral_months != null &&
+    s.loan_duration_months != null &&
+    s.loan_deferral_months >= s.loan_duration_months
+  ) {
+    fieldErrors.loan_deferral_months = "Doit être inférieur à la durée totale.";
   }
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
@@ -3629,41 +3692,122 @@ function PropertyFinanceForm({
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} error={fieldErrors.down_payment} />
             <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
-            <div>
-              <label className="text-xs text-slate-600">Fin du crédit</label>
-              <MonthYearPicker
-                year={s.loan_end_year ?? null}
-                month={s.loan_end_month ?? null}
-                onChange={(y, m) => setS((p) => ({ ...p, loan_end_year: y, loan_end_month: m }))}
-              />
-              {fieldErrors.loan_end_year && <p className="mt-1 text-xs text-red-600">{fieldErrors.loan_end_year}</p>}
-            </div>
-          </div>
-          {/* Mensualité + date de prise en compte regroupées : la date ne concerne
-              que cette mensualité dans ce panneau — la taxe foncière, l'assurance,
-              la copro etc. se saisissent via Nouvelle écriture (grand livre), qui a
-              sa propre gestion de la récurrence. */}
-          <div className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 sm:max-w-xl">
             <Field
-              label="Mensualité crédit + assurance (€)"
-              value={s.loan_monthly ?? null}
-              placeholder="Ex. 762.96"
-              onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
-              error={fieldErrors.loan_monthly}
+              label="Montant emprunté (€)"
+              value={s.loan_amount ?? null}
+              placeholder="Ex. 200000"
+              onChange={(v) => setS((p) => ({ ...p, loan_amount: v }))}
+              error={fieldErrors.loan_amount}
+              hint="Renseignez-le pour calculer automatiquement mensualité, fin de crédit et intérêts."
             />
-            <div className="space-y-1">
-              <label className="text-xs text-slate-600">Mensualité prise en compte depuis le</label>
-              <input
-                type="date"
-                value={s.recurring_since ?? ""}
-                onChange={(e) => setS((p) => ({ ...p, recurring_since: e.target.value || null }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              />
-            </div>
-            <p className="text-[0.68rem] leading-4 text-slate-500 sm:col-span-2">
-              Laissez vide si ce crédit court depuis le début de la période affichée. Renseignez cette date si vous avez commencé à le rembourser en cours d'année, pour ne pas fausser l'historique.
+          </div>
+
+          {/* Cette date gate TOUTES les charges récurrentes de property_finance dans le
+              cashflow (loan_monthly mais aussi taxes, charges fixes, copro...) — pas
+              seulement le crédit. Reste visible dans les deux modes : même avec le
+              calculateur automatique, un bien peut n'être suivi dans lokt.fr que depuis
+              une date postérieure au début réel du crédit. */}
+          <div className="mt-3 max-w-xs space-y-1">
+            <label className="text-xs text-slate-600">Charges de ce bien prises en compte depuis le</label>
+            <input
+              type="date"
+              value={s.recurring_since ?? ""}
+              onChange={(e) => setS((p) => ({ ...p, recurring_since: e.target.value || null }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            />
+            <p className="text-[0.68rem] leading-4 text-slate-500">
+              Laissez vide si le suivi démarre au début de la période affichée. Renseignez cette date si le crédit et les charges de ce bien n'existent dans lokt.fr que depuis plus tard, pour ne pas fausser l'historique.
             </p>
           </div>
+
+          {!isAutoLoanMode ? (
+            <>
+              {/* Ancien mode (saisie manuelle) : inchangé, pour ne rien casser sur les biens
+                  déjà configurés sans montant emprunté. Dès que "Montant emprunté" ci-dessus
+                  est renseigné, ce bloc disparaît au profit du calculateur automatique. */}
+              <div className="mt-3">
+                <label className="text-xs text-slate-600">Fin du crédit</label>
+                <MonthYearPicker
+                  year={s.loan_end_year ?? null}
+                  month={s.loan_end_month ?? null}
+                  onChange={(y, m) => setS((p) => ({ ...p, loan_end_year: y, loan_end_month: m }))}
+                />
+                {fieldErrors.loan_end_year && <p className="mt-1 text-xs text-red-600">{fieldErrors.loan_end_year}</p>}
+              </div>
+              <div className="mt-3 max-w-xs">
+                <Field
+                  label="Mensualité crédit + assurance (€)"
+                  value={s.loan_monthly ?? null}
+                  placeholder="Ex. 762.96"
+                  onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
+                  error={fieldErrors.loan_monthly}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <Field
+                  label="Durée du crédit (mois)"
+                  value={s.loan_duration_months ?? null}
+                  integer
+                  placeholder="Ex. 240 pour 20 ans"
+                  onChange={(v) => setS((p) => ({ ...p, loan_duration_months: v }))}
+                  error={fieldErrors.loan_duration_months}
+                />
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600">Date de départ du crédit</label>
+                  <input
+                    type="date"
+                    value={s.loan_start_date ?? ""}
+                    onChange={(e) => setS((p) => ({ ...p, loan_start_date: e.target.value || null }))}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-600">Différé</label>
+                  <select
+                    value={s.loan_deferral_type || ""}
+                    onChange={(e) => {
+                      const v = e.target.value as "partial" | "total" | "";
+                      setS((p) => ({ ...p, loan_deferral_type: v || null, loan_deferral_months: v ? p.loan_deferral_months : null }));
+                    }}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  >
+                    <option value="">Aucun</option>
+                    <option value="partial">Partiel (intérêts seuls)</option>
+                    <option value="total">Total (aucun versement)</option>
+                  </select>
+                </div>
+              </div>
+              {s.loan_deferral_type && (
+                <div className="mt-3 max-w-xs">
+                  <Field
+                    label="Durée du différé (mois)"
+                    value={s.loan_deferral_months ?? null}
+                    integer
+                    onChange={(v) => setS((p) => ({ ...p, loan_deferral_months: v }))}
+                    error={fieldErrors.loan_deferral_months}
+                  />
+                </div>
+              )}
+
+              <div className="mt-3 grid gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 sm:grid-cols-3">
+                <LineMetric label="Mensualité calculée" value={loanSchedule ? formatEuro(loanSchedule.monthlyPayment) : "—"} strong />
+                <LineMetric
+                  label="Fin de crédit calculée"
+                  value={loanSchedule ? new Date(loanSchedule.endYear, loanSchedule.endMonth - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : "—"}
+                />
+                <LineMetric label="Intérêts année en cours" value={currentYearInterest != null ? formatEuro(currentYearInterest) : "—"} />
+                {!loanSchedule && (
+                  <p className="text-[0.68rem] leading-4 text-slate-500 sm:col-span-3">
+                    Renseignez le taux, la durée et la date de départ pour calculer la mensualité et la date de fin.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
             Utilisé pour le calcul de rentabilité et de trésorerie.
           </p>
@@ -3688,13 +3832,19 @@ function PropertyFinanceForm({
                 <option value="pinel">Pinel</option>
               </select>
             </div>
-            {isLmnpReal && (
+            {isLmnpReal && !isAutoLoanMode && (
               <Field
                 label="Intérêts d’emprunt mensuels"
                 value={s.loan_interest_monthly ?? null}
                 onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
                 hint="Depuis le tableau d’amortissement — pour la déclaration LMNP réel uniquement."
                 error={fieldErrors.loan_interest_monthly}
+              />
+            )}
+            {isLmnpReal && isAutoLoanMode && (
+              <LineMetric
+                label="Intérêts d’emprunt (année en cours)"
+                value={currentYearInterest != null ? formatEuro(currentYearInterest) : "—"}
               />
             )}
           </div>

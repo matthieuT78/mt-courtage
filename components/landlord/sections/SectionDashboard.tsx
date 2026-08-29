@@ -859,7 +859,7 @@ export function SectionDashboard({
         total += hasLoanTx ? loanTx : finActive ? Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0) : 0;
         total += hasTaxTx ? taxTx : finActive ? Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12 : 0;
         total += fixedTx + (finActive ? Number(fin.fixed_charges_monthly || 0) + Number(fin.pno_insurance_monthly || 0) +
-          Number(fin.copro_charges_monthly || 0) + Number(fin.loan_interest_monthly || 0) +
+          Number(fin.copro_charges_monthly || 0) +
           Number(fin.bank_fees_monthly || 0) + Number(fin.maintenance_monthly || 0) + Number(fin.rental_tax_monthly || 0) : 0);
       }
       return total;
@@ -1160,7 +1160,14 @@ export function SectionDashboard({
         const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
         const missing: string[] = [];
         if (!Number(fin.purchase_price || 0)) missing.push("prix d'achat");
-        if (fin.tax_regime === "lmnp_real" && !Number(fin.loan_interest_monthly || 0))
+        // Un bien migré vers le calculateur d'amortissement (loan_amount renseigné) calcule
+        // ses intérêts dynamiquement (voir lib/landlord/loanAmortization.ts) — loan_interest_monthly
+        // reste volontairement vide dans ce cas, ce n'est pas une donnée manquante.
+        if (
+          fin.tax_regime === "lmnp_real" &&
+          !Number(fin.loan_interest_monthly || 0) &&
+          !Number(fin.loan_amount || 0)
+        )
           missing.push("intérêts d'emprunt");
         return missing.length ? { label, missing } : null;
       })

@@ -10,7 +10,8 @@ import { isLandlordProfileComplete } from "./profileCompletion";
 
 export function hasFinanceSetup(finance?: PropertyFinance | null): boolean {
   if (!finance) return false;
-  return Number(finance.purchase_price || 0) > 0 && Number(finance.loan_rate_percent || 0) > 0;
+  const hasLoan = Number(finance.loan_rate_percent || 0) > 0 || Number(finance.loan_amount || 0) > 0;
+  return Number(finance.purchase_price || 0) > 0 && hasLoan;
 }
 
 export type OnboardingStep = {

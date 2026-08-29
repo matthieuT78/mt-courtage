@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Property } from "../../../lib/landlord/types";
+import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsPerformance } from "../../../lib/permissions";
 import { LockedPremiumSection, StatCard } from "../LockedPremiumSection";
@@ -60,6 +61,12 @@ type PropertyFinance = {
   loan_interest_monthly?: number | null;
   loan_insurance_monthly?: number | null;
   cfe_yearly?: number | null;
+  loan_amount?: number | null;
+  loan_rate_percent?: number | null;
+  loan_start_date?: string | null;
+  loan_duration_months?: number | null;
+  loan_deferral_type?: "partial" | "total" | null;
+  loan_deferral_months?: number | null;
 };
 
 type Props = {
@@ -213,12 +220,29 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // déclaration transmise au comptable.
   const financeEstimates = useMemo(() => {
     const relevant = (propertyFinance || []).filter((f) => relevantPropertyIds.has(f.property_id));
+    // Si loan_amount est renseigné, l'intérêt réel de l'année vient du tableau d'amortissement
+    // (la part d'intérêts diminue chaque mois) — sinon, repli sur l'ancien chiffre fixe saisi à
+    // la main pour les biens non migrés (voir lib/landlord/loanAmortization.ts).
+    const interestAnnual = relevant.reduce((sum, f) => {
+      if (f.loan_amount && f.loan_start_date && f.loan_duration_months) {
+        const schedule = computeLoanAmortization({
+          amount: Number(f.loan_amount),
+          ratePercent: Number(f.loan_rate_percent || 0),
+          startDate: f.loan_start_date,
+          durationMonths: Number(f.loan_duration_months),
+          deferralType: f.loan_deferral_type,
+          deferralMonths: f.loan_deferral_months,
+        });
+        if (schedule) return sum + schedule.interestForYear(year);
+      }
+      return sum + toNumber(f.loan_interest_monthly) * 12;
+    }, 0);
     return {
-      interestAnnual: relevant.reduce((sum, f) => sum + toNumber(f.loan_interest_monthly) * 12, 0),
+      interestAnnual,
       loanInsuranceAnnual: relevant.reduce((sum, f) => sum + toNumber(f.loan_insurance_monthly) * 12, 0),
       cfeAnnual: relevant.reduce((sum, f) => sum + toNumber(f.cfe_yearly), 0),
     };
-  }, [propertyFinance, relevantPropertyIds]);
+  }, [propertyFinance, relevantPropertyIds, year]);
 
   const [locationKind, setLocationKind] = useState<LocationKind>("meuble_longue");
   // Recettes
