@@ -10,6 +10,7 @@ import {
   CheckCircleIcon,
   DocumentArrowUpIcon,
   DocumentMagnifyingGlassIcon,
+  InformationCircleIcon,
   PaperClipIcon,
   PencilSquareIcon,
   PlusIcon,
@@ -3679,10 +3680,34 @@ function PropertyFinanceForm({
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} error={fieldErrors.purchase_price} />
-            <Field label="Frais de notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} error={fieldErrors.notary_fees} />
-            <Field label="Frais d’agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} error={fieldErrors.agency_fees} />
-            <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} error={fieldErrors.works} />
+            <Field
+              label="Prix d’achat"
+              value={s.purchase_price}
+              onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))}
+              error={fieldErrors.purchase_price}
+              info="Le prix net vendeur, hors frais de notaire et d'agence — c'est le point de départ du calcul de rentabilité."
+            />
+            <Field
+              label="Frais de notaire"
+              value={s.notary_fees}
+              onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))}
+              error={fieldErrors.notary_fees}
+              info="Frais d'acquisition (souvent ~7-8 % dans l'ancien, ~2-3 % dans le neuf). S'ajoutent au prix d'achat dans le total investi."
+            />
+            <Field
+              label="Frais d’agence"
+              value={s.agency_fees}
+              onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))}
+              error={fieldErrors.agency_fees}
+              info="Commission de l'agence si l'achat s'est fait par son intermédiaire. Laissez vide si le prix d'achat les inclut déjà."
+            />
+            <Field
+              label="Travaux"
+              value={s.works}
+              onChange={(v) => setS((p) => ({ ...p, works: v }))}
+              error={fieldErrors.works}
+              info="Travaux réalisés à l'achat (rénovation, mise aux normes...). S'ajoutent au total investi et à l'amortissement en LMNP réel."
+            />
           </div>
         </div>
 
@@ -3690,8 +3715,20 @@ function PropertyFinanceForm({
         <div className="py-5">
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Financement</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} error={fieldErrors.down_payment} />
-            <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
+            <Field
+              label="Apport personnel"
+              value={s.down_payment}
+              onChange={(v) => setS((p) => ({ ...p, down_payment: v }))}
+              error={fieldErrors.down_payment}
+              info="Ce que vous financez sur fonds propres, en plus de l'emprunt. Sert au calcul de rentabilité, n'affecte pas le calcul du crédit."
+            />
+            <Field
+              label="Taux du crédit (%)"
+              value={s.loan_rate_percent ?? null}
+              onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))}
+              error={fieldErrors.loan_rate_percent}
+              info="Le taux nominal annuel de votre offre de prêt (hors assurance). C'est lui qui détermine la mensualité et les intérêts calculés."
+            />
             <Field
               label="Montant emprunté (€)"
               value={s.loan_amount ?? null}
@@ -3708,7 +3745,10 @@ function PropertyFinanceForm({
               calculateur automatique, un bien peut n'être suivi dans lokt.fr que depuis
               une date postérieure au début réel du crédit. */}
           <div className="mt-3 max-w-xs space-y-1">
-            <label className="text-xs text-slate-600">Charges de ce bien prises en compte depuis le</label>
+            <label className="flex items-center gap-1 text-xs text-slate-600">
+              Charges de ce bien prises en compte depuis le
+              <InfoTip text="Concerne toutes les charges de ce panneau (crédit, taxes, charges fixes...), pas seulement le crédit. Laissez vide si le bien est suivi depuis le début ; renseignez cette date si le suivi dans lokt.fr démarre après le début réel du crédit, pour ne pas fausser l'historique de cashflow." />
+            </label>
             <input
               type="date"
               value={s.recurring_since ?? ""}
@@ -3726,7 +3766,10 @@ function PropertyFinanceForm({
                   déjà configurés sans montant emprunté. Dès que "Montant emprunté" ci-dessus
                   est renseigné, ce bloc disparaît au profit du calculateur automatique. */}
               <div className="mt-3">
-                <label className="text-xs text-slate-600">Fin du crédit</label>
+                <label className="flex items-center gap-1 text-xs text-slate-600">
+                  Fin du crédit
+                  <InfoTip text="Le mois et l'année de la dernière échéance de votre prêt, indiqués sur votre tableau d'amortissement bancaire." />
+                </label>
                 <MonthYearPicker
                   year={s.loan_end_year ?? null}
                   month={s.loan_end_month ?? null}
@@ -3741,6 +3784,7 @@ function PropertyFinanceForm({
                   placeholder="Ex. 762.96"
                   onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
                   error={fieldErrors.loan_monthly}
+                  info="Le montant total prélevé chaque mois par la banque : capital + intérêts + assurance emprunteur, tel qu'il apparaît sur votre relevé."
                 />
               </div>
             </>
@@ -3754,9 +3798,13 @@ function PropertyFinanceForm({
                   placeholder="Ex. 240 pour 20 ans"
                   onChange={(v) => setS((p) => ({ ...p, loan_duration_months: v }))}
                   error={fieldErrors.loan_duration_months}
+                  info="La durée totale de votre prêt, différé inclus (ex. 240 mois pour 20 ans). Si vous avez un différé, il ne s'ajoute pas à cette durée : il en fait partie."
                 />
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-600">Date de départ du crédit</label>
+                  <label className="flex items-center gap-1 text-xs text-slate-600">
+                    Date de départ du crédit
+                    <InfoTip text="La date de la première échéance (premier prélèvement), indiquée sur votre offre de prêt — pas forcément la date de signature." />
+                  </label>
                   <input
                     type="date"
                     value={s.loan_start_date ?? ""}
@@ -3765,7 +3813,10 @@ function PropertyFinanceForm({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-600">Différé</label>
+                  <label className="flex items-center gap-1 text-xs text-slate-600">
+                    Différé
+                    <InfoTip text="Période en début de prêt sans remboursement de capital. Partiel : vous payez les intérêts chaque mois, le capital emprunté reste inchangé. Total : vous ne payez rien, mais les intérêts non payés s'ajoutent au capital restant dû." />
+                  </label>
                   <select
                     value={s.loan_deferral_type || ""}
                     onChange={(e) => {
@@ -3788,6 +3839,7 @@ function PropertyFinanceForm({
                     integer
                     onChange={(v) => setS((p) => ({ ...p, loan_deferral_months: v }))}
                     error={fieldErrors.loan_deferral_months}
+                    info="Nombre de mois de différé, compris dans la durée totale du crédit ci-dessus (ex. 12 mois de différé sur un crédit de 240 mois : le crédit se termine bien au 240e mois, pas au 252e)."
                   />
                 </div>
               )}
@@ -3818,7 +3870,10 @@ function PropertyFinanceForm({
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Régime fiscal</p>
           <div className={cx("grid gap-3", isLmnpReal ? "sm:grid-cols-2" : "sm:grid-cols-1 max-w-xs")}>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Régime applicable</label>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                Régime applicable
+                <InfoTip text="Le régime fiscal choisi pour ce bien (meublé LMNP ou nu, micro ou réel). Détermine comment les charges et intérêts de ce panneau sont utilisés dans l'onglet Déclaration fiscale." />
+              </label>
               <select
                 value={s.tax_regime || ""}
                 onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
@@ -3966,6 +4021,51 @@ function MonthYearPicker({
   );
 }
 
+// Petit "i" cliquable (et pas seulement au survol, pour rester utilisable au tactile) à côté
+// d'un libellé de champ jugé pas assez explicite tout seul — ouvre une courte explication.
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={ref} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label="Plus d'informations"
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-300"
+      >
+        <InformationCircleIcon className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-1/2 top-full z-20 mt-1.5 w-60 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-2.5 text-[0.7rem] leading-4 text-slate-600 shadow-lg"
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function Field({
   label,
   value,
@@ -3973,6 +4073,7 @@ function Field({
   integer = false,
   placeholder = "—",
   hint,
+  info,
   error,
 }: {
   label: string;
@@ -3981,6 +4082,7 @@ function Field({
   integer?: boolean;
   placeholder?: string;
   hint?: string;
+  info?: string;
   error?: string | null;
 }) {
   const [draft, setDraft] = useState(formatInputNumber(value));
@@ -4006,7 +4108,12 @@ function Field({
 
   return (
     <div className="space-y-1">
-      {label ? <label className="text-xs text-slate-600">{label}</label> : null}
+      {label ? (
+        <label className="flex items-center gap-1 text-xs text-slate-600">
+          {label}
+          {info && <InfoTip text={info} />}
+        </label>
+      ) : null}
       <input
         type="text"
         inputMode={integer ? "numeric" : "decimal"}
