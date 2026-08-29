@@ -152,14 +152,14 @@ const FINANCE_CATEGORY_LABEL: Record<string, string> = {
 export const assistantTools: AssistantTool[] = [
   {
     name: "list_properties",
-    description: "Liste les biens du compte (id, libellé, type, adresse, ville, statut). À utiliser pour retrouver l'id d'un bien mentionné par son nom ou son adresse avant toute autre action.",
+    description: "Liste les biens du compte (id, libellé, type, adresse, ville, statut, services délégués à une agence le cas échéant). delegated_services peut contenir 'bail_edl' : dans ce cas, le contrat de bail ET l'état des lieux sont gérés par une agence externe — lokt.fr ne propose alors que l'import du PDF fourni par l'agence, pas la saisie guidée. À utiliser pour retrouver l'id d'un bien mentionné par son nom ou son adresse avant toute autre action.",
     input_schema: { type: "object", properties: {}, required: [] },
     mutates: false,
     execute: async (ctx) => {
       const admin = requireAdmin();
       const { data, error } = await admin
         .from("properties")
-        .select("id,label,type,address_line1,city,status")
+        .select("id,label,type,address_line1,city,status,delegated_services,delegation_agency_name")
         .eq("user_id", ctx.userId)
         .neq("status", "archived")
         .order("created_at", { ascending: false });
@@ -1565,7 +1565,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "open_etat_des_lieux",
-    description: "Ouvre la section état des lieux pour un bail déjà créé, prêt à réaliser l'état des lieux d'entrée ou de sortie. À proposer après la création d'un bail, ou si l'utilisateur demande à faire un état des lieux.",
+    description: "Ouvre la section état des lieux pour un bail déjà créé, prêt à réaliser l'état des lieux d'entrée ou de sortie. À proposer après la création d'un bail, ou si l'utilisateur demande à faire un état des lieux. Renvoie edl_delegated=true si le bien est délégué à une agence (bail_edl) : dans ce cas, dis clairement à l'utilisateur que la saisie guidée est désactivée pour ce bien et que seul l'import du PDF fourni par l'agence est possible — ne dis jamais qu'il pourra 'créer' l'état des lieux normalement.",
     input_schema: {
       type: "object",
       properties: { lease_id: { type: "string" } },
@@ -1575,9 +1575,18 @@ export const assistantTools: AssistantTool[] = [
     navigate: true,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
-      const { data: lease } = await admin.from("leases").select("id").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
+      const { data: lease } = await admin.from("leases").select("id,property_id").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
       if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+      const { data: property } = await admin
+        .from("properties")
+        .select("delegated_services,delegation_agency_name")
+        .eq("id", lease.property_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      const edlDelegated = !!property?.delegated_services?.includes("bail_edl");
       return {
+        edl_delegated: edlDelegated,
+        delegation_agency_name: edlDelegated ? property?.delegation_agency_name || null : null,
         navigation: {
           section: "etat_des_lieux",
           link: { leaseId: args.lease_id },
