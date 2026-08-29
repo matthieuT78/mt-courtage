@@ -734,6 +734,93 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ─── LOKY — SOUS LES PROJECTEURS ────────────────────────────── */}
+        <section className="relative overflow-hidden bg-[#0b0718] px-4 py-16 sm:py-24">
+          <div aria-hidden className="lokt-hero-spin opacity-60" />
+          <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-white" />
+
+          <div className="relative mx-auto max-w-5xl text-center">
+            <div data-scroll-reveal className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[0.72rem] font-semibold text-indigo-200 ring-1 ring-white/15">
+              <img src="/loky-avatar.png" alt="Loky" className="h-5 w-5 rounded-full object-cover" />
+              Nouveau · Assistant IA lokt.fr
+            </div>
+
+            <div className="relative">
+              <img
+                src="/loky-avatar.png"
+                alt="Loky"
+                className="pointer-events-none absolute -left-6 top-1/2 z-0 hidden h-28 w-28 -translate-y-1/2 -rotate-6 object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)] lg:-left-16 lg:block lg:h-36 lg:w-36"
+              />
+              <h2 data-scroll-reveal data-reveal-delay="100" className="relative z-10 mt-6 text-4xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl">
+                Un message suffit.{" "}
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-300">Loky</span>{" "}
+                s'occupe du reste.
+              </h2>
+            </div>
+
+            <p data-scroll-reveal data-reveal-delay="200" className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+              Décrivez ce que vous voulez faire, en une phrase. Loky retrouve le bon bien, le bon locataire, prépare l'action et vous demande de confirmer — avant d'écrire quoi que ce soit sur votre compte.
+            </p>
+
+            <div data-scroll-reveal data-reveal-delay="300" className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Link href="/tarifs" className="inline-flex h-12 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 px-7 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 hover:opacity-90 transition">
+                Découvrir Loky — dès 6,90 €/mois →
+              </Link>
+              <Link href="#faq" className="inline-flex h-12 items-center justify-center rounded-full bg-white/10 px-6 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15 transition">
+                Comment ça marche
+              </Link>
+            </div>
+          </div>
+
+          {/* Mockup de conversation — centré, grand format */}
+          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 max-w-2xl">
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    Crée un bail pour Julien, loyer 750€
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                    <p>J'ai retrouvé les infos, voici ce que je prépare :</p>
+                    <div className="space-y-1 rounded-xl bg-white/15 p-3 text-xs">
+                      <p>🏠 Bien · Studio Centre</p>
+                      <p>👤 Locataire · Julien Martin</p>
+                      <p>💶 Loyer · 750 € / mois</p>
+                      <p>📅 Début · 1ᵉʳ du mois prochain</p>
+                    </div>
+                    <p className="text-white/80">Je confirme et je crée le bail ?</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pl-[42px]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                    ✓ Bail créé — prochaines étapes proposées
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Capacités — chips */}
+          <div data-scroll-reveal data-reveal-delay="500" className="relative mx-auto mt-10 flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
+            {[
+              "Créer un bail",
+              "Confirmer un paiement",
+              "Chercher un locataire",
+              "Générer une quittance",
+              "Relancer un loyer en retard",
+            ].map((label) => (
+              <span key={label} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-white/80">
+                {label}
+              </span>
+            ))}
+          </div>
+        </section>
+
         {/* ─── DEUX PRODUITS ───────────────────────────────────────── */}
         <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl">
@@ -829,59 +916,6 @@ export default function Home() {
               <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
                 Pas un tableur. Pas un dossier de mails. Un outil qui suit le cycle locatif et vous pousse ce qui mérite une action.
               </p>
-            </div>
-
-            {/* Loky — assistant IA, tuile pleine largeur en tête de section */}
-            <div data-scroll-reveal data-reveal-delay="0" className="mb-5 overflow-hidden rounded-[1.75rem] border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-7 shadow-sm">
-              <div className="grid gap-8 lg:grid-cols-[1fr,1.1fr] lg:items-center">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <img src="/loky-avatar.png" alt="Loky" className="h-11 w-11 shrink-0 rounded-2xl object-cover shadow-sm" />
-                    <div>
-                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-indigo-600">Nouveau · Assistant IA</span>
-                      <h3 className="text-lg font-semibold text-slate-950">Loky fait la gestion à ta place</h3>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Décris ce que tu veux en une phrase — Loky retrouve le bon bien, le bon locataire, résume l'action et te demande de confirmer avant de créer quoi que ce soit. Comme un assistant humain, mais disponible tout de suite.
-                  </p>
-                  <ul className="mt-4 space-y-1.5">
-                    {[
-                      "« Crée un bail pour Julien » → bail préparé, confirmation en un clic",
-                      "« Marie a payé son loyer » → paiement confirmé, quittance générée automatiquement",
-                      "« Je cherche un locataire » → annonce publiée pour recevoir des candidatures",
-                      "Toujours une confirmation avant d'écrire quoi que ce soit sur votre compte",
-                    ].map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="mt-0.5 text-indigo-600">✓</span> {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5">
-                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 px-5 text-xs font-semibold text-white hover:opacity-90 transition">
-                      Inclus dans tous les plans payants, dès 6,90 €/mois →
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Flow visuel */}
-                <div className="space-y-2.5">
-                  {[
-                    { step: "01", label: "Tu écris ce que tu veux", sub: "« Crée un bail pour Julien, loyer 750€ »", color: "bg-slate-100 text-slate-600" },
-                    { step: "02", label: "Loky retrouve tes données", sub: "Bien, locataire, lot — résolus automatiquement", color: "bg-sky-100 text-sky-700" },
-                    { step: "03", label: "Il résume l'action prévue", sub: "Bien · Locataire · Loyer · Date de début", color: "bg-violet-100 text-violet-700" },
-                    { step: "04", label: "Tu confirmes, c'est fait", sub: "Bail créé + prochaines étapes proposées", color: "bg-indigo-100 text-indigo-700" },
-                  ].map(({ step, label, sub, color }) => (
-                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{label}</p>
-                        <p className="text-xs text-slate-500">{sub}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
