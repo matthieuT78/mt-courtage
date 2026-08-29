@@ -1,6 +1,6 @@
 // components/landlord/AssistantChat.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowTopRightOnSquareIcon, XMarkIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, XMarkIcon, PaperAirplaneIcon, HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 
 type ContentBlock =
@@ -105,6 +105,7 @@ export default function AssistantChat({
   const [quotaScope, setQuotaScope] = useState<"monthly_budget" | "trial" | null>(null);
   const [quotaLimit, setQuotaLimit] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [feedbackByIndex, setFeedbackByIndex] = useState<Record<number, "up" | "down">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const quotaUsedPercent = useMemo(() => {
@@ -125,6 +126,26 @@ export default function AssistantChat({
     if (!open) return;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [displayMessages, pendingAction, suggestedNavigations, sending, open]);
+
+  // Un seul vote par réponse ; échoue silencieusement si le réseau flanche —
+  // le feedback est un bonus, il ne doit jamais perturber la conversation.
+  const submitFeedback = async (index: number, rating: "up" | "down") => {
+    if (feedbackByIndex[index]) return;
+    setFeedbackByIndex((prev) => ({ ...prev, [index]: rating }));
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      const question = [...displayMessages.slice(0, index)].reverse().find((m) => m.role === "user")?.text || "";
+      const responseText = displayMessages[index]?.text || "";
+      await fetch("/api/landlord/assistant/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rating, question, response: responseText }),
+      });
+    } catch {
+      // silencieux
+    }
+  };
 
   useEffect(() => {
     if (!open || !initialMessage?.text) return;
@@ -240,18 +261,49 @@ export default function AssistantChat({
           </div>
 
           {displayMessages.map((m, i) => (
-            <div key={i} className={"flex items-end gap-2 " + (m.role === "user" ? "justify-end" : "justify-start")}>
-              {m.role === "assistant" && <img src="/loky-avatar.png" alt="Loky" className="h-6 w-6 shrink-0 rounded-full object-cover" />}
-              <div
-                className={
-                  "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm shadow-sm " +
-                  (m.role === "user"
-                    ? "rounded-br-sm bg-slate-900 text-white"
-                    : "rounded-bl-sm border border-slate-200 bg-white text-slate-800")
-                }
-              >
-                {renderWithLinks(m.text)}
+            <div key={i} className={"flex flex-col " + (m.role === "user" ? "items-end" : "items-start")}>
+              <div className={"flex items-end gap-2 " + (m.role === "user" ? "justify-end" : "justify-start")}>
+                {m.role === "assistant" && <img src="/loky-avatar.png" alt="Loky" className="h-6 w-6 shrink-0 rounded-full object-cover" />}
+                <div
+                  className={
+                    "max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm shadow-sm " +
+                    (m.role === "user"
+                      ? "rounded-br-sm bg-slate-900 text-white"
+                      : "rounded-bl-sm border border-slate-200 bg-white text-slate-800")
+                  }
+                >
+                  {renderWithLinks(m.text)}
+                </div>
               </div>
+              {m.role === "assistant" && (
+                <div className="mt-1 flex items-center gap-0.5 pl-8">
+                  <button
+                    type="button"
+                    onClick={() => submitFeedback(i, "up")}
+                    disabled={!!feedbackByIndex[i]}
+                    aria-label="Réponse utile"
+                    className={
+                      "rounded-full p-1 transition disabled:cursor-default " +
+                      (feedbackByIndex[i] === "up" ? "text-emerald-600" : "text-slate-300 hover:text-slate-500")
+                    }
+                  >
+                    <HandThumbUpIcon className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => submitFeedback(i, "down")}
+                    disabled={!!feedbackByIndex[i]}
+                    aria-label="Réponse pas utile"
+                    className={
+                      "rounded-full p-1 transition disabled:cursor-default " +
+                      (feedbackByIndex[i] === "down" ? "text-red-500" : "text-slate-300 hover:text-slate-500")
+                    }
+                  >
+                    <HandThumbDownIcon className="h-3.5 w-3.5" />
+                  </button>
+                  {feedbackByIndex[i] && <span className="text-[0.65rem] text-slate-400">Merci !</span>}
+                </div>
+              )}
             </div>
           ))}
 
