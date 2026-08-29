@@ -1146,16 +1146,20 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                           if (parsed !== (lot.rooms ?? null)) updateLot(lot.id, { rooms: parsed });
                         }}
                       />
-                      <select
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
-                        value={lot.energy_class || ""}
-                        onChange={(e) => updateLot(lot.id, { energy_class: e.target.value || null })}
-                      >
-                        <option value="">DPE —</option>
-                        {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
-                          <option key={o} value={o}>DPE {o}</option>
-                        ))}
-                      </select>
+                      <div className="w-44 shrink-0">
+                        <NiceSelect
+                          placeholder="DPE —"
+                          value={lot.energy_class || ""}
+                          onChange={(value) => updateLot(lot.id, { energy_class: value || null })}
+                          options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                            value: o,
+                            label: `Classe ${o}`,
+                            subtitle: DPE_RANGES[o],
+                            badgeText: o,
+                            badgeClassName: DPE_COLORS[o],
+                          }))}
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => setExpandedLotId(isExpanded ? null : lot.id)}
@@ -1179,16 +1183,18 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                         <div className="grid max-w-md gap-3 sm:grid-cols-2">
                           <label className="block space-y-1">
                             <span className="text-xs text-slate-700">GES</span>
-                            <select
-                              className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                            <NiceSelect
+                              placeholder="Classe (A–G)"
                               value={lot.ghg_class || ""}
-                              onChange={(e) => updateLot(lot.id, { ghg_class: e.target.value || null })}
-                            >
-                              <option value="">GES —</option>
-                              {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
-                                <option key={o} value={o}>GES {o}</option>
-                              ))}
-                            </select>
+                              onChange={(value) => updateLot(lot.id, { ghg_class: value || null })}
+                              options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                                value: o,
+                                label: `Classe ${o}`,
+                                subtitle: GES_RANGES[o],
+                                badgeText: o,
+                                badgeClassName: GES_COLORS[o],
+                              }))}
+                            />
                           </label>
                           <label className="block space-y-1">
                             <span className="text-xs text-slate-700">kWh/m²/an</span>
@@ -1256,26 +1262,30 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                     value={newLotForm[formId]?.rooms ?? ""}
                     onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), rooms: e.target.value } }))}
                   />
-                  <select
-                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                  <NiceSelect
+                    placeholder="DPE —"
                     value={newLotForm[formId]?.energy_class ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), energy_class: e.target.value } }))}
-                  >
-                    <option value="">DPE —</option>
-                    {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
-                      <option key={o} value={o}>DPE {o}</option>
-                    ))}
-                  </select>
-                  <select
-                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                    onChange={(value) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), energy_class: value } }))}
+                    options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                      value: o,
+                      label: `Classe ${o}`,
+                      subtitle: DPE_RANGES[o],
+                      badgeText: o,
+                      badgeClassName: DPE_COLORS[o],
+                    }))}
+                  />
+                  <NiceSelect
+                    placeholder="GES —"
                     value={newLotForm[formId]?.ghg_class ?? ""}
-                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), ghg_class: e.target.value } }))}
-                  >
-                    <option value="">GES —</option>
-                    {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
-                      <option key={o} value={o}>GES {o}</option>
-                    ))}
-                  </select>
+                    onChange={(value) => setNewLotForm((prev) => ({ ...prev, [formId]: { ...(prev[formId] || EMPTY_NEW_LOT), ghg_class: value } }))}
+                    options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                      value: o,
+                      label: `Classe ${o}`,
+                      subtitle: GES_RANGES[o],
+                      badgeText: o,
+                      badgeClassName: GES_COLORS[o],
+                    }))}
+                  />
                 </div>
                 <input
                   className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
