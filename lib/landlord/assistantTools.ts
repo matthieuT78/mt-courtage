@@ -8,6 +8,7 @@ import { supabaseAdmin } from "../supabaseAdmin";
 import { getServerUserPlan } from "../serverPermissions";
 import { landlordMaxActiveProperties } from "../permissions";
 import { getLeaseRentPeriod } from "../rentPeriod";
+import { getLeasePaymentDueDate } from "../rentSchedule";
 import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
 import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../irlData";
 
@@ -261,7 +262,7 @@ export const assistantTools: AssistantTool[] = [
       const admin = requireAdmin();
       const { data: lease } = await admin
         .from("leases")
-        .select("id,start_date,end_date,rent_amount,charges_amount")
+        .select("id,start_date,end_date,rent_amount,charges_amount,payment_day,payment_type")
         .eq("id", args.lease_id)
         .eq("user_id", ctx.userId)
         .maybeSingle();
@@ -286,11 +287,13 @@ export const assistantTools: AssistantTool[] = [
       const byStart = new Map((paymentsRows || []).map((row: any) => [row.period_start, row]));
 
       return {
-        payments: periods.map((p) => {
+        payments: periods.map((p, i) => {
           const row = byStart.get(p.periodStart) as any;
+          const dueDate = getLeasePaymentDueDate(lease, months[i]);
           return {
             period_start: p.periodStart,
             period_end: p.periodEnd,
+            due_date: dueDate ? dueDate.toISOString().slice(0, 10) : null,
             expected_amount: p.total,
             paid: !!row?.paid_at,
             paid_at: row?.paid_at || null,
