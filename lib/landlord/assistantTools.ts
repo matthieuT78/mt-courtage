@@ -207,7 +207,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "list_leases",
-    description: "Liste les baux du compte avec le bien et le locataire associés, y compris le dépôt de garantie (montant prévu, encaissé, restitué/retenu). Utile pour retrouver le lease_id d'un bail existant (ex. avant de générer une quittance ou relancer un impayé) ou répondre directement à une question sur la caution.",
+    description: "Liste les baux du compte avec le bien et le locataire associés, y compris le dépôt de garantie (montant prévu, encaissé, restitué/retenu) et receipts_disabled (bail délégué à une agence : aucune quittance lokt n'est jamais générée pour ce bail, par conception — ne jamais présenter ça comme une anomalie). Utile pour retrouver le lease_id d'un bail existant ou répondre directement à une question sur la caution.",
     input_schema: {
       type: "object",
       properties: { status: { type: "string", enum: ["active", "ended"], description: "Filtre optionnel sur le statut du bail." } },
@@ -219,7 +219,7 @@ export const assistantTools: AssistantTool[] = [
       let query = admin
         .from("leases")
         .select(
-          "id,status,property_id,lot_id,tenant_id,rent_amount,charges_amount,start_date,end_date,deposit_amount,deposit_paid_at,deposit_paid_amount,deposit_returned_at,deposit_returned_amount,deposit_retained_amount,deposit_retained_reason"
+          "id,status,property_id,lot_id,tenant_id,rent_amount,charges_amount,start_date,end_date,deposit_amount,deposit_paid_at,deposit_paid_amount,deposit_returned_at,deposit_returned_amount,deposit_retained_amount,deposit_retained_reason,receipts_disabled"
         )
         .eq("user_id", ctx.userId)
         .order("created_at", { ascending: false });
@@ -249,7 +249,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "list_rent_payments",
-    description: "Donne le statut de paiement du loyer d'un bail pour un ou plusieurs mois : payé (avec date et montant) ou non encore payé (avec l'échéance attendue). À utiliser pour répondre directement à 'est-ce que X a payé son loyer ?' — ne redirige jamais cette question vers open_quittances.",
+    description: "Donne le statut de paiement du loyer d'un bail pour un ou plusieurs mois : payé (avec date, montant et si une quittance a réellement été générée) ou non encore payé (avec l'échéance attendue). À utiliser pour répondre directement à 'est-ce que X a payé son loyer ?' ou 'pourquoi je n'ai pas de quittance ?' — ne redirige jamais ces questions vers open_quittances, et ne déduis jamais qu'une quittance existe du simple fait qu'un loyer est payé : utilise le champ has_receipt, jamais une supposition.",
     input_schema: {
       type: "object",
       properties: {
@@ -264,7 +264,7 @@ export const assistantTools: AssistantTool[] = [
       const admin = requireAdmin();
       const { data: lease } = await admin
         .from("leases")
-        .select("id,start_date,end_date,rent_amount,charges_amount,payment_day,payment_type")
+        .select("id,start_date,end_date,rent_amount,charges_amount,payment_day,payment_type,receipts_disabled")
         .eq("id", args.lease_id)
         .eq("user_id", ctx.userId)
         .maybeSingle();
@@ -279,18 +279,28 @@ export const assistantTools: AssistantTool[] = [
       });
 
       const periods = months.map((m) => getLeaseRentPeriod(lease, m)).filter((p): p is NonNullable<typeof p> => !!p);
-      if (periods.length === 0) return { payments: [] };
+      if (periods.length === 0) return { payments: [], receipts_disabled: !!lease.receipts_disabled };
 
-      const { data: paymentsRows } = await admin
-        .from("rent_payments")
-        .select("period_start,period_end,paid_at,total_amount,payment_method")
-        .eq("lease_id", args.lease_id)
-        .in("period_start", periods.map((p) => p.periodStart));
+      const [{ data: paymentsRows }, { data: receiptsRows }] = await Promise.all([
+        admin
+          .from("rent_payments")
+          .select("period_start,period_end,paid_at,total_amount,payment_method")
+          .eq("lease_id", args.lease_id)
+          .in("period_start", periods.map((p) => p.periodStart)),
+        admin
+          .from("rent_receipts")
+          .select("period_start,status,pdf_url")
+          .eq("lease_id", args.lease_id)
+          .in("period_start", periods.map((p) => p.periodStart)),
+      ]);
       const byStart = new Map((paymentsRows || []).map((row: any) => [row.period_start, row]));
+      const receiptByStart = new Map((receiptsRows || []).map((row: any) => [row.period_start, row]));
 
       return {
+        receipts_disabled: !!lease.receipts_disabled,
         payments: periods.map((p, i) => {
           const row = byStart.get(p.periodStart) as any;
+          const receipt = receiptByStart.get(p.periodStart) as any;
           const dueDate = getLeasePaymentDueDate(lease, months[i]);
           return {
             period_start: p.periodStart,
@@ -301,6 +311,7 @@ export const assistantTools: AssistantTool[] = [
             paid_at: row?.paid_at || null,
             paid_amount: row?.total_amount ?? null,
             payment_method: row?.payment_method || null,
+            has_receipt: !!receipt?.pdf_url,
           };
         }),
       };
