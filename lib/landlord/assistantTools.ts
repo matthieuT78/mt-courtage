@@ -1070,33 +1070,64 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "list_finance_transactions",
-    description: "Liste les écritures Finance existantes (charges, recettes, loyers, dépôts), avec filtre optionnel par bien/bail et par écritures récurrentes uniquement. À utiliser pour répondre à toute question sur les écritures/charges déjà enregistrées (ex. 'quelles sont mes écritures récurrentes pour tel bien ?') — jamais open_declaration_helper pour ce type de question, qui sert uniquement à préparer une déclaration fiscale.",
+    description: "Liste les écritures Finance existantes (charges, recettes, loyers, dépôts) ET renvoie un résumé chiffré déjà calculé (total encaissé, total dépensé, net, montants en attente non confirmés). Pour toute question de type cashflow/bilan/'combien j'ai gagné', utilise TOUJOURS les chiffres du champ summary tels quels — ne resomme jamais les lignes de transactions toi-même, et ne mélange jamais summary.pending_in_not_confirmed (non reçu) avec summary.total_in_confirmed (déjà reçu). À utiliser aussi pour toute question sur les écritures/charges déjà enregistrées (ex. 'quelles sont mes écritures récurrentes pour tel bien ?') — jamais open_declaration_helper pour ce type de question, qui sert uniquement à préparer une déclaration fiscale.",
     input_schema: {
       type: "object",
       properties: {
         property_id: { type: "string", description: "Optionnel : filtrer sur un bien." },
         lease_id: { type: "string", description: "Optionnel : filtrer sur un bail." },
         recurring_only: { type: "boolean", description: "Si vrai, ne renvoie que les écritures récurrentes (modèles), pas leurs occurrences passées générées." },
-        limit: { type: "number", description: "Nombre maximum d'écritures renvoyées, 30 par défaut (max 100)." },
+        limit: { type: "number", description: "Nombre maximum d'écritures détaillées renvoyées dans 'transactions', 30 par défaut (max 100) — n'affecte pas le calcul de 'summary', qui porte sur l'ensemble des écritures correspondant au filtre." },
       },
       required: [],
     },
     mutates: false,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
+      const requestedLimit = Math.min(100, Math.max(1, Number(args.limit) || 30));
       let query = admin
         .from("transactions")
         .select("id,property_id,lease_id,direction,status,category,label,amount,occurred_at,is_recurring,recurrence_frequency,recurrence_since,recurrence_end_date,notes")
         .eq("user_id", ctx.userId)
         .order("occurred_at", { ascending: false })
-        .limit(Math.min(100, Math.max(1, Number(args.limit) || 30)));
+        .limit(500);
       if (args.property_id) query = query.eq("property_id", String(args.property_id));
       if (args.lease_id) query = query.eq("lease_id", String(args.lease_id));
       if (args.recurring_only) query = query.eq("is_recurring", true);
       const { data, error } = await query;
       if (error) throw new Error(error.message);
+      const rows = data || [];
+
+      // Résumé calculé ici, jamais laissé au modèle : seules les écritures
+      // confirmées (received/paid) comptent comme du cashflow réel — une
+      // écriture "expected" (non confirmée) reste distincte pour ne jamais
+      // être présentée comme déjà encaissée/payée.
+      let totalIn = 0;
+      let totalOut = 0;
+      let pendingIn = 0;
+      let pendingOut = 0;
+      for (const t of rows) {
+        const amount = Number(t.amount || 0);
+        const confirmed = t.status === "received" || t.status === "paid";
+        if (t.direction === "in") {
+          if (confirmed) totalIn += amount;
+          else pendingIn += amount;
+        } else {
+          if (confirmed) totalOut += amount;
+          else pendingOut += amount;
+        }
+      }
+
       return {
-        transactions: (data || []).map((t: any) => ({
+        summary: {
+          total_in_confirmed: Math.round(totalIn * 100) / 100,
+          total_out_confirmed: Math.round(totalOut * 100) / 100,
+          net_confirmed: Math.round((totalIn - totalOut) * 100) / 100,
+          pending_in_not_confirmed: Math.round(pendingIn * 100) / 100,
+          pending_out_not_confirmed: Math.round(pendingOut * 100) / 100,
+          transactions_counted_in_summary: rows.length,
+        },
+        transactions: rows.slice(0, requestedLimit).map((t: any) => ({
           ...t,
           category_label: FINANCE_CATEGORY_LABEL[t.category] || t.category,
         })),
@@ -1111,6 +1142,16 @@ export const assistantTools: AssistantTool[] = [
     navigate: true,
     execute: async () => ({
       navigation: { section: "finance", link: { financeTab: "finance" }, label: "Ouvrir Finance" },
+    }),
+  },
+  {
+    name: "open_performance",
+    description: "Ouvre l'écran Performance (cash-flow par bien, rentabilité, plan d'action d'optimisation). À proposer pour une question de cashflow/rentabilité/analyse de performance quand l'utilisateur veut explorer lui-même le détail — jamais open_finance pour ce type de question, qui n'affiche que le grand livre des écritures sans calcul de rentabilité.",
+    input_schema: { type: "object", properties: {}, required: [] },
+    mutates: false,
+    navigate: true,
+    execute: async () => ({
+      navigation: { section: "performance", link: {}, label: "Ouvrir Performance" },
     }),
   },
   {
