@@ -48,7 +48,7 @@ Si vous gérez plusieurs rotations par an, ou si vous voulez un processus de sé
 
 Tous les outils ne gèrent pas le LMNP de la même façon. L'inventaire obligatoire du mobilier, les charges déductibles spécifiques et les quittances adaptées sont des fonctionnalités que beaucoup ignorent ou traitent partiellement.
 
-Vérifiez ce point avant de vous engager, surtout si vous avez plusieurs biens en LMNP.
+Vérifiez ce point avant de vous engager, surtout si vous avez plusieurs biens en LMNP. Voir notre [outil de gestion locative LMNP](/gestion-locative-lmnp) dédié pour le détail des fonctionnalités meublé.
 
 ### 4. Voulez-vous analyser vos investissements depuis le même outil ?
 

@@ -327,7 +327,7 @@ Acheter est la première étape. Gérer ensuite — loyers, quittances, bail, in
 
 Pour un ou deux logements en LMNP, la gestion sans agence est tout à fait possible avec les bons outils : bail numérique, quittances PDF automatiques, suivi des paiements, inventaire du mobilier, états des lieux et tableau de bord financier.
 
-→ [Gérer votre location meublée LMNP avec lokt.fr](/gestion-locative-lmnp) — espace bailleur gratuit pour un premier logement.
+→ [Gestion locative LMNP avec lokt.fr](/gestion-locative-lmnp) — espace bailleur gratuit pour un premier logement.
 
 ---
 

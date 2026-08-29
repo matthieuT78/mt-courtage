@@ -150,4 +150,4 @@ La bonne pratique reste la même dans tous les cas : suivre chaque année le mon
 
 ---
 
-*Lokt.fr centralise vos loyers, charges et documents pour préparer votre déclaration LMNP ou LMP depuis votre [espace bailleur](/outil-gestion-locative) — le suivi de vos recettes locatives vous aide à anticiper un éventuel basculement avant qu'il ne vous prenne par surprise.*
+*Lokt.fr centralise vos loyers, charges et documents pour préparer votre déclaration LMNP ou LMP depuis votre [espace de gestion locative LMNP](/gestion-locative-lmnp) — le suivi de vos recettes locatives vous aide à anticiper un éventuel basculement avant qu'il ne vous prenne par surprise.*

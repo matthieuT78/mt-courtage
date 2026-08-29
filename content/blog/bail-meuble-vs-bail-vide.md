@@ -193,6 +193,8 @@ Oui, uniquement dans une situation très spécifique : si le bailleur justifie d
 
 *Comparez la rentabilité nette de vos biens en bail vide et meublé avec notre [simulateur investissement locatif](/investissement) — il intègre la fiscalité LMNP et les charges déductibles.*
 
+*Pour gérer le bail meublé au quotidien — inventaire, quittances, charges déductibles — voir notre [outil de gestion locative LMNP](/gestion-locative-lmnp).*
+
 ---
 
 **Articles liés :**

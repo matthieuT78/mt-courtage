@@ -141,4 +141,4 @@ L'investissement en résidence de services n'est pas un mauvais placement par na
 
 ---
 
-*Lokt.fr centralise le suivi de vos loyers et documents pour l'ensemble de votre parc, résidence de services comprise, depuis votre [espace bailleur](/outil-gestion-locative).*
+*Lokt.fr centralise le suivi de vos loyers et documents pour l'ensemble de votre parc, résidence de services comprise, depuis votre [espace de gestion locative LMNP](/gestion-locative-lmnp).*

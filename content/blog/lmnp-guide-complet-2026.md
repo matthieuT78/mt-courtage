@@ -327,4 +327,4 @@ Si vous dépassez à la fois 23 000 € de recettes ET 50 % de vos revenus profe
 *Pour aller plus loin :*
 - [Charges déductibles en LMNP réel 2026 : liste complète](/blog/charges-deductibles-lmnp-regime-reel)
 - [LMNP ou location nue : quelle fiscalité choisir ?](/blog/lmnp-vs-location-nue)
-- [Gérer votre location meublée avec lokt.fr](/gestion-locative-lmnp)
+- [Gestion locative LMNP avec lokt.fr](/gestion-locative-lmnp)

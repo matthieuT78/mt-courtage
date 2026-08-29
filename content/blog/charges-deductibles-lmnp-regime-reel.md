@@ -220,6 +220,8 @@ Techniquement oui, mais c'est complexe. Les plans d'amortissement par composants
 
 *Simulez le rendement net de votre investissement LMNP avec et sans amortissements grâce à notre [calculette d'investissement locatif](/investissement).*
 
+*Suivez vos charges déductibles, vos amortissements et vos recettes locatives au même endroit que vos quittances avec notre [outil de gestion locative LMNP](/gestion-locative-lmnp).*
+
 ---
 
 **Articles liés :**
