@@ -207,7 +207,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "list_leases",
-    description: "Liste les baux du compte avec le bien et le locataire associés. Utile pour retrouver le lease_id d'un bail existant (ex. avant de générer une quittance ou relancer un impayé).",
+    description: "Liste les baux du compte avec le bien et le locataire associés, y compris le dépôt de garantie (montant prévu, encaissé, restitué/retenu). Utile pour retrouver le lease_id d'un bail existant (ex. avant de générer une quittance ou relancer un impayé) ou répondre directement à une question sur la caution.",
     input_schema: {
       type: "object",
       properties: { status: { type: "string", enum: ["active", "ended"], description: "Filtre optionnel sur le statut du bail." } },
@@ -218,7 +218,9 @@ export const assistantTools: AssistantTool[] = [
       const admin = requireAdmin();
       let query = admin
         .from("leases")
-        .select("id,status,property_id,lot_id,tenant_id,rent_amount,charges_amount,start_date,end_date")
+        .select(
+          "id,status,property_id,lot_id,tenant_id,rent_amount,charges_amount,start_date,end_date,deposit_amount,deposit_paid_at,deposit_paid_amount,deposit_returned_at,deposit_returned_amount,deposit_retained_amount,deposit_retained_reason"
+        )
         .eq("user_id", ctx.userId)
         .order("created_at", { ascending: false });
       if (args.status) query = query.eq("status", String(args.status));
