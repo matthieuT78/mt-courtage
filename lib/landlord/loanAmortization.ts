@@ -34,6 +34,11 @@ export type LoanAmortizationSchedule = {
   months: LoanMonthEntry[];
   interestForMonth: (yyyymm: string) => number;
   interestForYear: (year: number) => number;
+  // Capital restant dû à une date donnée (ex: "2026-08" pour aujourd'hui). Contrairement à une
+  // ré-estimation par annuité sur la durée restante, cette valeur est exacte y compris pendant
+  // ou juste après un différé (la mensualité post-différé ne s'applique pas uniformément sur
+  // toute la durée restante, une annuité naïve serait donc fausse dans ce cas précis).
+  balanceAt: (yyyymm: string) => number;
 };
 
 function addMonths(yyyymm: string, n: number): string {
@@ -114,6 +119,15 @@ export function computeLoanAmortization(input: LoanAmortizationInput): LoanAmort
         if (entry.yyyymm.startsWith(prefix)) sum += entry.interest;
       }
       return Math.round(sum * 100) / 100;
+    },
+    balanceAt: (yyyymm: string) => {
+      if (yyyymm < startMonth) return Math.round(amount * 100) / 100;
+      let last: LoanMonthEntry | null = null;
+      for (const entry of months) {
+        if (entry.yyyymm > yyyymm) break;
+        last = entry;
+      }
+      return last ? Math.round(last.balanceAfter * 100) / 100 : 0;
     },
   };
 }

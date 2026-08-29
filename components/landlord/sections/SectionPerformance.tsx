@@ -20,6 +20,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property, PropertyLot, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
+import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
 import { cx } from "../ui/uiHelpers";
 import type { LandlordSectionKey } from "../navigation";
 
@@ -61,6 +62,11 @@ type PropertyFinance = {
   loan_remaining_months?: number | null;
   loan_end_year?: number | null;
   loan_end_month?: number | null;
+  loan_amount?: number | null;
+  loan_start_date?: string | null;
+  loan_duration_months?: number | null;
+  loan_deferral_type?: "partial" | "total" | null;
+  loan_deferral_months?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly: number | null;
   fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;
@@ -242,11 +248,35 @@ function remainingLoanMonths(finance: PropertyFinance | null) {
 }
 
 // Capital restant dû estimé à partir de la mensualité (hors assurance), du taux et de la durée restante.
+// Approximation par annuité constante — fausse pendant/juste après un différé (voir
+// exactRemainingPrincipal ci-dessous), gardée en repli pour les biens en saisie manuelle
+// (sans loan_amount) où on ne connaît pas le détail mois par mois du prêt.
 function estimateRemainingPrincipal(monthlyPI: number, annualRatePct: number, remainingMonths: number): number | null {
   if (monthlyPI <= 0 || remainingMonths <= 0) return null;
   const r = annualRatePct / 100 / 12;
   const principal = r > 0 ? (monthlyPI * (1 - Math.pow(1 + r, -remainingMonths))) / r : monthlyPI * remainingMonths;
   return Number.isFinite(principal) && principal > 0 ? principal : null;
+}
+
+// Capital restant dû exact pour un bien passé au calculateur d'amortissement (loan_amount
+// renseigné) : lit directement le solde du tableau d'amortissement au mois courant, au lieu
+// de le ré-estimer par annuité constante. Nécessaire en particulier avec un différé, où la
+// mensualité post-différé ne s'applique pas uniformément sur toute la durée restante — une
+// ré-estimation par annuité y serait fausse pendant et juste après la période de différé.
+function exactRemainingPrincipal(finance: PropertyFinance | null): number | null {
+  if (!finance?.loan_amount || !finance.loan_start_date || !finance.loan_duration_months) return null;
+  const schedule = computeLoanAmortization({
+    amount: Number(finance.loan_amount),
+    ratePercent: Number(finance.loan_rate_percent || 0),
+    startDate: finance.loan_start_date,
+    durationMonths: Number(finance.loan_duration_months),
+    deferralType: finance.loan_deferral_type,
+    deferralMonths: finance.loan_deferral_months,
+  });
+  if (!schedule) return null;
+  const now = new Date();
+  const yyyymm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return schedule.balanceAt(yyyymm);
 }
 
 // Mensualité (hors assurance) nécessaire pour rembourser `principal` sur `termMonths` au taux `annualRatePct`.
@@ -1121,13 +1151,23 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         const loanRemainingMonths = remainingLoanMonths(fin);
         const loanRatePct = fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent);
         const loanPrincipalRemaining =
-          loanRatePct != null && loanRemainingMonths != null
+          exactRemainingPrincipal(fin) ??
+          (loanRatePct != null && loanRemainingMonths != null
             ? estimateRemainingPrincipal(loanMonthlyPI, loanRatePct, loanRemainingMonths)
-            : null;
+            : null);
         // Progression du remboursement — basée sur le capital (emprunté vs restant dû estimé),
         // pas sur une date de départ du prêt qu'on ne connaît pas forcément : évite d'inventer
         // une ancienneté de crédit à partir d'un champ qui ne la représente pas nécessairement.
-        const loanOriginalPrincipal = investment > 0 ? Math.max(0, investment - Number(fin?.down_payment || 0)) : null;
+        // Si loan_amount est connu (calculateur d'amortissement), c'est la vraie valeur empruntée
+        // à utiliser — "investissement total - apport" n'est qu'une approximation (frais de
+        // notaire/agence/travaux financés autrement, etc.) gardée en repli pour les biens en
+        // saisie manuelle. Sans ce repli sur loan_amount, un bien en différé total afficherait un
+        // faux "% remboursé" positif alors que le capital restant dû augmente (intérêts capitalisés).
+        const loanOriginalPrincipal = fin?.loan_amount
+          ? Number(fin.loan_amount)
+          : investment > 0
+          ? Math.max(0, investment - Number(fin?.down_payment || 0))
+          : null;
         const loanRepaidAmount =
           loanOriginalPrincipal != null && loanOriginalPrincipal > 0 && loanPrincipalRemaining != null
             ? Math.max(0, loanOriginalPrincipal - loanPrincipalRemaining)
