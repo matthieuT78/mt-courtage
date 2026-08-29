@@ -778,27 +778,32 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Crée un bail pour Julien, loyer 750€
+                    Ai-je bien reçu tous mes loyers ce mois-ci ?
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
                   <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>J'ai retrouvé les infos, voici ce que je prépare :</p>
-                    <div className="space-y-1 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>🏠 Bien · Studio Centre</p>
-                      <p>👤 Locataire · Julien Martin</p>
-                      <p>💶 Loyer · 750 € / mois</p>
-                      <p>📅 Début · 1ᵉʳ du mois prochain</p>
+                    <p>Presque : 2 loyers sur 3 sont confirmés.</p>
+                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                      <p>✅ Studio Centre · Marie Petit · 650 € reçu</p>
+                      <p>✅ T2 Bellevue · Ahmed Benali · 780 € reçu</p>
+                      <p>⚠️ Appartement B · Dupond · 720 € en attente</p>
                     </div>
-                    <p className="text-white/80">Je confirme et je crée le bail ?</p>
+                    <p className="text-white/80">Souhaitez-vous que je relance M. Dupond ?</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    Oui, relance-le
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 pl-[42px]">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Bail créé — prochaines étapes proposées
+                    ✓ Relance envoyée à Dupond — email + SMS
                   </span>
                 </div>
               </div>
