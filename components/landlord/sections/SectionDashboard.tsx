@@ -1370,36 +1370,33 @@ export function SectionDashboard({
       <div className="relative">
       <section className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
 
-        {/* Gradient header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] via-[#4d9cff] to-[#06b6d4] px-5 py-7 sm:px-7">
+        {/* Gradient header — compact, une seule ligne sur desktop plutôt que 4 blocs empilés */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] via-[#4d9cff] to-[#06b6d4] px-5 py-4 sm:px-7 sm:py-5">
           <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
-          <div className="relative flex items-start justify-between gap-4">
+          <div className="relative flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap">
             <div className="min-w-0 flex-1">
-              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-white/50">Cockpit bailleur</p>
-              <h2 className="mt-1.5 text-xl font-bold text-white sm:text-2xl">Bonjour, voici le point du jour</h2>
-              <p className="mt-1 text-sm text-white/60">{fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)}</p>
+              <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                <h2 className="text-lg font-bold text-white sm:text-xl">Bonjour, voici le point du jour</h2>
+                <span className="text-xs text-white/50">{fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)}</span>
+                {planLabel && (
+                  <span className="rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-[0.6rem] font-semibold text-white/50">
+                    Plan {planLabel}
+                  </span>
+                )}
+              </div>
 
               {/* Revenu mensuel */}
               {monthlyExpected > 0 ? (
-                <div className="mt-5 flex flex-wrap items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-white">{formatEuro(monthlyExpected)}</span>
+                <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                  <span className="text-2xl font-extrabold text-white sm:text-3xl">{formatEuro(monthlyExpected)}</span>
                   <span className="text-sm text-white/60">attendus ce mois</span>
                   <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ratio >= 95 ? "bg-emerald-400/25 text-white" : ratio >= 70 ? "bg-amber-400/25 text-white" : "bg-red-400/25 text-white"}`}>
                     {hasOnlyUpcomingRents ? "À venir" : `${ratio}% encaissé`}
                   </span>
                 </div>
               ) : (
-                <div className="mt-5">
+                <div className="mt-2">
                   <span className="text-sm text-white/50">Aucun loyer configuré ce mois</span>
-                </div>
-              )}
-
-              {/* Plan — discret, en bas */}
-              {planLabel && (
-                <div className="mt-5">
-                  <span className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.62rem] font-semibold text-white/50">
-                    Plan {planLabel}
-                  </span>
                 </div>
               )}
             </div>
@@ -1408,16 +1405,16 @@ export function SectionDashboard({
             <div
               onMouseEnter={onScoreEnter}
               onMouseLeave={onScoreLeave}
-              className="flex shrink-0 cursor-default flex-col items-center gap-1.5 rounded-2xl bg-white/15 px-5 py-5 backdrop-blur transition-all duration-150 hover:bg-white/22"
+              className="flex shrink-0 cursor-default items-center gap-3 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur transition-all duration-150 hover:bg-white/22"
             >
-              <p className="text-[0.58rem] font-semibold uppercase tracking-widest text-white/55">Score</p>
-              <p className="text-4xl font-extrabold leading-none text-white">{healthScore}</p>
-              <p className="text-[0.6rem] text-white/45">/100</p>
-              <div className="mt-2 h-1.5 w-14 overflow-hidden rounded-full bg-white/20">
-                <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }} />
+              <div className="text-right">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-widest text-white/55">Score</p>
+                <p className="text-[0.62rem] font-semibold text-white/70">
+                  {healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Bon" : healthScore >= 50 ? "À améliorer" : "À traiter"}
+                </p>
               </div>
-              <p className="mt-0.5 text-[0.62rem] font-semibold text-white/70">
-                {healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Bon" : healthScore >= 50 ? "À améliorer" : "À traiter"}
+              <p className="text-3xl font-extrabold leading-none text-white">
+                {healthScore}<span className="text-xs font-semibold text-white/45">/100</span>
               </p>
             </div>
           </div>
