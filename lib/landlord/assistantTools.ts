@@ -1830,6 +1830,64 @@ export const assistantTools: AssistantTool[] = [
     },
   },
   {
+    name: "get_edl_download_link",
+    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'un état des lieux (entrée ou sortie) déjà finalisé pour un bail. À utiliser quand l'utilisateur veut le PDF de l'état des lieux directement dans la conversation (ex. 'donne-moi le lien de l'état des lieux d'entrée', 'télécharge l'EDL de sortie'). Si report_type n'est pas précisé et que le bail a un état des lieux d'entrée ET de sortie finalisés, demande lequel avant d'appeler l'outil plutôt que d'en choisir un au hasard. Colle l'URL exacte renvoyée dans download_url telle quelle dans ta réponse, sans la reformuler en lien markdown ni la raccourcir : l'interface la détecte et la transforme automatiquement en lien cliquable.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        report_type: { type: "string", enum: ["entry", "exit"], description: "Entrée ou sortie. Si omis et qu'un seul état des lieux finalisé existe pour ce bail, celui-ci est utilisé automatiquement." },
+      },
+      required: ["lease_id"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin.from("leases").select("id").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      let query = admin
+        .from("inventory_reports")
+        .select("id,report_type,status,pdf_url,performed_at")
+        .eq("lease_id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .in("status", ["ready", "signed", "archived"]);
+      if (args.report_type) query = query.eq("report_type", String(args.report_type));
+      const { data: reports } = await query;
+
+      const available = (reports || []).filter((r: any) => r.pdf_url);
+      if (available.length === 0) {
+        throw new Error(
+          "Aucun état des lieux finalisé (avec PDF) trouvé pour ce bail" +
+            (args.report_type ? ` de type ${args.report_type === "entry" ? "entrée" : "sortie"}` : "") +
+            "."
+        );
+      }
+      if (available.length > 1) {
+        throw new Error(
+          `Plusieurs états des lieux finalisés existent pour ce bail (${available.map((r: any) => (r.report_type === "entry" ? "entrée" : "sortie")).join(", ")}) — précise lequel (entrée ou sortie).`
+        );
+      }
+      const report = available[0] as any;
+
+      const rawPdfUrl = String(report.pdf_url);
+      const sepIndex = rawPdfUrl.indexOf(":");
+      if (sepIndex === -1) throw new Error("pdf_url invalide.");
+      const bucket = rawPdfUrl.slice(0, sepIndex);
+      const path = rawPdfUrl.slice(sepIndex + 1);
+
+      const { data: signed, error: signErr } = await admin.storage.from(bucket).createSignedUrl(path, 600);
+      if (signErr || !signed?.signedUrl) throw new Error(signErr?.message || "Impossible de générer le lien.");
+
+      return {
+        download_url: signed.signedUrl,
+        expires_in_seconds: 600,
+        report_type: report.report_type,
+        performed_at: report.performed_at,
+      };
+    },
+  },
+  {
     name: "list_lmnp_inventory_status",
     description: "Liste UNIQUEMENT les biens/lots éligibles à l'inventaire LMNP (bail meublé actif — furnished_primary, furnished_student ou mobility ; jamais un bien loué nu), avec pour chacun le % de conformité et le détail des éléments obligatoires manquants ou en quantité insuffisante. Appelle-le AVANT de proposer une liste de biens pour une question d'inventaire LMNP : ne propose jamais un bien non meublé, et donne directement le détail de ce qui manque plutôt que de renvoyer l'utilisateur voir l'écran lui-même.",
     input_schema: {
