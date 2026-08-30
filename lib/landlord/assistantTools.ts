@@ -309,7 +309,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "list_rent_payments",
-    description: "Donne le statut de paiement du loyer d'un bail pour un ou plusieurs mois : payé (avec date, montant et si une quittance a réellement été générée) ou non encore payé (avec l'échéance attendue). À utiliser pour répondre directement à 'est-ce que X a payé son loyer ?' ou 'pourquoi je n'ai pas de quittance ?' — ne redirige jamais ces questions vers open_quittances, et ne déduis jamais qu'une quittance existe du simple fait qu'un loyer est payé : utilise le champ has_receipt, jamais une supposition.",
+    description: "Donne le statut de paiement du loyer d'un bail pour un ou plusieurs mois : payé (avec date, montant et si une quittance a réellement été générée) ou non encore payé (avec l'échéance attendue). À utiliser pour répondre directement à 'est-ce que X a payé son loyer ?' ou 'pourquoi je n'ai pas de quittance ?' — ne redirige jamais ces questions vers open_quittances, et ne déduis jamais qu'une quittance existe du simple fait qu'un loyer est payé : utilise le champ has_receipt, jamais une supposition. Si un mois renvoie out_of_lease_range=true, ce mois est simplement antérieur au début du bail (lease_start_date) ou postérieur à sa fin (lease_end_date) : dis-le explicitement, ne présente JAMAIS ça comme un loyer manquant/en retard, et ne propose jamais de le confirmer ou de relancer le locataire pour ce mois-là.",
     input_schema: {
       type: "object",
       properties: {
@@ -338,35 +338,55 @@ export const assistantTools: AssistantTool[] = [
         return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
       });
 
-      const periods = months.map((m) => getLeaseRentPeriod(lease, m)).filter((p): p is NonNullable<typeof p> => !!p);
-      if (periods.length === 0) return { payments: [], receipts_disabled: !!lease.receipts_disabled };
+      // Un mois hors bail (avant le début, après la fin) doit rester dans la
+      // réponse au lieu d'être simplement omis : un tableau vide est ambigu pour
+      // le modèle (aucun moyen de distinguer "hors bail" de "rien en base"), ce
+      // qui l'amenait à présenter un mois antérieur au bail comme un loyer
+      // manquant/en retard et à proposer de le confirmer ou de relancer dessus.
+      const monthPeriods = months.map((m) => ({ month: m, period: getLeaseRentPeriod(lease, m) }));
+      const validPeriods = monthPeriods.filter((mp) => mp.period) as Array<{ month: string; period: NonNullable<ReturnType<typeof getLeaseRentPeriod>> }>;
 
-      const [{ data: paymentsRows }, { data: receiptsRows }] = await Promise.all([
-        admin
-          .from("rent_payments")
-          .select("period_start,period_end,paid_at,total_amount,payment_method")
-          .eq("lease_id", args.lease_id)
-          .in("period_start", periods.map((p) => p.periodStart)),
-        admin
-          .from("rent_receipts")
-          .select("period_start,status,pdf_url")
-          .eq("lease_id", args.lease_id)
-          .in("period_start", periods.map((p) => p.periodStart)),
-      ]);
+      const [{ data: paymentsRows }, { data: receiptsRows }] = validPeriods.length
+        ? await Promise.all([
+            admin
+              .from("rent_payments")
+              .select("period_start,period_end,paid_at,total_amount,payment_method")
+              .eq("lease_id", args.lease_id)
+              .in("period_start", validPeriods.map((mp) => mp.period.periodStart)),
+            admin
+              .from("rent_receipts")
+              .select("period_start,status,pdf_url")
+              .eq("lease_id", args.lease_id)
+              .in("period_start", validPeriods.map((mp) => mp.period.periodStart)),
+          ])
+        : [{ data: [] as any[] }, { data: [] as any[] }];
       const byStart = new Map((paymentsRows || []).map((row: any) => [row.period_start, row]));
       const receiptByStart = new Map((receiptsRows || []).map((row: any) => [row.period_start, row]));
 
+      const leaseStart = lease.start_date ? String(lease.start_date).slice(0, 10) : null;
+      const leaseEnd = lease.end_date ? String(lease.end_date).slice(0, 10) : null;
+
       return {
         receipts_disabled: !!lease.receipts_disabled,
-        payments: periods.map((p, i) => {
-          const row = byStart.get(p.periodStart) as any;
-          const receipt = receiptByStart.get(p.periodStart) as any;
-          const dueDate = getLeasePaymentDueDate(lease, months[i]);
+        payments: monthPeriods.map(({ month, period }) => {
+          if (!period) {
+            const beforeStart = leaseStart ? `${month}-01` < leaseStart : false;
+            return {
+              period_month: month,
+              out_of_lease_range: true,
+              reason: beforeStart ? "before_lease_start" : "after_lease_end",
+              lease_start_date: leaseStart,
+              lease_end_date: leaseEnd,
+            };
+          }
+          const row = byStart.get(period.periodStart) as any;
+          const receipt = receiptByStart.get(period.periodStart) as any;
+          const dueDate = getLeasePaymentDueDate(lease, month);
           return {
-            period_start: p.periodStart,
-            period_end: p.periodEnd,
+            period_start: period.periodStart,
+            period_end: period.periodEnd,
             due_date: dueDate ? dueDate.toISOString().slice(0, 10) : null,
-            expected_amount: p.total,
+            expected_amount: period.total,
             paid: !!row?.paid_at,
             paid_at: row?.paid_at || null,
             paid_amount: row?.total_amount ?? null,
