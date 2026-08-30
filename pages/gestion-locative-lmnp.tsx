@@ -315,6 +315,86 @@ export default function GestionLocativeLmnpPage() {
               </div>
             </section>
 
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
+                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
+                  <span className="block text-2xl sm:text-3xl">Loky connaît votre inventaire</span>
+                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">et votre fiscalité meublée.</span>
+                </h2>
+                <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Décrivez ce que vous voulez savoir, en une phrase. Loky va chercher la vraie donnée dans votre compte — jamais une estimation générique.
+                </p>
+              </div>
+
+              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 grid gap-5 bg-slate-950 p-5 sm:p-8 lg:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Mon inventaire LMNP est-il complet pour le studio Bellevue ?
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Studio Bellevue : 78 % de conformité meublé.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>⚠️ Plaques de cuisson · manquant</p>
+                          <p>⚠️ Vaisselle en nombre suffisant · quantité insuffisante</p>
+                          <p>⚠️ Réfrigérateur · manquant</p>
+                        </div>
+                        <p className="text-white/80">Je vous ouvre l'inventaire pour compléter ça ?</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Oui, ouvre-le
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Inventaire LMNP ouvert — Studio Bellevue
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Micro-BIC ou régime réel pour mon studio meublé ?
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Ça dépend de vos vraies recettes et charges 2026, pas d'une règle générale.</p>
+                        <p className="text-white/80">Je vous ouvre l'aide à la déclaration : elle compare les deux régimes avec les chiffres de votre compte ?</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Oui, vas-y
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Aide à la déclaration ouverte — comparatif micro-BIC / réel
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
                 <div>
