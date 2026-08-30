@@ -1059,6 +1059,42 @@ export const assistantTools: AssistantTool[] = [
     },
   },
   {
+    name: "get_receipt_download_link",
+    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'une quittance déjà générée, pour un bail et un mois donnés. À utiliser quand l'utilisateur veut le PDF de la quittance directement dans la conversation (ex. 'donne-moi le lien de la quittance de mars', 'télécharge-la moi'). Colle l'URL exacte renvoyée dans download_url telle quelle dans ta réponse, sans la reformuler en lien markdown ni la raccourcir : l'interface la détecte et la transforme automatiquement en lien cliquable.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        period_month: { type: "string", description: "Mois de la quittance, YYYY-MM." },
+      },
+      required: ["lease_id", "period_month"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const yyyymm = String(args.period_month);
+      const [y, m] = yyyymm.split("-").map(Number);
+      const nextMonthStart = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+      const { data: receipt } = await admin
+        .from("rent_receipts")
+        .select("id,pdf_url,period_start,period_end")
+        .eq("lease_id", args.lease_id)
+        .gte("period_start", `${yyyymm}-01`)
+        .lt("period_start", nextMonthStart)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!receipt?.pdf_url) throw new Error("Aucune quittance PDF disponible pour cette période — confirme d'abord le paiement (confirm_payment).");
+      const data = await callInternalApi(ctx, "/api/receipts/signed-url", { receiptId: receipt.id, pdf_url: receipt.pdf_url, expiresIn: 600 });
+      return {
+        download_url: data.signedUrl,
+        expires_in_seconds: 600,
+        period_start: receipt.period_start,
+        period_end: receipt.period_end,
+      };
+    },
+  },
+  {
     name: "manage_deposit",
     description: "Encaisse, restitue ou annule une opération sur le dépôt de garantie d'un bail. action='collect' encaisse la caution ; action='return' la restitue (avec retenue éventuelle et motif obligatoire si retenue) ; action='cancel_collect'/'cancel_return' annule l'opération correspondante déjà enregistrée.",
     input_schema: {
