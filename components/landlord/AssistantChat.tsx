@@ -68,20 +68,30 @@ async function getAccessToken(): Promise<string | null> {
 // Rend cliquables les liens vers les guides/articles gratuits que l'assistant
 // peut citer (voir l'outil find_help_content) : ce sont des pages publiques,
 // pas des sections du cockpit, donc un lien classique (nouvel onglet) plutôt
-// qu'une navigation interne.
-const LINK_PATTERN = /(https?:\/\/[^\s)]+|\/(?:guides|blog)\/[a-z0-9-]+)/g;
-const LINK_TEST = /^(?:https?:\/\/[^\s)]+|\/(?:guides|blog)\/[a-z0-9-]+)$/;
+// qu'une navigation interne. Reconnaît aussi les liens markdown [texte](url)
+// pour les URL longues (ex. lien signé de téléchargement) : sans ça, l'URL
+// brute s'affiche en clair sur plusieurs lignes dans la bulle de chat.
+const MARKDOWN_LINK_OR_URL = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s)]+|\/(?:guides|blog)\/[a-z0-9-]+)/g;
 
 function renderWithLinks(text: string) {
-  const parts = text.split(LINK_PATTERN);
-  return parts.map((part, i) => {
-    if (!part || !LINK_TEST.test(part)) return part;
-    return (
-      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
-        {part}
+  const nodes: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let key = 0;
+  MARKDOWN_LINK_OR_URL.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = MARKDOWN_LINK_OR_URL.exec(text))) {
+    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
+    const [, label, markdownUrl, bareUrl] = match;
+    const href = markdownUrl || bareUrl;
+    nodes.push(
+      <a key={key++} href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+        {label || href}
       </a>
     );
-  });
+    lastIndex = MARKDOWN_LINK_OR_URL.lastIndex;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes;
 }
 
 export default function AssistantChat({

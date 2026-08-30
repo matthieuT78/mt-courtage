@@ -1060,7 +1060,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "get_receipt_download_link",
-    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'une quittance déjà générée, pour un bail et un mois donnés. À utiliser quand l'utilisateur veut le PDF de la quittance directement dans la conversation (ex. 'donne-moi le lien de la quittance de mars', 'télécharge-la moi'). Colle l'URL exacte renvoyée dans download_url telle quelle dans ta réponse, sans la reformuler en lien markdown ni la raccourcir : l'interface la détecte et la transforme automatiquement en lien cliquable.",
+    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'une quittance déjà générée, pour un bail et un mois donnés. À utiliser quand l'utilisateur veut le PDF de la quittance directement dans la conversation (ex. 'donne-moi le lien de la quittance de mars', 'télécharge-la moi'). Présente le lien renvoyé (download_url) sous forme de lien markdown avec un libellé court, ex. [Télécharger la quittance de mars 2026 (PDF)](download_url) — ne colle JAMAIS l'URL brute en clair dans le texte, elle est illisible et casse l'affichage.",
     input_schema: {
       type: "object",
       properties: {
@@ -1831,7 +1831,7 @@ export const assistantTools: AssistantTool[] = [
   },
   {
     name: "get_edl_download_link",
-    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'un état des lieux (entrée ou sortie) déjà finalisé pour un bail. À utiliser quand l'utilisateur veut le PDF de l'état des lieux directement dans la conversation (ex. 'donne-moi le lien de l'état des lieux d'entrée', 'télécharge l'EDL de sortie'). Si report_type n'est pas précisé et que le bail a un état des lieux d'entrée ET de sortie finalisés, demande lequel avant d'appeler l'outil plutôt que d'en choisir un au hasard. Colle l'URL exacte renvoyée dans download_url telle quelle dans ta réponse, sans la reformuler en lien markdown ni la raccourcir : l'interface la détecte et la transforme automatiquement en lien cliquable.",
+    description: "Génère un lien de téléchargement direct (valable 10 minutes) vers le PDF d'un état des lieux (entrée ou sortie) déjà finalisé pour un bail. À utiliser quand l'utilisateur veut le PDF de l'état des lieux directement dans la conversation (ex. 'donne-moi le lien de l'état des lieux d'entrée', 'télécharge l'EDL de sortie'). Si report_type n'est pas précisé et que le bail a un état des lieux d'entrée ET de sortie finalisés, demande lequel avant d'appeler l'outil plutôt que d'en choisir un au hasard. Présente le lien renvoyé (download_url) sous forme de lien markdown avec un libellé court, ex. [Télécharger l'état des lieux d'entrée (PDF)](download_url) — ne colle JAMAIS l'URL brute en clair dans le texte, elle est illisible et casse l'affichage.",
     input_schema: {
       type: "object",
       properties: {
