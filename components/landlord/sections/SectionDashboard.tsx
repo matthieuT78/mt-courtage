@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, ChevronRightIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, PaperAirplaneIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, PropertyLot, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -379,6 +379,7 @@ export function SectionDashboard({
     };
   }, [leases, properties, propertyLots]);
 
+  const [lokyDraft, setLokyDraft] = useState("");
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
@@ -1430,18 +1431,46 @@ export function SectionDashboard({
         {/* ── Loky — entrée principale, juste sous l'en-tête ── */}
         {onOpenAssistant && (
           <div className="border-t border-slate-100 bg-white px-3 py-4 sm:px-5">
-            <button
-              type="button"
-              onClick={() => onOpenAssistant()}
-              className="flex w-full items-center gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-indigo-50 to-cyan-50 p-3.5 text-left transition hover:border-indigo-200 hover:from-indigo-100 hover:to-cyan-100 sm:p-4"
-            >
-              <img src="/loky-avatar.png" alt="Loky" className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-bold text-slate-900 sm:text-lg">Loky, ton assistant IA</span>
-                <span className="mt-0.5 block text-sm text-slate-600">Dis-moi ce que tu veux faire, je m'en occupe — bail, paiement, locataire…</span>
-              </span>
-              <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
-            </button>
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-indigo-50 to-cyan-50 p-3.5 transition hover:border-indigo-200 sm:p-4">
+              <button
+                type="button"
+                onClick={() => onOpenAssistant()}
+                className="flex w-full items-center gap-3 text-left"
+              >
+                <img src="/loky-avatar.png" alt="Loky" className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-bold text-slate-900 sm:text-lg">Loky, ton assistant IA</span>
+                  <span className="mt-0.5 block text-sm text-slate-600">Dis-moi ce que tu veux faire, je m'en occupe — bail, paiement, locataire…</span>
+                </span>
+              </button>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const text = lokyDraft.trim();
+                  if (!text) return;
+                  onOpenAssistant(text);
+                  setLokyDraft("");
+                }}
+                className="mt-3 flex items-center gap-2 rounded-full border border-indigo-200 bg-white pl-4 pr-1.5 py-1.5 shadow-sm focus-within:border-indigo-400"
+              >
+                <input
+                  type="text"
+                  value={lokyDraft}
+                  onChange={(e) => setLokyDraft(e.target.value)}
+                  placeholder="Écrivez à Loky…"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!lokyDraft.trim()}
+                  aria-label="Envoyer à Loky"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 text-white transition disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </form>
+            </div>
 
             <div className="mt-2.5 flex flex-wrap gap-2">
               {[
