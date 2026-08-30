@@ -832,31 +832,31 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Comment améliorer le cash-flow de l’appartement de Paris ?
+                    Marie Petit dit ne pas avoir reçu sa quittance de janvier, tu peux lui renvoyer ?
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
                   <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>Sur ce bien : 9 600 € encaissés, 7 896 € de charges et crédit réglés → net confirmé +1 704 €.</p>
+                    <p>Quittance de janvier déjà générée pour le Studio Centre.</p>
                     <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>💰 Loyers reçus · 9 600 € confirmés</p>
-                      <p>📉 Charges + crédit réglés · 7 896 €</p>
+                      <p>🏠 Studio Centre · Marie Petit</p>
+                      <p>📄 Quittance janvier 2026</p>
                     </div>
-                    <p className="text-white/80">Pour les pistes d'optimisation (crédit, loyer, rendement), je vous ouvre l'écran Performance ?</p>
+                    <p className="text-white/80">Je la renvoie par email à Marie Petit ?</p>
                   </div>
                 </div>
 
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Oui, ouvre-le
+                    Oui, envoie-la
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 pl-[42px]">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Écran Performance ouvert
+                    ✓ Quittance de janvier renvoyée à Marie Petit — email
                   </span>
                 </div>
               </div>
