@@ -361,6 +361,84 @@ export default function LokyAssistantIaPage() {
               </div>
             </section>
 
+            {/* Deux exemples supplémentaires en situation */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
+                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">En situation</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+                  Deux autres exemples, du quotidien à la recherche de locataire.
+                </h2>
+              </div>
+
+              <div data-scroll-reveal data-reveal-delay="200" className="mt-6 grid gap-5 bg-slate-950 p-5 sm:p-8 lg:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Confirme le loyer du Studio Bellevue, Karim vient de payer
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Je confirme le loyer de septembre — la quittance PDF sera générée automatiquement.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>🏠 Studio Bellevue · Karim Haddad</p>
+                          <p>📄 Loyer septembre 2026 → quittance générée</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Confirmer
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Paiement confirmé — quittance générée pour Karim
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Trouve-moi un locataire pour le T2 qui vient de se libérer
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Je publie une annonce pour recevoir des candidatures.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>🏠 T2 Bellevue · 780 € + charges</p>
+                          <p>📢 Annonce prête à publier</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Confirmer
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Annonce publiée — T2 Bellevue
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             {/* Plan gratuit / tarifs */}
             <section className="flex flex-col items-start justify-between gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 shadow-sm sm:flex-row sm:items-center sm:rounded-[2rem] sm:p-8">
               <div>
