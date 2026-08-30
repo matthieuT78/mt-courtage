@@ -727,8 +727,10 @@ export default function Home() {
               <div className="anim-fadeUp d-4">
                 <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-black/30 sm:rounded-[2rem] ring-1 ring-white/10">
                   <img
-                    src="/cockpit-bailleur-lokt.png"
+                    src="/cockpit-bailleur-lokt-v2.webp"
                     alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
+                    width={1400}
+                    height={933}
                     className="w-full h-auto block"
                     loading="eager"
                   />
