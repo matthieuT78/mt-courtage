@@ -369,27 +369,30 @@ export default function GestionLocativeLmnpPage() {
                   <div className="space-y-3.5">
                     <div className="flex justify-end">
                       <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Micro-BIC ou régime réel pour mon studio meublé ?
+                        Julien vient de payer son loyer de janvier pour le studio meublé, tu peux le confirmer ?
                       </div>
                     </div>
 
                     <div className="flex items-start gap-2.5">
                       <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
                       <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                        <p>Ça dépend de vos vraies recettes et charges 2026, pas d'une règle générale.</p>
-                        <p className="text-white/80">Je vous ouvre l'aide à la déclaration : elle compare les deux régimes avec les chiffres de votre compte ?</p>
+                        <p>Je confirme le loyer de janvier — la quittance PDF sera générée automatiquement.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>🏠 Studio Bellevue · Julien Morel</p>
+                          <p>📄 Loyer janvier 2026 → quittance générée</p>
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex justify-end">
                       <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Oui, vas-y
+                        Confirmer
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 pl-[42px]">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                        ✓ Aide à la déclaration ouverte — comparatif micro-BIC / réel
+                        ✓ Paiement confirmé — quittance de janvier générée pour Julien
                       </span>
                     </div>
                   </div>
