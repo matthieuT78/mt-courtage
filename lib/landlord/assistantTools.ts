@@ -55,6 +55,66 @@ function requireAdmin() {
   return supabaseAdmin;
 }
 
+// Réplique exacte des helpers d'occupation de SectionBiens.tsx (composant cockpit) :
+// on ne peut pas les importer depuis un composant React côté serveur, donc on
+// garde les deux copies en phase à la main plutôt que d'introduire un import
+// client->serveur artificiel.
+function normalizeDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(String(value).slice(0, 10) + "T00:00:00");
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function daysBetween(start: Date, end: Date) {
+  return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+}
+
+function isLeaseUsable(lease: any) {
+  const status = String(lease?.status || "").toLowerCase();
+  return status !== "draft" && status !== "archived";
+}
+
+function isLeaseCurrent(lease: any, now: Date) {
+  if (String(lease?.status || "").toLowerCase() !== "active") return false;
+  const start = normalizeDate(lease?.start_date);
+  const end = normalizeDate(lease?.end_date);
+  if (!start || start.getTime() > now.getTime()) return false;
+  return !end || end.getTime() >= now.getTime();
+}
+
+function occupancyDaysForWindow(leases: any[], windowStart: Date, windowEnd: Date) {
+  const intervals = leases
+    .filter(isLeaseUsable)
+    .map((lease) => {
+      const start = normalizeDate(lease?.start_date);
+      const rawEnd = normalizeDate(lease?.end_date);
+      if (!start) return null;
+      const end = rawEnd ? addDays(rawEnd, 1) : windowEnd;
+      const clippedStart = new Date(Math.max(start.getTime(), windowStart.getTime()));
+      const clippedEnd = new Date(Math.min(end.getTime(), windowEnd.getTime()));
+      return clippedEnd.getTime() > clippedStart.getTime() ? { start: clippedStart, end: clippedEnd } : null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.start.getTime() - b.start.getTime()) as Array<{ start: Date; end: Date }>;
+
+  const merged: Array<{ start: Date; end: Date }> = [];
+  for (const interval of intervals) {
+    const last = merged[merged.length - 1];
+    if (!last || interval.start.getTime() > last.end.getTime()) {
+      merged.push({ ...interval });
+    } else if (interval.end.getTime() > last.end.getTime()) {
+      last.end = interval.end;
+    }
+  }
+  return merged.reduce((total, interval) => total + daysBetween(interval.start, interval.end), 0);
+}
+
 const PROPERTY_TYPE_ENUM = ["apartment", "house", "building", "garage", "parking", "other"];
 const PROPERTY_TYPE_LABEL: Record<string, string> = {
   apartment: "Appartement",
@@ -1171,8 +1231,116 @@ export const assistantTools: AssistantTool[] = [
     }),
   },
   {
+    name: "get_occupancy_stats",
+    description: "Calcule directement le taux d'occupation du parc — global et bien par bien (immeuble = un taux par lot) — sur une fenêtre glissante de 12 mois, avec le nombre de biens occupés/vacants maintenant, le turnover (nouvelles entrées locataire sur 12 mois) et l'ancienneté moyenne du locataire en place. Même calcul que le bloc \"Pilotage occupation\" de l'écran Biens. Utilise EXCLUSIVEMENT les chiffres renvoyés (occupancy_rate_12m, occupied_now, vacant_now, turnover_12m, average_current_tenant_days, per_unit) pour répondre à toute question sur le taux d'occupation / la vacance des biens — ne recalcule jamais ça toi-même à partir de list_properties/list_leases, tu ferais des erreurs. Termine en proposant open_biens (jamais open_performance) seulement si l'utilisateur veut explorer le détail visuellement.",
+    input_schema: { type: "object", properties: {}, required: [] },
+    mutates: false,
+    execute: async (ctx) => {
+      const admin = requireAdmin();
+      const now = new Date();
+      const windowEnd = addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
+      const windowStart = addDays(windowEnd, -365);
+
+      const [{ data: properties, error: propsError }, { data: lots, error: lotsError }, { data: leases, error: leasesError }] = await Promise.all([
+        admin.from("properties").select("id,label,type").eq("user_id", ctx.userId).neq("status", "archived"),
+        admin.from("property_lots").select("id,label,property_id,status,sort_order").eq("user_id", ctx.userId),
+        admin.from("leases").select("id,status,property_id,lot_id,start_date,end_date").eq("user_id", ctx.userId),
+      ]);
+      if (propsError) throw new Error(propsError.message);
+      if (lotsError) throw new Error(lotsError.message);
+      if (leasesError) throw new Error(leasesError.message);
+
+      const activeLotsByProperty = new Map<string, any[]>();
+      for (const lot of lots || []) {
+        if (String((lot as any)?.status || "active").toLowerCase() === "archived") continue;
+        const pid = (lot as any)?.property_id;
+        if (!pid) continue;
+        if (!activeLotsByProperty.has(pid)) activeLotsByProperty.set(pid, []);
+        activeLotsByProperty.get(pid)!.push(lot);
+      }
+      for (const arr of activeLotsByProperty.values()) arr.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+      type Unit = { label: string; leases: any[] };
+      const units: Unit[] = [];
+      for (const property of properties || []) {
+        const propertyLots = (property as any)?.type === "building" ? activeLotsByProperty.get((property as any).id) || [] : [];
+        if (propertyLots.length > 0) {
+          for (const lot of propertyLots) {
+            units.push({
+              label: `${(property as any).label} — ${(lot as any).label}`,
+              leases: (leases || []).filter((l: any) => l.lot_id === (lot as any).id),
+            });
+          }
+        } else {
+          units.push({ label: (property as any).label, leases: (leases || []).filter((l: any) => l.property_id === (property as any).id) });
+        }
+      }
+
+      const rows = units.map(({ label, leases: unitLeases }) => {
+        const usableLeases = unitLeases.filter(isLeaseUsable);
+        const firstLeaseStart =
+          usableLeases
+            .map((l: any) => normalizeDate(l?.start_date))
+            .filter((d): d is Date => Boolean(d))
+            .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+        const analysisStart =
+          firstLeaseStart && firstLeaseStart.getTime() > windowStart.getTime() && firstLeaseStart.getTime() < windowEnd.getTime()
+            ? firstLeaseStart
+            : windowStart;
+        const analysisDays = Math.max(1, daysBetween(analysisStart, windowEnd));
+        const currentLease =
+          unitLeases
+            .filter((l: any) => isLeaseCurrent(l, now))
+            .sort((a: any, b: any) => (normalizeDate(b?.start_date)?.getTime() || 0) - (normalizeDate(a?.start_date)?.getTime() || 0))[0] || null;
+        const occupiedDays12m = occupancyDaysForWindow(unitLeases, analysisStart, windowEnd);
+        const vacancyDays12m = Math.max(0, analysisDays - occupiedDays12m);
+        const turnover12m = unitLeases.filter((l: any) => {
+          const start = normalizeDate(l?.start_date);
+          return start && start.getTime() >= windowStart.getTime() && start.getTime() < windowEnd.getTime() && isLeaseUsable(l);
+        }).length;
+        const currentStart = normalizeDate(currentLease?.start_date);
+        const currentTenantDays = currentStart ? daysBetween(currentStart, now) : null;
+        return {
+          label,
+          occupied_now: !!currentLease,
+          current_tenant_days: currentTenantDays,
+          occupancy_rate_12m: Math.round((occupiedDays12m / analysisDays) * 1000) / 10,
+          vacancy_days_12m: vacancyDays12m,
+          turnover_12m: turnover12m,
+          analysisDays,
+          occupiedDays12m,
+        };
+      });
+
+      const totalWindowDays = Math.max(1, rows.reduce((sum, r) => sum + r.analysisDays, 0));
+      const totalOccupiedDays = rows.reduce((sum, r) => sum + r.occupiedDays12m, 0);
+      const occupiedNow = rows.filter((r) => r.occupied_now).length;
+      const currentDurations = rows.map((r) => r.current_tenant_days).filter((d): d is number => d != null);
+      const averageCurrentTenantDays = currentDurations.length
+        ? Math.round(currentDurations.reduce((sum, d) => sum + d, 0) / currentDurations.length)
+        : null;
+
+      return {
+        total_units: rows.length,
+        occupied_now: occupiedNow,
+        vacant_now: rows.length - occupiedNow,
+        occupancy_rate_12m: rows.length ? Math.round((totalOccupiedDays / totalWindowDays) * 1000) / 10 : 0,
+        average_vacancy_days_12m: rows.length ? Math.round(rows.reduce((sum, r) => sum + r.vacancy_days_12m, 0) / rows.length) : 0,
+        turnover_12m: rows.reduce((sum, r) => sum + r.turnover_12m, 0),
+        average_current_tenant_days: averageCurrentTenantDays,
+        per_unit: rows.map((r) => ({
+          label: r.label,
+          occupied_now: r.occupied_now,
+          occupancy_rate_12m: r.occupancy_rate_12m,
+          vacancy_days_12m: r.vacancy_days_12m,
+          turnover_12m: r.turnover_12m,
+        })),
+      };
+    },
+  },
+  {
     name: "open_biens",
-    description: "Ouvre l'écran Biens, dont le bloc \"Pilotage occupation\" affiche le taux d'occupation du parc (12 mois), le nombre de biens occupés/vacants, le turnover et l'ancienneté des locataires. À proposer pour toute question sur le taux d'occupation / vacance des biens — jamais open_performance pour ce type de question, cet écran-là calcule la rentabilité et le cash-flow, pas l'occupation.",
+    description: "Ouvre l'écran Biens, dont le bloc \"Pilotage occupation\" affiche le taux d'occupation du parc (12 mois), le nombre de biens occupés/vacants, le turnover et l'ancienneté des locataires. À proposer seulement après avoir donné les chiffres via get_occupancy_stats, si l'utilisateur veut explorer le détail visuellement — jamais open_performance pour une question d'occupation, cet écran-là calcule la rentabilité et le cash-flow, pas l'occupation.",
     input_schema: { type: "object", properties: {}, required: [] },
     mutates: false,
     navigate: true,
