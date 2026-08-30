@@ -262,8 +262,10 @@ export default function GestionLocativeLmnpPage() {
 
               <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-[#635bff]/10 sm:rounded-[2rem] ring-1 ring-slate-200">
                 <img
-                  src="/cockpit-bailleur-lokt.png"
+                  src="/cockpit-bailleur-lokt-v2.webp"
                   alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
+                  width={1400}
+                  height={933}
                   className="w-full h-auto block"
                   loading="eager"
                 />
