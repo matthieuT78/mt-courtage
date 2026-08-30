@@ -217,8 +217,12 @@ export default function LokyAssistantIaPage() {
           <div aria-hidden className="pointer-events-none absolute -right-24 top-16 h-[380px] w-[380px] rounded-full bg-[#00d4ff]/[0.06] blur-3xl" />
           <div className="relative mx-auto max-w-6xl">
             <div className="mx-auto max-w-3xl text-center">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/15">
-                <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+              <div className="relative mx-auto h-28 w-28 sm:h-32 sm:w-32">
+                <div aria-hidden className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-br from-[#635bff]/25 to-[#00d4ff]/25 blur-2xl" />
+                <img src="/loky-avatar.png" alt="Loky, l'assistant IA de lokt.fr" className="relative h-full w-full object-contain drop-shadow-[0_18px_30px_rgba(79,70,229,0.25)]" />
+              </div>
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/15">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Assistant IA lokt.fr
               </div>
               <h1 className="mt-5 font-semibold leading-[0.99] text-slate-950">
