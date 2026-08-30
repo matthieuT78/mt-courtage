@@ -27,6 +27,9 @@ export default function Document() {
         <meta name="theme-color" content="#0f172a" />
         <meta name="application-name" content="lokt.fr" />
         <meta name="apple-mobile-web-app-title" content="lokt.fr" />
+
+        {/* Vérification de propriété du site */}
+        <meta name="linkmania" content="0bc945c48e60234" />
       </Head>
 
       <body className="bg-slate-100">
