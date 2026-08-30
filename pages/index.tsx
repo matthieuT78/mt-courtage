@@ -832,31 +832,30 @@ export default function Home() {
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Marie Petit dit ne pas avoir reçu sa quittance de janvier, tu peux lui renvoyer ?
+                    Crée un bail meublé pour Julien Morel sur le studio Bellevue, 650 € à partir du 1er septembre
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2.5">
                   <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
                   <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>Quittance de janvier déjà générée pour le Studio Centre.</p>
+                    <p>Je crée le bail meublé pour Julien Morel.</p>
                     <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>🏠 Studio Centre · Marie Petit</p>
-                      <p>📄 Quittance janvier 2026</p>
+                      <p>🏠 Studio Bellevue · Julien Morel</p>
+                      <p>📅 Début 01/09/2026 · 650 €/mois · meublé</p>
                     </div>
-                    <p className="text-white/80">Je la renvoie par email à Marie Petit ?</p>
                   </div>
                 </div>
 
                 <div className="flex justify-end">
                   <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Oui, envoie-la
+                    Confirmer
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 pl-[42px]">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Quittance de janvier renvoyée à Marie Petit — email
+                    ✓ Bail créé — Studio Bellevue / Julien Morel
                   </span>
                 </div>
               </div>
