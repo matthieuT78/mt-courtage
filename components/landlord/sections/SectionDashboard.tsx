@@ -1476,7 +1476,7 @@ export function SectionDashboard({
               {[
                 "Créer un bail",
                 "Confirmer un paiement reçu",
-                "Chercher un locataire",
+                "Chercher un nouveau locataire",
                 "Créer un bien",
               ].map((suggestion) => (
                 <button
