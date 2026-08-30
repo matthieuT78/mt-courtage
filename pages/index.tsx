@@ -785,7 +785,7 @@ export default function Home() {
               <Link href="/tarifs" className="inline-flex h-12 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 px-7 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 hover:opacity-90 transition">
                 Découvrir Loky — dès 6,90 €/mois →
               </Link>
-              <Link href="#faq" className="inline-flex h-12 items-center justify-center rounded-full bg-white/10 px-6 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15 transition">
+              <Link href="/loky-assistant-ia" className="inline-flex h-12 items-center justify-center rounded-full bg-white/10 px-6 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15 transition">
                 Comment ça marche
               </Link>
             </div>

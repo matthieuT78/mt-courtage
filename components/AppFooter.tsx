@@ -76,6 +76,9 @@ export default function AppFooter() {
           <Link href="/comparatif-logiciel-gestion-locative" className="underline hover:text-slate-700">
             Comparatif logiciels
           </Link>
+          <Link href="/loky-assistant-ia" className="underline hover:text-slate-700">
+            Loky, l’assistant IA
+          </Link>
           <Link href="/blog" className="underline hover:text-slate-700">
             Blog immobilier
           </Link>

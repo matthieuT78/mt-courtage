@@ -398,6 +398,12 @@ export default function GestionLocativeLmnpPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="px-5 pb-5 pt-1 text-right sm:px-8 sm:pb-8">
+                <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
+                  Découvrir toutes les capacités de Loky →
+                </Link>
+              </div>
             </section>
 
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
