@@ -673,8 +673,12 @@ export default function Home() {
         <section className="lokt-public-hero relative overflow-hidden bg-[#07040f] px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
           {/* Conic gradient rotatif */}
           <div aria-hidden className="lokt-hero-spin" />
-          {/* Fondu bas vers la page */}
-          <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-[#f6f9fc]" />
+          {/* Le glow est animé (rotation 20s en boucle) : sans ce fondu, la couleur visible
+              en bas du hero varie selon l'instant du chargement — parfois vive, parfois sur
+              un secteur sombre qui ressort comme une bande plate. Ce fondu masque toujours
+              vers #0b0718 (couleur de base de la section Loky qui suit), donc le raccord
+              reste garanti quelle que soit la phase de l'animation, sans virer au noir pur. */}
+          <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-b from-transparent to-[#0b0718]" />
 
           <div className="relative mx-auto max-w-7xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.88fr,1.12fr] lg:items-center">
@@ -736,7 +740,20 @@ export default function Home() {
 
         {/* ─── LOKY — SOUS LES PROJECTEURS ────────────────────────────── */}
         <section className="relative overflow-hidden bg-[#0b0718] px-4 py-16 sm:py-24">
-          <div aria-hidden className="lokt-hero-spin opacity-60" />
+          {/* Dégradé radial statique (pas animé) ancré vers le bas/milieu : le
+              haut de la section reste sur la couleur de base #0b0718, identique
+              au fondu qui termine le hero juste au-dessus, donc pas de raccord
+              visible entre les deux — contrairement à deux glows animés
+              indépendamment, qui ne peuvent pas garantir la même couleur à la
+              jonction à tout instant. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(65% 75% at 28% 45%, rgba(99,91,255,0.6), transparent 72%), radial-gradient(60% 65% at 78% 85%, rgba(0,229,168,0.5), transparent 72%), radial-gradient(55% 60% at 55% 40%, rgba(0,188,232,0.4), transparent 72%)",
+            }}
+          />
           <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-white" />
 
           <div className="relative mx-auto max-w-5xl text-center">
@@ -772,8 +789,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Mockup de conversation — centré, grand format */}
-          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 max-w-2xl">
+          {/* Mockups de conversation — deux exemples côte à côte */}
+          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-2">
             <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
               <div className="space-y-4">
                 <div className="flex justify-end">
@@ -804,6 +821,41 @@ export default function Home() {
                 <div className="flex items-center gap-2 pl-[42px]">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
                     ✓ Relance envoyée à Dupond — email + SMS
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    Comment améliorer le cash-flow de l’appartement de Paris ?
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                    <p>Cash-flow actuel : +142 €/mois (loyer 1 450 € − crédit, charges, taxe foncière).</p>
+                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                      <p>📈 Loyer 6 % sous le marché du quartier → +90 €/mois</p>
+                      <p>🛡️ Assurance emprunteur non renégociée depuis 2021 → +35 €/mois</p>
+                      <p>🔧 Charges de copro en hausse de 18 % cette année → à challenger en AG</p>
+                    </div>
+                    <p className="text-white/80">Je simule la renégociation de l’assurance ?</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    Oui, vas-y
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pl-[42px]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                    ✓ Simulation faite — cash-flow projeté : +177 €/mois
                   </span>
                 </div>
               </div>

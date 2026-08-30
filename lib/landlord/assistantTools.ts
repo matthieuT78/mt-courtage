@@ -1171,6 +1171,16 @@ export const assistantTools: AssistantTool[] = [
     }),
   },
   {
+    name: "open_biens",
+    description: "Ouvre l'écran Biens, dont le bloc \"Pilotage occupation\" affiche le taux d'occupation du parc (12 mois), le nombre de biens occupés/vacants, le turnover et l'ancienneté des locataires. À proposer pour toute question sur le taux d'occupation / vacance des biens — jamais open_performance pour ce type de question, cet écran-là calcule la rentabilité et le cash-flow, pas l'occupation.",
+    input_schema: { type: "object", properties: {}, required: [] },
+    mutates: false,
+    navigate: true,
+    execute: async () => ({
+      navigation: { section: "biens", link: {}, label: "Ouvrir Biens" },
+    }),
+  },
+  {
     name: "delete_finance_transaction",
     description: "Supprime une écriture Finance simple (non récurrente). Refuse si l'écriture est liée à une quittance automatique (utiliser cancel_payment) ou à une opération de dépôt de garantie (utiliser manage_deposit) ou si elle fait partie d'une série récurrente (utiliser stop_recurring_transaction).",
     input_schema: {
