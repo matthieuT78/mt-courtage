@@ -85,7 +85,7 @@ const faq = [
   },
   {
     q: "Quel est le prix de Loky ?",
-    a: "Loky est inclus à partir du plan lokt·one (6,90 €/mois), avec un usage étendu sur les plans lokt·plus et Pro/agence. Il n'est pas disponible sur le plan gratuit.",
+    a: "Le plan gratuit donne accès à un essai de 8 messages à vie avec Loky. Au-delà, l'accès complet est inclus à partir du plan lokt·one (6,90 €/mois), avec un usage étendu sur les plans lokt·plus et Pro/agence.",
   },
   {
     q: "Loky remplace-t-il un expert-comptable ou un gestionnaire ?",
@@ -128,7 +128,7 @@ const jsonLdItems = [
       "@type": "Offer",
       price: "6.90",
       priceCurrency: "EUR",
-      description: "Inclus à partir du plan lokt·one.",
+      description: "Essai de 8 messages à vie sur le plan gratuit, accès complet à partir du plan lokt·one.",
     },
     featureList: capabilities.map((c) => c.title),
   },
@@ -443,9 +443,9 @@ export default function LokyAssistantIaPage() {
             <section className="flex flex-col items-start justify-between gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 shadow-sm sm:flex-row sm:items-center sm:rounded-[2rem] sm:p-8">
               <div>
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-300">Disponibilité</p>
-                <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Loky est inclus dès le plan lokt·one, 6,90 €/mois.</h2>
+                <h2 className="mt-2 text-xl font-semibold text-white sm:text-2xl">Essai gratuit, puis accès complet dès lokt·one à 6,90 €/mois.</h2>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-                  Usage étendu sur les plans lokt·plus et Pro/agence. Non disponible sur le plan gratuit.
+                  Le plan gratuit inclut un essai de 8 messages à vie avec Loky. Usage étendu sur les plans lokt·plus et Pro/agence.
                 </p>
               </div>
               <Link href="/tarifs" className="inline-flex shrink-0 items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-100">

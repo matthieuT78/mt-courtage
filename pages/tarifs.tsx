@@ -121,6 +121,65 @@ export default function TarifsPage() {
       { "@type": "Offer", name: "lokt·pro", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
     ],
   };
+  const tarifsFaq = [
+    {
+      q: "lokt.fr est-il vraiment gratuit ?",
+      a: "Oui. Le plan Gratuit permet de gérer 1 logement actif sans limite de durée et sans carte bancaire : bien, bail, locataire, quittances manuelles et PDF, contrat de bail et état des lieux numériques, signature électronique, 25 Mo de stockage et 4 alertes essentielles sont inclus.",
+    },
+    {
+      q: "Quelle est la différence entre le plan Gratuit et lokt·one ?",
+      a: "lokt·one débloque les candidatures en ligne (lien dédié, scoring, RGPD), les quittances envoyées automatiquement, le portail locataire, le partage de documents par email, les accusés de réception horodatés et les relances automatiques. Le plan Gratuit couvre la gestion manuelle d'un logement, sans ces automatisations.",
+    },
+    {
+      q: "Combien coûte un abonnement lokt.fr ?",
+      a: "lokt·one est à 6,90 €/mois (jusqu'à 2 logements actifs), lokt·plus à 11,90 €/mois (jusqu'à 15 logements actifs). En facturation annuelle, 2 mois sont offerts par rapport au tarif mensuel. Les deux plans sont sans engagement.",
+    },
+    {
+      q: "Puis-je résilier mon abonnement à tout moment ?",
+      a: "Oui. Tous les plans lokt.fr sont sans engagement : vous pouvez résilier à tout moment depuis votre espace bailleur. L'abonnement reste actif jusqu'à la fin de la période déjà payée, puis le compte repasse automatiquement au plan Gratuit.",
+    },
+    {
+      q: "lokt.fr prend-il une commission sur mes loyers ?",
+      a: "Non. Contrairement à une agence de gestion locative, qui facture en moyenne 7 à 8 % du loyer encaissé en frais de gestion courante, lokt.fr fonctionne avec un abonnement fixe : le montant ne varie jamais selon vos loyers encaissés.",
+    },
+    {
+      q: "Qu'est-ce qu'un « logement actif » ?",
+      a: "C'est l'unité de facturation de lokt.fr : un logement suivi activement (avec ou sans bail en cours). Un logement archivé ou sans suivi locatif actif ne compte pas dans la limite de votre plan.",
+    },
+    {
+      q: "Loky, l'assistant IA, est-il inclus dans le prix ?",
+      a: "Le plan Gratuit inclut un essai de 8 messages à vie avec Loky. L'accès complet est inclus dès le plan lokt·one, avec un usage étendu sur lokt·plus.",
+    },
+    {
+      q: "L'abonnement lokt.fr est-il déductible fiscalement ?",
+      a: "Pour un bailleur LMNP, Pinel ou investisseur locatif, l'abonnement peut s'inscrire dans les frais de gestion du bien. La déduction effective dépend toutefois du régime fiscal choisi et de votre situation : lokt.fr ne remplace pas un conseil fiscal personnalisé, à valider avec votre expert-comptable.",
+    },
+    {
+      q: "Qu'est-ce que lokt·pro ?",
+      a: "lokt·pro est une offre pour les agences et gestionnaires, pas encore commercialisée, centrée sur la gestion documentaire (dossiers locataires, justificatifs, assurances, diagnostics, accès équipe, traçabilité). Les agences intéressées peuvent déjà contacter lokt.fr pour cadrer le besoin.",
+    },
+  ];
+  const jsonLdItems = [
+    pricingJsonLd,
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: "https://lokt.fr" },
+        { "@type": "ListItem", position: 2, name: "Tarifs", item: pageUrl },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      inLanguage: "fr-FR",
+      mainEntity: tarifsFaq.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: { "@type": "Answer", text: item.a },
+      })),
+    },
+  ];
   useScrollReveal();
   const [billing, setBilling] = useState<Billing>("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -179,7 +238,9 @@ export default function TarifsPage() {
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
+        {jsonLdItems.map((schema, index) => (
+          <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <AppHeader staticMode />
@@ -448,6 +509,22 @@ export default function TarifsPage() {
               pour un propriétaire. En interne, les loyers, quittances et états des lieux restent rattachés aux baux actifs. Un logement archivé ou
               sans suivi locatif actif ne doit pas compter comme un usage courant.
             </p>
+          </section>
+
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 sm:rounded-[1.75rem] sm:p-5">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Questions fréquentes sur les tarifs</h2>
+            <div className="mt-5 grid gap-3">
+              {tarifsFaq.map((item, i) => (
+                <details key={item.q} data-scroll-reveal data-reveal-delay={`${i * 80}`} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
+                    {item.q}
+                    <span className="text-slate-400 transition group-open:rotate-180">▾</span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.a}</p>
+                </details>
+              ))}
+            </div>
           </section>
 
           <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">

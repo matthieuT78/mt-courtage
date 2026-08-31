@@ -7,6 +7,9 @@ import AppFooter from "../components/AppFooter";
 interface FaqItem {
   question: string;
   answer: React.ReactNode;
+  // Version texte brut utilisée pour le schema.org FAQPage quand `answer` contient
+  // du JSX (lien, <strong>...) — schema.org exige du texte, pas du HTML/JSX.
+  answerText?: string;
 }
 
 const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
@@ -28,6 +31,8 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             et ne nécessite pas de carte bancaire.
           </>
         ),
+        answerText:
+          "Rendez-vous sur lokt.fr et cliquez sur « Créer un compte ». Renseignez votre adresse e-mail et choisissez un mot de passe. Un e-mail de confirmation vous est envoyé : cliquez sur le lien pour activer votre compte. L'inscription est gratuite et ne nécessite pas de carte bancaire.",
       },
       {
         question: "Combien de logements puis-je gérer sur le plan Gratuit ?",
@@ -66,6 +71,8 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             <strong>lokt·one</strong>.
           </>
         ),
+        answerText:
+          "Depuis la section Locataires, cliquez sur la fiche du locataire concerné puis sur « Inviter au portail ». Un e-mail d'invitation lui est envoyé. Il peut alors créer son accès et consulter ses documents (quittances, bail, EDL) en autonomie. Cette fonctionnalité est disponible à partir du plan lokt·one.",
       },
       {
         question: "Un locataire peut-il modifier ses informations sur le portail ?",
@@ -109,6 +116,8 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             envoyer un rappel manuel depuis la fiche du loyer.
           </>
         ),
+        answerText:
+          "Sur les plans lokt·one et lokt·plus, des rappels automatiques sont envoyés au locataire à la date d'échéance, puis des relances si le paiement n'est pas confirmé. Vous pouvez configurer la fréquence et le message depuis Paramètres > Rappels. Vous pouvez aussi envoyer un rappel manuel depuis la fiche du loyer.",
       },
     ],
   },
@@ -132,6 +141,8 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             et envoyez-le en recommandé avec accusé de réception.
           </>
         ),
+        answerText:
+          "Depuis la section Baux, ouvrez le bail concerné et cliquez sur « Modèles courriers ». Choisissez « Mise en demeure ». Le courrier est pré-rempli avec les informations du bail et le montant des loyers impayés. Il est conforme à l'article 24 de la loi du 6 juillet 1989. Téléchargez-le et envoyez-le en recommandé avec accusé de réception.",
       },
       {
         question: "Quand dois-je envoyer le congé bailleur ?",
@@ -187,6 +198,8 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             spécifique.
           </>
         ),
+        answerText:
+          "Sur le plan lokt·plus, la section Déclaration récapitule les loyers encaissés et les charges déductibles pour l'année fiscale. Vous pouvez exporter le récapitulatif en PDF pour faciliter votre déclaration de revenus fonciers (formulaire 2044). lokt.fr n'est pas un logiciel de comptabilité : consultez votre expert-comptable pour votre situation fiscale spécifique.",
       },
     ],
   },
@@ -210,6 +223,42 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
           "Oui. Depuis la section Alertes, vous pouvez « snoozer » une alerte pour la reporter d'une durée choisie (3, 7 ou 14 jours). Elle réapparaîtra automatiquement à la date choisie.",
       },
     ],
+  },
+];
+
+const jsonLdItems = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: "Aide & Centre de support — lokt.fr",
+    url: "https://lokt.fr/aide",
+    description:
+      "Centre d'aide lokt.fr : FAQ, guides rapides et support pour gérer vos biens locatifs.",
+    inLanguage: "fr-FR",
+    isPartOf: { "@type": "WebSite", name: "lokt.fr", url: "https://lokt.fr" },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: "https://lokt.fr" },
+      { "@type": "ListItem", position: 2, name: "Aide", item: "https://lokt.fr/aide" },
+    ],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    inLanguage: "fr-FR",
+    mainEntity: faqSections.flatMap((section) =>
+      section.items.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answerText ?? (typeof item.answer === "string" ? item.answer : ""),
+        },
+      }))
+    ),
   },
 ];
 
@@ -360,6 +409,9 @@ export default function AidePage() {
         />
         <meta property="og:url" content="https://lokt.fr/aide" />
         <meta property="og:type" content="website" />
+        {jsonLdItems.map((schema, index) => (
+          <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <AppHeader staticMode />
