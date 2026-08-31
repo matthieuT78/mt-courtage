@@ -31,6 +31,7 @@ export default function MonCompteSecuritePage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const deleteInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +94,7 @@ export default function MonCompteSecuritePage() {
     if (!supabase) return setPwdError("Auth indisponible.");
     if (!isLoggedIn) return setPwdError("Vous devez être connecté.");
     if (!newPassword) return setPwdError("Merci de renseigner un nouveau mot de passe.");
+    if (newPassword.length < 8) return setPwdError("Le mot de passe doit contenir au moins 8 caractères.");
     if (newPassword !== newPassword2) return setPwdError("Les mots de passe ne correspondent pas.");
     setPwdLoading(true);
     try {
@@ -118,9 +120,22 @@ export default function MonCompteSecuritePage() {
     if (deleteConfirm.trim().toLowerCase() !== "supprimer") {
       return setDeleteError("Tapez exactement « supprimer » pour confirmer.");
     }
+    if (!isGoogleUser && !deletePassword) {
+      return setDeleteError("Merci de saisir votre mot de passe actuel pour confirmer.");
+    }
     setDeleteLoading(true);
     setDeleteError(null);
     try {
+      if (!isGoogleUser) {
+        // Re-vérifie le mot de passe actuel avant une action irréversible : taper "supprimer" ne
+        // prouve pas l'identité de la personne devant l'écran (session laissée ouverte, poste
+        // partagé). Les comptes Google n'ont pas de mot de passe lokt.fr à vérifier ici.
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: deletePassword,
+        });
+        if (reauthError) throw new Error("Mot de passe incorrect.");
+      }
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("Session expirée, reconnectez-vous.");
@@ -253,6 +268,7 @@ export default function MonCompteSecuritePage() {
                         onChange={(e) => setNewPassword(e.target.value)}
                         className={inputCls}
                         placeholder="••••••••••••"
+                        minLength={8}
                       />
                     </div>
                     <div className="space-y-2">
@@ -263,6 +279,7 @@ export default function MonCompteSecuritePage() {
                         onChange={(e) => setNewPassword2(e.target.value)}
                         className={inputCls}
                         placeholder="••••••••••••"
+                        minLength={8}
                       />
                     </div>
                   </div>
@@ -274,7 +291,7 @@ export default function MonCompteSecuritePage() {
                     >
                       {pwdLoading ? "Mise à jour…" : "Mettre à jour"}
                     </button>
-                    <p className="text-xs text-slate-500">12 caractères minimum recommandés.</p>
+                    <p className="text-xs text-slate-500">8 caractères minimum.</p>
                   </div>
                 </form>
               </>
@@ -323,7 +340,7 @@ export default function MonCompteSecuritePage() {
             </p>
             <button
               type="button"
-              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(""); setDeleteError(null); }}
+              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(""); setDeletePassword(""); setDeleteError(null); }}
               className="mt-4 rounded-full border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors"
             >
               Supprimer mon compte
@@ -363,6 +380,19 @@ export default function MonCompteSecuritePage() {
               />
             </div>
 
+            {!isGoogleUser && (
+              <div className="mt-4 space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Mot de passe actuel</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className={inputCls + " focus:ring-red-500/20"}
+                />
+              </div>
+            )}
+
             {deleteError && (
               <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                 {deleteError}
@@ -381,7 +411,7 @@ export default function MonCompteSecuritePage() {
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                disabled={deleteLoading || deleteConfirm.trim().toLowerCase() !== "supprimer"}
+                disabled={deleteLoading || deleteConfirm.trim().toLowerCase() !== "supprimer" || (!isGoogleUser && !deletePassword)}
                 className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 transition-colors"
               >
                 {deleteLoading ? "Suppression…" : "Supprimer"}
