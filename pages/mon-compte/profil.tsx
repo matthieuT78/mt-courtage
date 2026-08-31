@@ -8,6 +8,7 @@ import { useProfile } from "../../hooks/useProfile";
 import { supabase } from "../../lib/supabaseClient";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
+import DatePicker from "../../components/forms/DatePicker";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
@@ -203,11 +204,10 @@ export default function MonCompteProfilPage() {
               </Field>
 
               <Field label="Date de naissance">
-                <input
-                  type="date"
-                  className={inputCls}
-                  value={profile?.birth_date ?? ""}
-                  onChange={(e) => set({ birth_date: e.target.value || null })}
+                <DatePicker
+                  value={profile?.birth_date ?? null}
+                  onChange={(v) => set({ birth_date: v })}
+                  className={inputCls + " flex items-center justify-between"}
                 />
               </Field>
 
