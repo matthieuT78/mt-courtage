@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Run DVF refresh
-        run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload
+        run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload --history
         env:
           # Pas un secret : c'est l'URL publique du projet Supabase, déjà
           # embarquée telle quelle dans le bundle JS du site (NEXT_PUBLIC_).
@@ -66,3 +66,29 @@ jobs:
           name: city-market-benchmarks-${{ steps.target.outputs.year }}
           path: data/city_market_benchmarks_from_dvf_*.csv
           retention-days: 90
+
+      - name: Notifier par email (succès ou échec)
+        # Ce job ne tourne que 2x/an (avril, octobre) : sans ce mail, il est
+        # facile d'oublier qu'il existe et de ne pas remarquer un échec.
+        if: always()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET_YEAR: ${{ steps.target.outputs.year }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then
+            export SUBJECT="✅ lokt.fr — refresh DVF OK (année ${TARGET_YEAR:-?})"
+            export BODY_TEXT="Le refresh automatique DVF (city_market_benchmarks + historique) s'est terminé avec succès pour l'année ${TARGET_YEAR:-?}.
+
+Logs : ${RUN_URL}"
+          else
+            export SUBJECT="🚨 lokt.fr — le refresh DVF a échoué"
+            export BODY_TEXT="Le refresh automatique DVF a échoué (année ciblée : ${TARGET_YEAR:-inconnue, échec probable avant la détection de l'année}).
+
+Logs : ${RUN_URL}"
+          fi
+          curl -s -o /dev/null -w "Resend: %{http_code}\n" -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg from "lokt.fr <contact@lokt.fr>" --arg to "matthieu.turbier@gmail.com" --arg subject "$SUBJECT" --arg text "$BODY_TEXT" '{from:$from,to:$to,subject:$subject,text:$text}')"

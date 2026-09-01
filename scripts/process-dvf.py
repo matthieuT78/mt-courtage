@@ -54,6 +54,7 @@ def load_geo_dvf(path: str) -> pd.DataFrame:
         df = pd.read_csv(
             f,
             usecols=[
+                "id_mutation",
                 "nature_mutation",
                 "valeur_fonciere",
                 "code_commune",
@@ -80,8 +81,11 @@ def load_raw_dgfip(path: str) -> pd.DataFrame:
     )
     df = df.rename(
         columns={
+            "Date mutation": "date_mutation",
             "Nature mutation": "nature_mutation",
             "Valeur fonciere": "valeur_fonciere",
+            "No voie": "no_voie",
+            "Code voie": "code_voie",
             "Code commune": "code_commune_raw",
             "Code departement": "code_departement",
             "Commune": "nom_commune",
@@ -99,7 +103,17 @@ def load_raw_dgfip(path: str) -> pd.DataFrame:
     df["valeur_fonciere"] = df["valeur_fonciere"].str.replace(",", ".", regex=False).astype(float)
     df["surface_reelle_bati"] = pd.to_numeric(df["surface_reelle_bati"], errors="coerce")
     df["nombre_lots"] = pd.to_numeric(df["nombre_lots"], errors="coerce")
-    return df[["nature_mutation", "valeur_fonciere", "code_commune", "nom_commune", "code_postal", "type_local", "surface_reelle_bati", "nombre_lots"]]
+    # Pas d'id_mutation dans le format brut DGFiP (contrairement à geo-dvf) :
+    # on reconstitue une clé de mutation équivalente à partir de la date, du
+    # montant et de l'adresse, pour détecter le même artefact (cf compute_benchmarks).
+    df["id_mutation"] = (
+        df["date_mutation"].astype(str)
+        + "|" + df["valeur_fonciere"].astype(str)
+        + "|" + df["code_commune"].astype(str)
+        + "|" + df["no_voie"].astype(str)
+        + "|" + df["code_voie"].astype(str)
+    )
+    return df[["id_mutation", "nature_mutation", "valeur_fonciere", "code_commune", "nom_commune", "code_postal", "type_local", "surface_reelle_bati", "nombre_lots"]]
 
 
 def compute_benchmarks(df: pd.DataFrame, year: int) -> pd.DataFrame:
@@ -109,6 +123,17 @@ def compute_benchmarks(df: pd.DataFrame, year: int) -> pd.DataFrame:
     df["valeur_fonciere"] = pd.to_numeric(df["valeur_fonciere"], errors="coerce")
     df = df[(df["surface_reelle_bati"] > 0) & (df["valeur_fonciere"] > 0)]
     df = df.dropna(subset=["code_commune"])
+
+    # Artefact DVF : quand une mutation (id_mutation) porte plusieurs lots
+    # Maison/Appartement, valeur_fonciere est le prix TOTAL de la mutation,
+    # identique sur chaque ligne — diviser ce total par la surface d'un seul
+    # lot gonfle le prix/m² jusqu'à des niveaux absurdes (vérifié : sur les
+    # mutations concernées, valeur_fonciere est à 100% identique entre les
+    # lignes, jamais un vrai prix par lot). On exclut ces mutations plutôt
+    # que d'inventer une répartition, faute de moyen fiable de la calculer.
+    mutation_counts = df.groupby("id_mutation")["id_mutation"].transform("size")
+    df = df[mutation_counts == 1]
+
     df["prix_m2"] = df["valeur_fonciere"] / df["surface_reelle_bati"]
 
     grouped = df.groupby("code_commune").agg(
@@ -137,6 +162,7 @@ def main():
     parser.add_argument("--local", type=str, default=None, help="Chemin vers un fichier déjà téléchargé (geo-dvf .csv.gz ou DGFiP brut avec --raw)")
     parser.add_argument("--raw", action="store_true", help="Le fichier --local est le format brut DGFiP (pipe-delimited), pas geo-dvf")
     parser.add_argument("--upload", action="store_true", help="Upsert le résultat dans Supabase (city_market_benchmarks)")
+    parser.add_argument("--history", action="store_true", help="Upsert aussi dans city_market_benchmarks_history (insee_code, year)")
     parser.add_argument("--out", type=str, default=None, help="Chemin du CSV de sortie")
     args = parser.parse_args()
 
@@ -165,6 +191,9 @@ def main():
     if args.upload:
         upload_to_supabase(result)
 
+    if args.history:
+        upload_to_history(result, args.year)
+
 
 def upload_to_supabase(result: pd.DataFrame):
     from supabase import create_client
@@ -191,6 +220,39 @@ def upload_to_supabase(result: pd.DataFrame):
     for i in range(0, len(rows), batch_size):
         batch = rows[i : i + batch_size]
         client.table("city_market_benchmarks").insert(batch).execute()
+        print(f"  {min(i + batch_size, len(rows))}/{len(rows)}")
+    print("Terminé.")
+
+
+def upload_to_history(result: pd.DataFrame, year: int):
+    from supabase import create_client
+
+    url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not url or not key:
+        print("ERREUR : SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY doivent être définis dans l'environnement.", file=sys.stderr)
+        sys.exit(1)
+
+    client = create_client(url, key)
+    # Pas de colonne "source" ici : ce texte descriptif ("DVF <année> (...)") est
+    # régénéré à l'affichage à partir de la colonne `year`, plutôt que dupliqué
+    # sur chacune des ~30 000 lignes de chaque année d'historique.
+    history = result.drop(columns=["source"]).copy()
+    history["year"] = year
+    rows = history.where(pd.notnull(history), None).to_dict(orient="records")
+
+    # Suppression préalable des lignes de cette année : un upsert seul laisserait
+    # des lignes orphelines pour les communes qui disparaissent d'un refresh à
+    # l'autre (ex. plus aucune vente exploitable après filtrage des mutations
+    # multi-lots), avec leurs anciennes valeurs (potentiellement erronées) intactes.
+    print(f"Suppression des lignes existantes pour l'année {year}...")
+    client.table("city_market_benchmarks_history").delete().eq("year", year).execute()
+
+    print(f"Insertion de {len(rows)} lignes dans city_market_benchmarks_history (année {year})...")
+    batch_size = 500
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i : i + batch_size]
+        client.table("city_market_benchmarks_history").insert(batch).execute()
         print(f"  {min(i + batch_size, len(rows))}/{len(rows)}")
     print("Terminé.")
 
