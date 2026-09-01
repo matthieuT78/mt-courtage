@@ -1,0 +1,62 @@
+name: DVF refresh (city_market_benchmarks)
+
+# Recalcule city_market_benchmarks (prix médian au m² + loyer estimé, par
+# commune) depuis les données DVF officielles (files.data.gouv.fr/geo-dvf),
+# publiées semestriellement en avril et octobre. Tourne ici plutôt que sur
+# un cron Vercel/cron-job.org : le traitement (téléchargement ~90 Mo,
+# agrégation de ~3,5M lignes avec pandas) dépasse largement ce qu'une
+# fonction serverless Node peut faire dans ses limites de temps/mémoire.
+
+on:
+  schedule:
+    - cron: "0 6 20 4,10 *" # 20 avril et 20 octobre, 6h UTC
+  workflow_dispatch:
+    inputs:
+      year:
+        description: "Année DVF à traiter (vide = auto-détection de la dernière année disponible)"
+        required: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install "pandas>=2.2" "supabase>=2.9"
+
+      - name: Determine target year
+        id: target
+        run: |
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            echo "year=${{ github.event.inputs.year }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CURRENT_YEAR=$(date +%Y)
+          if curl -sfI "https://files.data.gouv.fr/geo-dvf/latest/csv/${CURRENT_YEAR}/full.csv.gz" > /dev/null; then
+            echo "year=${CURRENT_YEAR}" >> "$GITHUB_OUTPUT"
+          elif curl -sfI "https://files.data.gouv.fr/geo-dvf/latest/csv/$((CURRENT_YEAR - 1))/full.csv.gz" > /dev/null; then
+            echo "year=$((CURRENT_YEAR - 1))" >> "$GITHUB_OUTPUT"
+          else
+            echo "Aucun fichier geo-dvf disponible pour ${CURRENT_YEAR} ni $((CURRENT_YEAR - 1))." >&2
+            exit 1
+          fi
+
+      - name: Run DVF refresh
+        run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Upload result CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-market-benchmarks-${{ steps.target.outputs.year }}
+          path: data/city_market_benchmarks_from_dvf_*.csv
+          retention-days: 90
