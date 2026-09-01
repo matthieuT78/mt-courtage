@@ -76,7 +76,7 @@ Le troisième argument concerne la conformité. Le document reprend la trame du 
 
 Les retours publiés sont peu nombreux, mais assumés comme tels. Le site affiche un avis vérifié sur Trustpilot et deux retours reçus par courriel. L'un émane d'un vendeur ayant transmis le dossier à son agent immobilier. Ces vendeurs avaient d'abord affronté le circuit classique du syndic. Ils citent le tarif et la réactivité du service comme motifs de bascule. Un service qui distingue clairement ses avis vérifiés de ses retours anonymisés inspire davantage confiance qu'un mur de témoignages invérifiables.
 
-Deux points pratiques complètent le tableau pour un bailleur. Le classement énergétique est recoupé avec la base de l'ADEME. Le partage au notaire passe par un lien sécurisé unique. Vous évitez ainsi les envois de pièces jointes en série.
+Deux points pratiques complètent le tableau pour un bailleur. Le [classement énergétique](/blog/dpe-passoire-thermique-que-faire) est recoupé avec la base de l'ADEME. Le partage au notaire passe par un lien sécurisé unique. Vous évitez ainsi les envois de pièces jointes en série.
 
 ## La check-list avant de payer votre syndic
 
@@ -94,7 +94,7 @@ Cette dernière étape est la plus rentable. Avec ces pièces en main, vous n'av
 
 La loi vous impose d'informer votre acquéreur. Elle ne vous impose ni prestataire, ni tarif. Le plafond de 380 € encadre l'état daté du syndic, pas le dossier remis avant le compromis. Le Gouvernement a confirmé en décembre 2025 que cette facturation ne repose sur aucun texte.
 
-Un bailleur méthodique traite ce poste comme n'importe quelle charge de gestion. Il compare, il documente, il arbitre. Entre 380 € et 24,99 €, l'arbitrage demande rarement une longue réflexion.
+Un [bailleur](/blog/vendre-acheter-bien-loue-bail-en-cours) méthodique traite ce poste comme n'importe quelle charge de gestion. Il compare, il documente, il arbitre. Entre 380 € et 24,99 €, l'arbitrage demande rarement une longue réflexion.
 
 ## Sources
 

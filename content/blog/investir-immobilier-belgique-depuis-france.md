@@ -20,9 +20,9 @@ Le contraste avec la France tient en quatre règles, à vérifier avec un fiscal
 
 Premier point, le plus surprenant pour un bailleur français : en Belgique, un particulier qui loue un logement à un autre particulier n'est pas imposé sur le loyer réellement perçu, mais sur le « revenu cadastral » indexé et majoré, une valeur administrative souvent très inférieure au loyer du marché. Pas de micro-foncier, pas de régime réel, pas de prélèvements sociaux à 17,2 %.
 
-Deuxième point : la plus-value sur un immeuble bâti est exonérée après cinq ans de détention (elle est taxée à 16,5 % en cas de revente plus rapide, hors régime spéculatif). Là où la France attend 22 ans pour l'impôt et 30 ans pour les prélèvements sociaux, la Belgique tourne la page en cinq.
+Deuxième point : la [plus-value](/blog/calcul-plus-value-immobiliere-2026) sur un immeuble bâti est exonérée après cinq ans de détention (elle est taxée à 16,5 % en cas de revente plus rapide, hors régime spéculatif). Là où la France attend 22 ans pour l'impôt et 30 ans pour les prélèvements sociaux, la Belgique tourne la page en cinq.
 
-Troisième point, le revers : l'entrée coûte cher. Les droits d'enregistrement pour un investisseur sont de 12,5 % en Wallonie et à Bruxelles, 12 % en Flandre. C'est nettement au-dessus des droits de mutation français. La stratégie belge est donc une stratégie de détention longue : l'entrée se rentabilise dans la durée.
+Troisième point, le revers : l'entrée coûte cher. Les droits d'enregistrement pour un investisseur sont de 12,5 % en Wallonie et à Bruxelles, 12 % en Flandre. C'est nettement au-dessus des [droits de mutation français](/blog/frais-de-notaire-calcul). La stratégie belge est donc une stratégie de détention longue : l'entrée se rentabilise dans la durée.
 
 Quatrième point pour les résidents fiscaux français : la convention franco-belge attribue l'imposition des revenus immobiliers à la Belgique, mais l'IFI français continue de viser vos biens belges si votre patrimoine immobilier net dépasse le seuil. On déplace l'imposition des loyers, pas celle de la fortune.
 
