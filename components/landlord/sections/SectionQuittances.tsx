@@ -554,7 +554,7 @@ export function SectionQuittances({
   const [reminderSendsByPeriod, setReminderSendsByPeriod] = useState<Map<string, ReminderSend[]>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
-  const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string; paymentMethod: string }>>({});
+  const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string; paymentMethod: string; sendAfter: boolean }>>({});
   const [hideDelegatedNotice, setHideDelegatedNotice] = useState(false);
   const [dontRemindDelegated, setDontRemindDelegated] = useState(false);
   const [pendingDelegatedConfirm, setPendingDelegatedConfirm] = useState<{
@@ -956,13 +956,14 @@ export function SectionQuittances({
     }
   };
 
-  const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number, paymentMethodOverride?: string) => {
+  const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number, paymentMethodOverride?: string, sendAfterGenerate?: boolean) => {
     if (loading) return; // évite un double-clic pendant la confirmation + génération PDF (3-8s)
     setLoading(true);
     setErr(null);
     setOk(null);
 
     const receiptsDisabled = !!row.lease?.receipts_disabled;
+    const willSendAfter = !receiptsDisabled && !!sendAfterGenerate && canUseReceiptAutomation;
 
     const steps = receiptsDisabled
       ? [
@@ -973,6 +974,7 @@ export function SectionQuittances({
           { label: "Enregistrement du paiement", status: "loading" as const },
           { label: "Mise à jour Finance", status: "pending" as const },
           { label: "Génération de la quittance PDF", status: "pending" as const },
+          ...(willSendAfter ? [{ label: "Envoi de la quittance au locataire", status: "pending" as const }] : []),
         ];
     setConfirmProgress({ visible: true, steps });
 
@@ -1039,7 +1041,33 @@ export function SectionQuittances({
         setOk("Paiement confirmé ✅ (la génération PDF a échoué, réessayez depuis la liste).");
       } else {
         updateStep(2, "done");
-        if (generated.json?.receipt_id) setSelectedReceiptId(generated.json.receipt_id);
+        const receiptId = generated.json?.receipt_id;
+        if (receiptId) setSelectedReceiptId(receiptId);
+        // refreshPromise a été lancé juste après la confirmation du paiement,
+        // en parallèle de cette génération PDF qui prend 3-8s : il a donc pu se
+        // terminer AVANT que la quittance n'existe réellement en base. Sans ce
+        // second refresh, le bouton "Ouvrir" reste grisé (pdfReady=false) tant
+        // que l'utilisateur ne recharge pas la page à la main.
+        await onRefresh();
+
+        if (willSendAfter && receiptId) {
+          updateStep(3, "loading");
+          try {
+            const sendResp = await fetch("/api/receipts/send", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ userId, receiptId, resendOnly: false }),
+            });
+            const { raw: sendRaw, json: sendJson } = await safeJson(sendResp);
+            throwApiError(sendResp, sendRaw, sendJson, "Erreur envoi quittance.");
+            updateStep(3, "done");
+            setOk("Paiement confirmé ✅ quittance générée et envoyée au locataire.");
+            await onRefresh();
+          } catch (sendErr: any) {
+            updateStep(3, "error");
+            setOk("Paiement confirmé et quittance générée ✅ (l'envoi a échoué, réessaie depuis la liste).");
+          }
+        }
       }
 
       // Fermeture automatique après 900ms
@@ -1761,6 +1789,7 @@ export function SectionQuittances({
                                     rent: String(row.pay.expectedRent),
                                     charges: String(row.pay.expectedCharges),
                                     paymentMethod: row.lease.payment_method || "virement",
+                                    sendAfter: canUseReceiptAutomation,
                                   },
                                 }));
                               }}
@@ -1962,6 +1991,28 @@ export function SectionQuittances({
                               <option value="especes">Espèces</option>
                             </select>
                           </label>
+                          {!(row.lease as any)?.receipts_disabled ? (
+                            <label
+                              className={cx(
+                                "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs",
+                                canUseReceiptAutomation ? "border-indigo-200 bg-white text-slate-700" : "border-slate-200 bg-slate-100 text-slate-500"
+                              )}
+                              title={canUseReceiptAutomation ? undefined : "Envoi automatique réservé aux abonnements payants."}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={override.sendAfter}
+                                disabled={!canUseReceiptAutomation}
+                                onChange={(e) => setConfirmOverrideByRow((p) => ({ ...p, [rowKey]: { ...p[rowKey], sendAfter: e.target.checked } }))}
+                                className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300"
+                              />
+                              <span>
+                                {canUseReceiptAutomation
+                                  ? "Envoyer la quittance au locataire par email une fois générée"
+                                  : "Envoyer la quittance au locataire par email une fois générée (abonnement payant)"}
+                              </span>
+                            </label>
+                          ) : null}
                           <p className="text-xs text-slate-500">Total : {fmtEur(rentNum + chargesNum)}</p>
                           <div className="flex gap-2">
                             <button
@@ -1975,7 +2026,7 @@ export function SectionQuittances({
                                   return;
                                 }
                                 closeForm();
-                                confirmPaymentForRow(row, rentNum, chargesNum, override.paymentMethod);
+                                confirmPaymentForRow(row, rentNum, chargesNum, override.paymentMethod, override.sendAfter);
                               }}
                               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                             >
