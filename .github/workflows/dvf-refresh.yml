@@ -37,10 +37,14 @@ jobs:
             echo "year=${{ github.event.inputs.year }}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Le proxy nginx de files.data.gouv.fr renvoie toujours 302, même
+          # pour une année inexistante (il redirige vers l'objet S3 sous-jacent
+          # sans vérifier qu'il existe) : -L est indispensable pour que -f
+          # échoue réellement sur le 404 final renvoyé par S3.
           CURRENT_YEAR=$(date +%Y)
-          if curl -sfI "https://files.data.gouv.fr/geo-dvf/latest/csv/${CURRENT_YEAR}/full.csv.gz" > /dev/null; then
+          if curl -sfIL "https://files.data.gouv.fr/geo-dvf/latest/csv/${CURRENT_YEAR}/full.csv.gz" > /dev/null; then
             echo "year=${CURRENT_YEAR}" >> "$GITHUB_OUTPUT"
-          elif curl -sfI "https://files.data.gouv.fr/geo-dvf/latest/csv/$((CURRENT_YEAR - 1))/full.csv.gz" > /dev/null; then
+          elif curl -sfIL "https://files.data.gouv.fr/geo-dvf/latest/csv/$((CURRENT_YEAR - 1))/full.csv.gz" > /dev/null; then
             echo "year=$((CURRENT_YEAR - 1))" >> "$GITHUB_OUTPUT"
           else
             echo "Aucun fichier geo-dvf disponible pour ${CURRENT_YEAR} ni $((CURRENT_YEAR - 1))." >&2
