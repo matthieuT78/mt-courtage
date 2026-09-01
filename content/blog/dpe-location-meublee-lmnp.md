@@ -55,7 +55,7 @@ Le [meublé de tourisme](/blog/meuble-tourisme-airbnb-reglementation-2026), lui,
 
 ## Fiscalité LMNP et travaux énergétiques : un levier souvent sous-utilisé
 
-Le statut LMNP au régime réel offre un avantage que les bailleurs en [location nue](/blog/deficit-foncier-reduire-impots) n'ont pas sous cette forme : les travaux et l'amortissement du bien viennent réduire, souvent annuler, le revenu imposable des loyers — un des leviers détaillés dans notre [guide de gestion locative LMNP](/gestion-locative-lmnp). Une rénovation énergétique qui sort un meublé de la zone F ou G a donc un double effet : elle sécurise le droit de louer et son coût s'impute fiscalement. À l'inverse, attendre le dernier moment expose à des travaux subis, votés en urgence ou réalisés entre deux locataires dans de mauvaises conditions de prix et de délai.
+Le statut LMNP au régime réel offre un avantage que les bailleurs en [location nue](/blog/deficit-foncier-reduire-impots) n'ont pas sous cette forme : les travaux et l'amortissement du bien viennent réduire, souvent annuler, le revenu imposable des loyers. Une rénovation énergétique qui sort un meublé de la zone F ou G a donc un double effet : elle sécurise le droit de louer et son coût s'impute fiscalement. À l'inverse, attendre le dernier moment expose à des travaux subis, votés en urgence ou réalisés entre deux locataires dans de mauvaises conditions de prix et de délai.
 
 L'ordre des opérations compte : DPE à jour d'abord, pour connaître la classe réelle du bien (correctif petites surfaces compris), audit énergétique ensuite si des travaux se profilent, puis chiffrage et calendrier alignés sur les échéances de bail. Un nouveau DPE après travaux vient enfin constater la nouvelle classe, et c'est ce document qui fera foi pour la relocation.
 
@@ -63,12 +63,13 @@ L'ordre des opérations compte : DPE à jour d'abord, pour connaître la classe 
 
 ## Tableau récapitulatif : le DPE selon le type de location meublée
 
-| Type de location meublée | DPE obligatoire | Calendrier d'interdiction | Particularité |
+| Situation du meublé | Ce qui s'applique | Erreur fréquente | À vérifier avant |
 |---|---|---|---|
-| Bail meublé classique (résidence principale) | Oui, annexé au bail | G interdit depuis 2025, F en 2028, E en 2034 | Renouvellement annuel = contrôle plus fréquent |
-| Bail mobilité (1 à 10 mois) | Oui, dans le dossier de diagnostic technique | Identique au bail meublé classique | Courte durée ne crée aucune dérogation |
-| Meublé de tourisme | Oui, DPE désormais exigé | Classe A-E jusqu'à fin 2033, puis A-D dès 2034 | Peut conditionner l'autorisation de changement d'usage en zone réglementée |
-| Petite surface (< 40 m²) | Oui, avec correctif de calcul | Selon la classe corrigée | Attestation Ademe gratuite, sans nouveau diagnostic |
+| Bail meublé classique (résidence principale) | Mêmes règles que la location nue : DPE annexé au bail, gel du loyer et interdiction selon la classe | Croire que le statut meublé ou LMNP allège les obligations énergétiques | Chaque mise en location et chaque renouvellement |
+| Bail mobilité (1 à 10 mois) | DPE obligatoire au dossier, comme pour tout bail d'habitation | Considérer le bail court comme dispensé de diagnostic | La signature du bail |
+| Meublé de tourisme | DPE exigé pour les nouvelles autorisations en zone réglementée, exigences renforcées d'ici 2034 | Basculer un logement F ou G en saisonnier pour contourner l'interdiction de louer | Le dépôt de la demande d'autorisation en mairie |
+| Studio ou petite surface (moins de 40 m²) | Seuils DPE ajustés depuis juillet 2024, attestation de nouvelle étiquette téléchargeable | Conserver l'ancienne étiquette et renoncer à louer à tort | La date et la version du DPE existant |
+| Logement classé G | Interdiction de louer depuis janvier 2025 (F en 2028, E en 2034) | Signer un nouveau bail meublé en pensant que seul le nu est concerné | Toute relocation ou tout changement de locataire |
 
 ---
 
