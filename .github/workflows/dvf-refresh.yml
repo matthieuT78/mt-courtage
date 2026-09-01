@@ -54,7 +54,9 @@ jobs:
       - name: Run DVF refresh
         run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload
         env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          # Pas un secret : c'est l'URL publique du projet Supabase, déjà
+          # embarquée telle quelle dans le bundle JS du site (NEXT_PUBLIC_).
+          SUPABASE_URL: https://zjsflhzeujcujjqqantc.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Upload result CSV
