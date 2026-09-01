@@ -55,7 +55,7 @@ Le [meublé de tourisme](/blog/meuble-tourisme-airbnb-reglementation-2026), lui,
 
 ## Fiscalité LMNP et travaux énergétiques : un levier souvent sous-utilisé
 
-Le statut LMNP au régime réel offre un avantage que les bailleurs en [location nue](/blog/deficit-foncier-reduire-impots) n'ont pas sous cette forme : les travaux et l'amortissement du bien viennent réduire, souvent annuler, le revenu imposable des loyers. Une rénovation énergétique qui sort un meublé de la zone F ou G a donc un double effet : elle sécurise le droit de louer et son coût s'impute fiscalement. À l'inverse, attendre le dernier moment expose à des travaux subis, votés en urgence ou réalisés entre deux locataires dans de mauvaises conditions de prix et de délai.
+Le statut LMNP au régime réel offre un avantage que les bailleurs en location nue n'ont pas sous cette forme : les travaux et l'amortissement du bien viennent réduire, souvent annuler, le revenu imposable des loyers. Une rénovation énergétique qui sort un meublé de la zone F ou G a donc un double effet : elle sécurise le droit de louer et son coût s'impute fiscalement. À l'inverse, attendre le dernier moment expose à des travaux subis, votés en urgence ou réalisés entre deux locataires dans de mauvaises conditions de prix et de délai.
 
 L'ordre des opérations compte : DPE à jour d'abord, pour connaître la classe réelle du bien (correctif petites surfaces compris), audit énergétique ensuite si des travaux se profilent, puis chiffrage et calendrier alignés sur les échéances de bail. Un nouveau DPE après travaux vient enfin constater la nouvelle classe, et c'est ce document qui fera foi pour la relocation.
 
