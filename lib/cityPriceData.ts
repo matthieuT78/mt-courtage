@@ -827,11 +827,6 @@ export type CityExternalKpis = {
   // geo.api.gouv.fr. cf. scripts/process-gares.py.
   gareNom: string | null;
   gareDistanceKm: number | null;
-  // Indicateur de sécurité composite (percentile national). Source :
-  // Interstats, Ministère de l'Intérieur. cf. scripts/process-securite.py.
-  securiteTauxPourMille: number | null;
-  securiteBand: string | null;
-  securiteYear: number | null;
 };
 
 // Paris/Lyon/Marseille sont découpés en arrondissements dans le DVF (donc
@@ -884,8 +879,5 @@ export async function getCityExternalKpis(inseeCode: string, priceM2: number | n
     taxeFonciereYear: socialRow?.taxe_fonciere_year ?? null,
     gareNom: direct?.gare_nom ?? null,
     gareDistanceKm: direct?.gare_distance_km ?? null,
-    securiteTauxPourMille: direct?.securite_taux_pour_mille ?? null,
-    securiteBand: direct?.securite_band ?? null,
-    securiteYear: direct?.securite_year ?? null,
   };
 }
