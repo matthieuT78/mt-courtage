@@ -957,6 +957,14 @@ export default function Home() {
                     <p className="text-xs text-slate-500">Un score de 0 à 100 qui résume la viabilité de chaque projet</p>
                   </div>
                 </div>
+
+                <p className="mt-4 text-xs text-slate-500">
+                  Avant de simuler, consultez le{" "}
+                  <Link href="/prix-m2" className="font-semibold text-[#635bff] hover:underline">prix au m² de votre ville</Link>{" "}
+                  et le{" "}
+                  <Link href="/rendement-locatif" className="font-semibold text-[#635bff] hover:underline">rendement locatif par ville</Link>{" "}
+                  — données DVF officielles.
+                </p>
               </div>
             </div>
           </div>

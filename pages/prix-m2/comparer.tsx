@@ -146,6 +146,11 @@ export default function ComparerVilles() {
         <meta name="description" content={description} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={url} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={url} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo.jpg`} />
+        <meta property="og:image:alt" content="Comparer le prix au m² de plusieurs villes — lokt.fr" />
       </Head>
 
       <AppHeader staticMode />

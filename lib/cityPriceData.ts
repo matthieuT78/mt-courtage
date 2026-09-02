@@ -511,6 +511,26 @@ export function getAllRegionSlugs(): Array<{ name: string; slug: string }> {
   return REGIONS.map((name) => ({ name, slug: slugify(name) }));
 }
 
+export type DepartmentLink = { code: string; name: string; slug: string };
+
+// Utilisé pour le maillage interne : liste texte des départements d'une région
+// (page région) ou de tous les départements (hub), en vrais <Link> crawlables —
+// à la différence de la carte choroplèthe, qui ne l'est pas (clic JS sur SVG).
+export function getAllDepartmentsWithNames(): DepartmentLink[] {
+  const names = getDepartmentNames();
+  return Array.from(names.entries())
+    .map(([code, name]) => ({ code, name, slug: slugify(name) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
+export function getDepartmentsForRegion(regionName: string): DepartmentLink[] {
+  const names = getDepartmentNames();
+  return Object.entries(DEPARTMENT_TO_REGION)
+    .filter(([, r]) => r === regionName)
+    .map(([code]) => ({ code, name: names.get(code) || code, slug: slugify(names.get(code) || code) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
 export type DepartmentChoroplethEntry = { code: string; name: string; slug: string; priceM2: number | null };
 
 export async function getDepartmentChoropleth(): Promise<DepartmentChoroplethEntry[]> {

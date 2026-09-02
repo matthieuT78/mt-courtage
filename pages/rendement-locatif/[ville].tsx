@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
-import { VILLES_DATA, getVilleBySlug, getAllVilleSlugs, VilleData } from "../../lib/villesRendement";
+import { VILLES_DATA, getVilleBySlug, getAllVilleSlugs, getPrixM2Href, VilleData } from "../../lib/villesRendement";
 
 const SITE_URL = "https://lokt.fr";
 
@@ -31,6 +31,7 @@ function mensualite(capital: number, tauxAnnuel = 0.037, dureeAns = 20) {
 }
 
 export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
+  const prixM2Href = getPrixM2Href(ville.slug);
   const pageUrl = `${SITE_URL}/rendement-locatif/${ville.slug}`;
   const metaTitle = `Rendement locatif ${ville.name} 2026 : ${ville.rendementBrut}% | lokt.fr`;
   // Le rendement brut moyen est déjà dans le titre — la description ne doit
@@ -178,6 +179,12 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
                 <p className="mt-1 text-xs text-slate-400">{ville.population}</p>
               </div>
             </div>
+
+            {prixM2Href && (
+              <Link href={prixM2Href} className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#635bff] hover:underline">
+                Voir le détail du prix au m² à {ville.name} (historique DVF, par quartier/type de bien) →
+              </Link>
+            )}
           </div>
         </section>
 

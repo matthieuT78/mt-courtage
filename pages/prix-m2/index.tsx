@@ -13,8 +13,8 @@ import {
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import {
-  getPopularCities, getMajorCitiesForMap, getDepartmentChoropleth, getAllRegionSlugs,
-  type MajorCityMarker, type DepartmentChoroplethEntry,
+  getPopularCities, getMajorCitiesForMap, getDepartmentChoropleth, getAllRegionSlugs, getAllDepartmentsWithNames,
+  type MajorCityMarker, type DepartmentChoroplethEntry, type DepartmentLink,
 } from "../../lib/cityPriceData";
 
 const FranceMap = dynamic(() => import("../../components/FranceMap"), { ssr: false });
@@ -96,18 +96,38 @@ function CitySearchBox() {
 }
 
 export default function PrixM2Index({
-  popularCities, majorCities, departments, regions,
+  popularCities, majorCities, departments, regions, allDepartments,
 }: {
   popularCities: CityResult[];
   majorCities: MajorCityMarker[];
   departments: DepartmentChoroplethEntry[];
   regions: Array<{ name: string; slug: string }>;
+  allDepartments: DepartmentLink[];
 }) {
   const [mapView, setMapView] = useState<"villes" | "departements">("villes");
-  const title = "Prix au m² par ville : évolution des prix immobiliers | lokt.fr";
+  const title = "Prix au m² par ville : évolution 2021-2025 | lokt.fr";
   const description =
-    "Prix médian au m² pour plus de 29 000 communes françaises, avec évolution sur 5 ans — calculé à partir des données DVF officielles (DGFiP). Recherchez votre ville.";
+    "Prix médian au m² pour plus de 29 000 communes françaises, évolution sur 5 ans, données DVF officielles (DGFiP). Recherchez votre ville.";
   const url = `${SITE_URL}/prix-m2`;
+
+  const faq = [
+    {
+      q: "Comment est calculé le prix au m² sur lokt.fr ?",
+      a: "Le prix médian au m² est calculé à partir des données DVF (Demandes de Valeurs Foncières), publiées semestriellement par la DGFiP via data.gouv.fr. Pour chaque commune, nous prenons la médiane des prix au m² des ventes de maisons et d'appartements les plus récentes, en excluant les mutations portant sur plusieurs lots (dont le prix total fausserait le calcul par lot).",
+    },
+    {
+      q: "Toutes les communes de France sont-elles couvertes ?",
+      a: "Oui, plus de 29 000 communes de France métropolitaine et d'outre-mer disposent d'une page prix au m², sous réserve d'un nombre suffisant de transactions DVF sur la période. L'Alsace-Moselle (Bas-Rhin, Haut-Rhin, Moselle) et Mayotte ne sont pas couverts par le DVF, qui utilise un régime de publicité foncière différent dans ces territoires.",
+    },
+    {
+      q: "À quelle fréquence les prix sont-ils mis à jour ?",
+      a: "Les données DVF sont publiées deux fois par an par la DGFiP (avril et octobre) et lokt.fr met à jour l'ensemble des pages prix au m² à chaque publication.",
+    },
+    {
+      q: "Pourquoi ce prix diffère de celui affiché sur SeLoger ou MeilleursAgents ?",
+      a: "Ces sites combinent souvent les ventes réalisées avec les prix affichés dans les annonces en cours, structurellement plus élevés qu'un prix de vente réel. lokt.fr n'utilise que les ventes effectivement actées chez le notaire (DVF), sans mélanger avec des prix d'annonce — le niveau est donc généralement inférieur de 5 à 15 % aux estimations basées sur les annonces.",
+    },
+  ];
 
   const jsonLd = [
     {
@@ -128,6 +148,11 @@ export default function PrixM2Index({
         { "@type": "ListItem", position: 2, name: "Prix au m²", item: url },
       ],
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+    },
   ];
 
   return (
@@ -140,6 +165,8 @@ export default function PrixM2Index({
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={url} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo.jpg`} />
+        <meta property="og:image:alt" content="Prix au m² par ville en France — lokt.fr" />
         {jsonLd.map((schema, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
         ))}
@@ -245,6 +272,31 @@ export default function PrixM2Index({
 
         <section className="mt-12">
           <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#635bff]/10">
+              <MapIcon className="h-5 w-5 text-[#635bff]" />
+            </div>
+            <h2 className="text-lg font-semibold text-slate-900">Parcourir par département</h2>
+          </div>
+          <details className="mt-4 group">
+            <summary className="cursor-pointer list-none text-sm font-medium text-[#635bff] hover:underline">
+              Voir les 96 départements
+            </summary>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {allDepartments.map((d) => (
+                <Link
+                  key={d.slug}
+                  href={`/prix-m2/departement/${d.slug}`}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/40 hover:text-[#635bff]"
+                >
+                  {d.name} <span className="text-slate-400">({d.code})</span>
+                </Link>
+              ))}
+            </div>
+          </details>
+        </section>
+
+        <section className="mt-12">
+          <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
               <BuildingOffice2Icon className="h-5 w-5 text-emerald-600" />
             </div>
@@ -276,6 +328,20 @@ export default function PrixM2Index({
             </p>
           </div>
         </section>
+
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold text-slate-900">Questions fréquentes</h2>
+          <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+            {faq.map((item) => (
+              <details key={item.q} className="group p-4 sm:p-5">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 marker:content-none">
+                  {item.q}
+                </summary>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
       </div>
 
       <AppFooter />
@@ -290,5 +356,6 @@ export async function getStaticProps() {
     getDepartmentChoropleth(),
   ]);
   const regions = getAllRegionSlugs();
-  return { props: { popularCities, majorCities, departments, regions }, revalidate: 60 * 60 * 24 };
+  const allDepartments = getAllDepartmentsWithNames();
+  return { props: { popularCities, majorCities, departments, regions, allDepartments }, revalidate: 60 * 60 * 24 };
 }

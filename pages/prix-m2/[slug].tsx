@@ -290,6 +290,8 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo.jpg`} />
+        <meta property="og:image:alt" content={`Prix au m² à ${city.cityName} — lokt.fr`} />
         {schemas.map((s, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
         ))}

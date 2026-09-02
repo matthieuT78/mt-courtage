@@ -57,7 +57,7 @@ export default function Classements({
   gainers: RankedCity[];
   losers: RankedCity[];
 }) {
-  const title = "Classements immobiliers : villes les moins chères, plus fortes hausses de prix | lokt.fr";
+  const title = "Classements immobiliers : prix au m² par ville | lokt.fr";
   const description = "Classement des communes françaises par prix au m² et évolution sur plusieurs années — données DVF officielles.";
   const url = `${SITE_URL}/prix-m2/classements`;
 
@@ -77,6 +77,11 @@ export default function Classements({
         <meta name="description" content={description} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={url} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={url} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo.jpg`} />
+        <meta property="og:image:alt" content="Classements immobiliers par ville — lokt.fr" />
         {jsonLd.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />)}
       </Head>
 

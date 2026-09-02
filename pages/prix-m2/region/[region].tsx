@@ -8,9 +8,14 @@ import {
 import { BuildingOffice2Icon, HomeModernIcon } from "@heroicons/react/24/outline";
 import AppHeader from "../../../components/AppHeader";
 import AppFooter from "../../../components/AppFooter";
-import { getRegionStats, getAllRegionSlugs, type GeoAreaStats } from "../../../lib/cityPriceData";
+import { getRegionStats, getAllRegionSlugs, getAreaCommunes, getDepartmentsForRegion, type GeoAreaStats, type DepartmentLink } from "../../../lib/cityPriceData";
 
 type CommuneRow = { slug: string; cityName: string; postalCode: string; priceM2: number | null };
+
+// cf. departement/[dept].tsx : même logique — rendre un lot server-side crawlable
+// et borné, puis élargir à la demande côté client pour les grandes régions
+// (certaines dépassent 3 700 communes).
+const SSR_COMMUNES_CAP = 600;
 
 ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
 const Chart = dynamic(() => import("react-chartjs-2").then((m) => m.Chart), { ssr: false });
@@ -22,19 +27,27 @@ function formatEur(n: number | null | undefined) {
   return `${Math.round(n).toLocaleString("fr-FR")} €`;
 }
 
-export default function RegionHub({ area }: { area: GeoAreaStats }) {
+export default function RegionHub({ area, initialCities, childDepartments, topCity, cheapestCity }: { area: GeoAreaStats; initialCities: CommuneRow[]; childDepartments: DepartmentLink[]; topCity: CommuneRow | null; cheapestCity: CommuneRow | null }) {
   const [filter, setFilter] = useState("");
-  const [cities, setCities] = useState<CommuneRow[]>([]);
-  const [citiesLoading, setCitiesLoading] = useState(true);
+  const [cities, setCities] = useState<CommuneRow[]>(initialCities);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [fullyLoaded, setFullyLoaded] = useState(initialCities.length >= area.nCommunes);
+
+  const filteredCities = cities.filter((c) => c.cityName.toLowerCase().includes(filter.toLowerCase()));
 
   useEffect(() => {
+    if (fullyLoaded || filter.trim().length < 2 || filteredCities.length > 0) return;
     setCitiesLoading(true);
     fetch(`/api/prix-m2/communes?type=region&code=${encodeURIComponent(area.code)}`)
       .then((r) => r.json())
-      .then((d) => setCities(d.cities || []))
+      .then((d) => {
+        setCities(d.cities && d.cities.length ? d.cities : cities);
+        setFullyLoaded(true);
+      })
       .catch(() => {})
       .finally(() => setCitiesLoading(false));
-  }, [area.code]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, fullyLoaded, filteredCities.length, area.code]);
 
   const pageUrl = `${SITE_URL}/prix-m2/region/${area.slug}`;
   const metaTitle = `Prix immobilier en région ${area.name} : évolution par ville | lokt.fr`;
@@ -54,16 +67,45 @@ export default function RegionHub({ area }: { area: GeoAreaStats }) {
     scales: { y: { ticks: { callback: (v: any) => `${v} €` }, grid: { color: "#f1f5f9" } }, x: { grid: { display: false } } },
   };
 
-  const filteredCities = cities.filter((c) => c.cityName.toLowerCase().includes(filter.toLowerCase()));
+  const faq = [
+    {
+      q: `Quel est le prix moyen au m² en région ${area.name} ?`,
+      a: `Le prix médian au m² en région ${area.name} est d'environ ${formatEur(area.priceM2)}, calculé à partir des données DVF (Demandes de Valeurs Foncières) publiées par la DGFiP sur les ${area.nCommunes} communes de la région. Les prix varient fortement entre les grandes agglomérations et les zones rurales : consultez la page de chaque département ou ville pour un chiffre précis.`,
+    },
+    {
+      q: `Comment évolue le prix de l'immobilier en région ${area.name} ?`,
+      a: yearsWithPrice.length >= 2
+        ? `Sur la période observée (${yearsWithPrice[0]?.year}-${yearsWithPrice[yearsWithPrice.length - 1]?.year}), le prix médian au m² en ${area.name} a ${(area.evolution5y ?? 0) >= 0 ? "progressé" : "reculé"} de ${Math.abs(area.evolution5y ?? 0).toFixed(1)} %.`
+        : `Les données historiques pour cette région sont encore limitées pour établir une tendance sur plusieurs années.`,
+    },
+    ...(topCity ? [{
+      q: `Quelle est la commune la plus chère de la région ${area.name} ?`,
+      a: `Parmi les communes de la région ${area.name} avec suffisamment de transactions DVF, ${topCity.cityName} affiche le prix médian au m² le plus élevé, autour de ${formatEur(topCity.priceM2)}/m².${cheapestCity ? ` À l'inverse, ${cheapestCity.cityName} est la commune la plus abordable de la région, autour de ${formatEur(cheapestCity.priceM2)}/m².` : ""}`,
+    }] : []),
+    {
+      q: `Combien de départements compte la région ${area.name} ?`,
+      a: `La région ${area.name} compte ${childDepartments.length} département${childDepartments.length > 1 ? "s" : ""} : ${childDepartments.map((d) => d.name).join(", ")}.`,
+    },
+    {
+      q: `D'où viennent ces données de prix ?`,
+      a: `Ces prix sont calculés à partir des données DVF (Demandes de Valeurs Foncières), publiées semestriellement par la DGFiP via data.gouv.fr. Elles recensent la quasi-totalité des transactions immobilières réellement actées chez le notaire (hors Alsace-Moselle et Mayotte, qui utilisent un régime de publicité foncière différent).`,
+    },
+  ];
 
-  const jsonLd = [{
-    "@context": "https://schema.org", "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Prix au m²", item: `${SITE_URL}/prix-m2` },
-      { "@type": "ListItem", position: 3, name: area.name, item: pageUrl },
-    ],
-  }];
+  const jsonLd = [
+    {
+      "@context": "https://schema.org", "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
+        { "@type": "ListItem", position: 2, name: "Prix au m²", item: `${SITE_URL}/prix-m2` },
+        { "@type": "ListItem", position: 3, name: area.name, item: pageUrl },
+      ],
+    },
+    {
+      "@context": "https://schema.org", "@type": "FAQPage",
+      mainEntity: faq.map(({ q, a }) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+    },
+  ];
 
   return (
     <>
@@ -72,6 +114,11 @@ export default function RegionHub({ area }: { area: GeoAreaStats }) {
         <meta name="description" content={metaDesc} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
+        <meta property="og:title" content={metaTitle} />
+        <meta property="og:description" content={metaDesc} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo.jpg`} />
+        <meta property="og:image:alt" content={`Prix immobilier en région ${area.name} — lokt.fr`} />
         {jsonLd.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />)}
       </Head>
 
@@ -137,6 +184,23 @@ export default function RegionHub({ area }: { area: GeoAreaStats }) {
             </section>
           )}
 
+          {childDepartments.length > 0 && (
+            <section>
+              <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Départements de {area.name}</h2>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {childDepartments.map((d) => (
+                  <Link
+                    key={d.slug}
+                    href={`/prix-m2/departement/${d.slug}`}
+                    className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/40 hover:text-[#635bff] hover:shadow-md"
+                  >
+                    {d.name} <span className="text-slate-400">({d.code})</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Communes de {area.name}</h2>
@@ -169,11 +233,16 @@ export default function RegionHub({ area }: { area: GeoAreaStats }) {
                     <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">Aucune commune trouvée.</td></tr>
                   )}
                   {citiesLoading && (
-                    <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">Chargement des communes...</td></tr>
+                    <tr><td colSpan={3} className="px-4 py-6 text-center text-slate-400">Recherche dans les {area.nCommunes} communes de la région...</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
+            {!fullyLoaded && !filter && (
+              <p className="mt-2 text-xs text-slate-400">
+                {initialCities.length} communes affichées sur {area.nCommunes} (triées par prix) — tapez un nom pour retrouver une commune plus rare.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden">
@@ -184,6 +253,20 @@ export default function RegionHub({ area }: { area: GeoAreaStats }) {
               <Link href="/investissement" className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 transition">
                 Lancer le simulateur →
               </Link>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Questions fréquentes</h2>
+            <div className="mt-4 divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
+              {faq.map((item) => (
+                <details key={item.q} className="group p-4 sm:p-5">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 marker:content-none">
+                    {item.q}
+                  </summary>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.a}</p>
+                </details>
+              ))}
             </div>
           </section>
         </main>
@@ -207,5 +290,12 @@ export async function getStaticProps({ params }: { params: { region: string } })
   const area = await getRegionStats(match.name);
   if (!area) return { notFound: true };
 
-  return { props: { area }, revalidate: 60 * 60 * 24 };
+  const allCities = await getAreaCommunes("region", match.name);
+  const initialCities = allCities.slice(0, SSR_COMMUNES_CAP);
+  const pricedCities = allCities.filter((c) => c.priceM2 != null);
+  const topCity = pricedCities[0] || null;
+  const cheapestCity = pricedCities.length > 1 ? pricedCities[pricedCities.length - 1] : null;
+  const childDepartments = getDepartmentsForRegion(match.name);
+
+  return { props: { area, initialCities, childDepartments, topCity, cheapestCity }, revalidate: 60 * 60 * 24 };
 }

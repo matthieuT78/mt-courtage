@@ -1,3 +1,5 @@
+import { citySlug } from "./cityPriceSlug";
+
 export type VilleData = {
   slug: string;
   name: string;
@@ -786,4 +788,35 @@ export function getVilleBySlug(slug: string): VilleData | undefined {
 
 export function getAllVilleSlugs(): string[] {
   return VILLES_DATA.map((v) => v.slug);
+}
+
+// Maillage vers /prix-m2 pour la même ville. Paris/Lyon/Marseille n'ont pas de
+// page ville unique côté DVF (les transactions sont enregistrées par
+// arrondissement, ex. 69381-69389) : on pointe vers leur page département à la
+// place. Metz/Strasbourg/Mulhouse (Alsace-Moselle) n'ont aucune page prix-m2 —
+// le DVF ne couvre pas ces départements (régime de publicité foncière différent).
+const PRIX_M2_TARGETS: Record<string, { kind: "ville" | "departement"; slug: string }> = {
+  lyon: { kind: "departement", slug: "rhone" },
+  marseille: { kind: "departement", slug: "bouches-du-rhone" },
+  paris: { kind: "departement", slug: "paris" },
+  bordeaux: { kind: "ville", slug: citySlug("Bordeaux", "33063") },
+  toulouse: { kind: "ville", slug: citySlug("Toulouse", "31555") },
+  rennes: { kind: "ville", slug: citySlug("Rennes", "35238") },
+  nantes: { kind: "ville", slug: citySlug("Nantes", "44109") },
+  lille: { kind: "ville", slug: citySlug("Lille", "59350") },
+  montpellier: { kind: "ville", slug: citySlug("Montpellier", "34172") },
+  grenoble: { kind: "ville", slug: citySlug("Grenoble", "38185") },
+  angers: { kind: "ville", slug: citySlug("Angers", "49007") },
+  "clermont-ferrand": { kind: "ville", slug: citySlug("Clermont-Ferrand", "63113") },
+  nancy: { kind: "ville", slug: citySlug("Nancy", "54395") },
+  nice: { kind: "ville", slug: citySlug("Nice", "06088") },
+  "le-mans": { kind: "ville", slug: citySlug("Le Mans", "72181") },
+  roubaix: { kind: "ville", slug: citySlug("Roubaix", "59512") },
+  limoges: { kind: "ville", slug: citySlug("Limoges", "87085") },
+};
+
+export function getPrixM2Href(slug: string): string | null {
+  const target = PRIX_M2_TARGETS[slug];
+  if (!target) return null;
+  return target.kind === "ville" ? `/prix-m2/${target.slug}` : `/prix-m2/departement/${target.slug}`;
 }
