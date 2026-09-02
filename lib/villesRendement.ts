@@ -1,4 +1,4 @@
-import { citySlug } from "./cityPriceSlug";
+import { citySlug, parseCitySlug } from "./cityPriceSlug";
 
 export type VilleData = {
   slug: string;
@@ -819,4 +819,14 @@ export function getPrixM2Href(slug: string): string | null {
   const target = PRIX_M2_TARGETS[slug];
   if (!target) return null;
   return target.kind === "ville" ? `/prix-m2/${target.slug}` : `/prix-m2/departement/${target.slug}`;
+}
+
+// Code INSEE de la commune DVF correspondante, uniquement pour les villes
+// mappées "ville" (pas Paris/Lyon/Marseille, découpées en arrondissements côté
+// DVF) — sert à récupérer le Score lokt.fr (investment_score) pour le tableau
+// comparatif de /rendement-locatif.
+export function getVilleInseeCode(slug: string): string | null {
+  const target = PRIX_M2_TARGETS[slug];
+  if (!target || target.kind !== "ville") return null;
+  return parseCitySlug(target.slug);
 }

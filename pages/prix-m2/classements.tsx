@@ -3,7 +3,7 @@ import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import {
-  getCheapestCities, getMostExpensiveCities, getEvolutionRankings,
+  getCheapestCities, getMostExpensiveCities, getEvolutionRankings, getBestInvestmentPotential,
   type RankedCity,
 } from "../../lib/cityPriceData";
 
@@ -50,15 +50,16 @@ function RankingTable({
 }
 
 export default function Classements({
-  cheapest, expensive, gainers, losers,
+  cheapest, expensive, gainers, losers, bestPotential,
 }: {
   cheapest: RankedCity[];
   expensive: RankedCity[];
   gainers: RankedCity[];
   losers: RankedCity[];
+  bestPotential: RankedCity[];
 }) {
-  const title = "Classements immobiliers : prix au m² par ville | lokt.fr";
-  const description = "Classement des communes françaises par prix au m² et évolution sur plusieurs années — données DVF officielles.";
+  const title = "Meilleures villes où investir : classements immo | lokt.fr";
+  const description = "Classement des villes par potentiel d'investissement locatif (Score lokt.fr), prix au m² et évolution — données DVF officielles.";
   const url = `${SITE_URL}/prix-m2/classements`;
 
   const jsonLd = [{
@@ -96,10 +97,30 @@ export default function Classements({
 
         <h1 className="text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">Classements immobiliers</h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
-          Communes classées par prix au m² et évolution — basé sur les transactions DVF, communes avec au moins 10 ventes/an pour la fiabilité.
+          Communes classées par potentiel d'investissement locatif, prix au m² et évolution — basé sur les transactions DVF, communes avec au moins 10 ventes/an pour la fiabilité.
         </p>
 
         <div className="mt-10 space-y-12">
+          {bestPotential.length > 0 && (
+            <section id="potentiel-investissement">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Meilleur potentiel d'investissement</h2>
+                <span className="rounded-full bg-[#635bff]/10 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[#635bff]">Score lokt.fr</span>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Score composite 0-100 : rendement locatif brut (35 %), tension locative (20 %), dynamique des prix sur plusieurs années (20 %) et part de logements F/G (25 %) — chaque critère comparé au reste des communes françaises. Calculé uniquement pour les communes avec un loyer officiel et un marché suffisamment actif (20+ ventes/an) pour rester fiable.
+              </p>
+              <div className="mt-4">
+                <RankingTable
+                  cities={bestPotential}
+                  valueLabel="Score lokt.fr"
+                  positive
+                  valueFn={(c) => `${c.investmentScore}/100 · ${c.investmentScoreBand}`}
+                />
+              </div>
+            </section>
+          )}
+
           <section>
             <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Villes les moins chères</h2>
             <p className="mt-1 text-sm text-slate-500">Prix médian au m² le plus bas, parmi les communes avec un marché actif.</p>
@@ -144,10 +165,11 @@ export default function Classements({
 }
 
 export async function getStaticProps() {
-  const [cheapest, expensive, evolution] = await Promise.all([
+  const [cheapest, expensive, evolution, bestPotential] = await Promise.all([
     getCheapestCities(25),
     getMostExpensiveCities(25),
     getEvolutionRankings(25),
+    getBestInvestmentPotential(25),
   ]);
 
   return {
@@ -155,6 +177,7 @@ export async function getStaticProps() {
       cheapest, expensive,
       gainers: evolution.gainers,
       losers: evolution.losers,
+      bestPotential,
     },
     revalidate: 60 * 60 * 24,
   };

@@ -177,7 +177,7 @@ export default function PrixM2Index({
       <section className="relative overflow-hidden border-b border-slate-200 bg-white px-4 py-10 sm:py-16">
         <div className="pointer-events-none absolute -top-32 -right-20 h-80 w-80 rounded-full bg-[#635bff] opacity-[0.08] blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-[#00b4d8] opacity-[0.07] blur-3xl" />
-        <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-center">
+        <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr,1.2fr] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-700">
               Données DVF · 29 000+ communes

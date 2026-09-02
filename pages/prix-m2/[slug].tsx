@@ -245,6 +245,14 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
           },
         ]
       : []),
+    ...(externalKpis?.investmentScore != null
+      ? [
+          {
+            q: `Est-ce un bon investissement locatif à ${city.cityName} ?`,
+            a: `Le Score lokt.fr à ${city.cityName} est de ${externalKpis.investmentScore}/100 (${externalKpis.investmentScoreBand?.toLowerCase()}). Ce score combine le rendement locatif brut (loyer officiel/prix), la tension locative (taux de vacance), la dynamique récente des prix et la part de logements classés F/G, chaque critère étant comparé au reste des communes françaises. Consultez le classement complet sur lokt.fr pour comparer avec d'autres villes.`,
+          },
+        ]
+      : []),
   ];
 
   const schemas = [
@@ -356,7 +364,17 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                   )}
                 </div>
 
-                <div className="flex gap-6 sm:gap-8">
+                <div className="flex flex-wrap items-end gap-6 sm:gap-8">
+                  {externalKpis?.investmentScore != null && (
+                    <Link href="/prix-m2/classements#potentiel-investissement" className="group">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Score lokt.fr</p>
+                      <p className="mt-1 flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-[#635bff] group-hover:underline">{externalKpis.investmentScore}</span>
+                        <span className="text-xs font-medium text-slate-400">/100</span>
+                      </p>
+                      <p className="text-[0.68rem] font-medium text-slate-500">{externalKpis.investmentScoreBand}</p>
+                    </Link>
+                  )}
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                       Évolution {yearsWithPrice[0]?.year}-{yearsWithPrice[yearsWithPrice.length - 1]?.year}

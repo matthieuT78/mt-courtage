@@ -2,7 +2,8 @@ import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
-import { VILLES_DATA } from "../../lib/villesRendement";
+import { VILLES_DATA, getVilleInseeCode } from "../../lib/villesRendement";
+import { getInvestmentScoresByInsee } from "../../lib/cityPriceData";
 
 const SITE_URL = "https://lokt.fr";
 const pageUrl = `${SITE_URL}/rendement-locatif`;
@@ -73,7 +74,7 @@ const schemas = [
 // Sort by rendement brut descending
 const villesSorted = [...VILLES_DATA].sort((a, b) => b.rendementBrut - a.rendementBrut);
 
-export default function RendementLocatifIndex() {
+export default function RendementLocatifIndex({ scores }: { scores: Record<string, { score: number; band: string }> }) {
   return (
     <>
       <Head>
@@ -149,6 +150,9 @@ export default function RendementLocatifIndex() {
                   <div className="text-right">
                     <p className="text-lg font-bold text-[#635bff]">~{v.rendementBrut} %</p>
                     <p className="text-[0.65rem] text-slate-400">rendement brut</p>
+                    {scores[v.slug] && (
+                      <p className="mt-1 text-[0.65rem] font-semibold text-slate-600">Score lokt.fr {scores[v.slug].score}/100</p>
+                    )}
                   </div>
                 </Link>
               ))}
@@ -164,6 +168,7 @@ export default function RendementLocatifIndex() {
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Prix m²</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Loyer m²/mois</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Rdt brut</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">Score lokt.fr</th>
                     <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Tension</th>
                   </tr>
                 </thead>
@@ -179,6 +184,9 @@ export default function RendementLocatifIndex() {
                       <td className="px-4 py-3.5 text-right text-slate-700">{v.prixM2.toLocaleString("fr-FR")} €</td>
                       <td className="px-4 py-3.5 text-right text-slate-700">{v.loyerM2} €</td>
                       <td className="px-4 py-3.5 text-right font-bold text-[#635bff]">~{v.rendementBrut} %</td>
+                      <td className="px-4 py-3.5 text-right font-semibold text-slate-700">
+                        {scores[v.slug] ? `${scores[v.slug].score}/100` : "—"}
+                      </td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${
                           v.tensionLocative === "forte"
@@ -205,6 +213,7 @@ export default function RendementLocatifIndex() {
               <li><span className="font-medium text-slate-800">Loyer m²/mois :</span> loyer médian charges exclues. Varie selon la surface (les studios se louent plus cher au m²).</li>
               <li><span className="font-medium text-slate-800">Rendement brut :</span> (loyer annuel ÷ prix d'achat) × 100. Ne tient pas compte des charges, fiscalité et vacance.</li>
               <li><span className="font-medium text-slate-800">Rendement net :</span> généralement 1,5 à 2 points en dessous du brut, selon les charges et la fiscalité.</li>
+              <li><span className="font-medium text-slate-800">Score lokt.fr :</span> potentiel d'investissement (0-100) calculé sur données DVF/INSEE/ADEME officielles — rendement, tension locative, dynamique des prix et risque DPE combinés. Absent pour Paris, Lyon et Marseille (marché DVF découpé par arrondissement, pas de score unique par ville). <Link href="/prix-m2/classements#potentiel-investissement" className="text-[#635bff] hover:underline">Voir le classement complet</Link>.</li>
             </ul>
             <p className="mt-3 text-xs text-slate-400">Données indicatives 2026 — non certifiées. Consultez le simulateur pour un calcul précis sur votre bien.</p>
           </section>
@@ -286,4 +295,21 @@ export default function RendementLocatifIndex() {
       <AppFooter />
     </>
   );
+}
+
+export async function getStaticProps() {
+  const inseeBySlug: Array<[string, string]> = [];
+  for (const v of VILLES_DATA) {
+    const insee = getVilleInseeCode(v.slug);
+    if (insee) inseeBySlug.push([v.slug, insee]);
+  }
+  const scoreByInsee = await getInvestmentScoresByInsee(inseeBySlug.map(([, insee]) => insee));
+
+  const scores: Record<string, { score: number; band: string }> = {};
+  for (const [slug, insee] of inseeBySlug) {
+    const s = scoreByInsee.get(insee);
+    if (s) scores[slug] = s;
+  }
+
+  return { props: { scores }, revalidate: 60 * 60 * 24 };
 }

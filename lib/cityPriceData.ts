@@ -569,6 +569,8 @@ export type RankedCity = {
   priceM2: number | null;
   evolution5y?: number | null;
   yieldPct?: number | null;
+  investmentScore?: number | null;
+  investmentScoreBand?: string | null;
 };
 
 const MIN_TRANSACTIONS_FOR_RANKING = 10;
@@ -698,6 +700,60 @@ export async function getEvolutionRankings(limit = 30): Promise<{ gainers: Ranke
 // cf. process-dvf.py), donc (loyer×12)/prix redonne toujours exactement ce
 // taux constant — un classement sur cette base n'ordonnerait rien de réel,
 // juste la liste des communes parisiennes vs non-parisiennes.
+//
+// Le Score lokt.fr (investment_score) contourne ce problème : il est calculé
+// à partir du loyer OFFICIEL (Carte des loyers DGALN/ANIL), pas de l'heuristique
+// à taux constant — cf. scripts/compute-investment-scores.py.
+export async function getBestInvestmentPotential(limit = 30): Promise<RankedCity[]> {
+  if (!supabaseAdmin) return [];
+
+  const { data: rows } = await supabaseAdmin
+    .from("city_external_kpis")
+    .select("insee_code, investment_score, investment_score_band")
+    .not("investment_score", "is", null)
+    .order("investment_score", { ascending: false })
+    .limit(limit);
+
+  if (!rows || rows.length === 0) return [];
+
+  const { data: cities } = await supabaseAdmin
+    .from("city_market_benchmarks")
+    .select("insee_code, city_name, postal_code, reference_price_m2_sale")
+    .in("insee_code", rows.map((r) => r.insee_code));
+  const cityByInsee = new Map((cities || []).map((c) => [c.insee_code, c]));
+
+  const results: RankedCity[] = [];
+  for (const r of rows) {
+    const city = cityByInsee.get(r.insee_code);
+    if (!city) continue;
+    results.push({
+      slug: citySlug(city.city_name, city.insee_code),
+      cityName: city.city_name,
+      postalCode: city.postal_code,
+      priceM2: city.reference_price_m2_sale,
+      investmentScore: r.investment_score,
+      investmentScoreBand: r.investment_score_band,
+    });
+  }
+
+  return results.sort((a, b) => (b.investmentScore ?? 0) - (a.investmentScore ?? 0));
+}
+
+// Utilisé par /rendement-locatif pour afficher le Score lokt.fr dans son
+// tableau comparatif (villes déjà mappées à un code INSEE via getVilleInseeCode).
+export async function getInvestmentScoresByInsee(
+  inseeCodes: string[]
+): Promise<Map<string, { score: number; band: string }>> {
+  if (!supabaseAdmin || inseeCodes.length === 0) return new Map();
+
+  const { data } = await supabaseAdmin
+    .from("city_external_kpis")
+    .select("insee_code, investment_score, investment_score_band")
+    .in("insee_code", inseeCodes)
+    .not("investment_score", "is", null);
+
+  return new Map((data || []).map((r) => [r.insee_code, { score: r.investment_score, band: r.investment_score_band }]));
+}
 
 // ── KPI externes (INSEE, ADEME, Carte des loyers) ──────────────────────────
 
@@ -715,6 +771,12 @@ export type CityExternalKpis = {
   // Nombre d'années de revenu médian nécessaires pour acheter 50 m² —
   // indice d'accessibilité, pas juste le prix brut.
   prixRevenuRatio: number | null;
+  // Score lokt.fr (0-100) : potentiel d'investissement locatif, cf.
+  // scripts/compute-investment-scores.py. Toujours lu sur la commune elle-même
+  // (jamais de fallback vers le code parent) : chaque arrondissement a son
+  // propre score, contrairement au revenu/population Filosofi.
+  investmentScore: number | null;
+  investmentScoreBand: string | null;
 };
 
 // Paris/Lyon/Marseille sont découpés en arrondissements dans le DVF (donc
@@ -760,5 +822,7 @@ export async function getCityExternalKpis(inseeCode: string, priceM2: number | n
     loyerPreditMaison: direct?.loyer_predit_maison ?? null,
     loyersYear: direct?.loyers_year ?? null,
     prixRevenuRatio: priceM2 && revenuMedian ? (priceM2 * 50) / revenuMedian : null,
+    investmentScore: direct?.investment_score ?? null,
+    investmentScoreBand: direct?.investment_score_band ?? null,
   };
 }
