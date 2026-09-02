@@ -216,6 +216,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from(bucket)
       .createSignedUrl(path, 3600);
 
+    // Un congé fixe une échéance définitive : si ce PDF est rattaché à un vrai
+    // bail suivi dans lokt.fr (pas le générateur de courrier autonome, dont
+    // leaseId vaut toujours "standalone"), on aligne le bail sur cette échéance
+    // pour que le suivi de transition locataire (TransitionPanel, alertes
+    // dashboard) la détecte — sinon un bail déjà reconduit tacitement resterait
+    // calculé sur son prochain cycle théorique au lieu du vrai départ.
+    if (payload.leaseId && payload.leaseId !== "standalone") {
+      const { error: leaseUpdateError } = await supabaseAdmin
+        .from("leases")
+        .update({ end_date: payload.leaseEndDate, auto_renewal_enabled: false })
+        .eq("id", payload.leaseId)
+        .eq("user_id", payload.userId);
+      if (leaseUpdateError) console.error("[generate-conge] lease update failed:", leaseUpdateError);
+    }
+
     return res.status(200).json({ ok: true, signedUrl: signed?.signedUrl, path });
   } catch (err: any) {
     console.error("[generate-conge]", err);
