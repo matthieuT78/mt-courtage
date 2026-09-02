@@ -97,7 +97,7 @@ export default function Classements({
 
         <h1 className="text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">Classements immobiliers</h1>
         <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
-          Communes classées par potentiel d'investissement locatif, prix au m² et évolution — basé sur les transactions DVF, communes avec au moins 10 ventes/an pour la fiabilité.
+          Communes classées par potentiel d'investissement locatif, prix au m² et évolution — basé sur les transactions DVF, communes avec au moins 30 ventes/an pour la fiabilité.
         </p>
 
         <div className="mt-10 space-y-12">
@@ -151,7 +151,7 @@ export default function Classements({
         </div>
 
         <div className="mt-10 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400 leading-5">
-          Classements basés sur les données DVF (Demandes de Valeurs Foncières, DGFiP), limités aux communes avec au moins 10 transactions/an pour la fiabilité statistique.
+          Classements basés sur les données DVF (Demandes de Valeurs Foncières, DGFiP), limités aux communes avec au moins 30 transactions/an pour la fiabilité statistique.
         </div>
 
         <div className="mt-6 text-center">

@@ -609,7 +609,13 @@ export type RankedCity = {
   investmentScoreBand?: string | null;
 };
 
-const MIN_TRANSACTIONS_FOR_RANKING = 10;
+// Aligné sur le seuil "Fiable" de ReliabilityBadge (cf. pages/prix-m2/[slug].tsx) :
+// un classement expose des extrêmes par construction (le plus cher, la plus
+// forte hausse...), c'est justement là que le bruit d'échantillonnage d'une
+// petite commune est le plus visible et le plus trompeur — pas de place pour
+// une nuance/avertissement contextuel comme sur une fiche ville. 3 727
+// communes ont 30+ ventes en 2025, largement assez pour remplir les classements.
+const MIN_TRANSACTIONS_FOR_RANKING = 30;
 
 export async function getCheapestCities(limit = 30): Promise<RankedCity[]> {
   return getSortedCities(true, limit);
