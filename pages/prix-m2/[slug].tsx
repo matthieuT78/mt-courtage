@@ -21,6 +21,7 @@ import {
   UserGroupIcon,
   FireIcon,
   ScaleIcon,
+  ReceiptPercentIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
@@ -371,6 +372,14 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
           },
         ]
       : []),
+    ...(externalKpis?.taxeFonciereTfb != null
+      ? [
+          {
+            q: `Quel est le taux de taxe foncière à ${city.cityName} ?`,
+            a: `Le taux global de taxe foncière sur les propriétés bâties à ${city.cityName} est de ${externalKpis.taxeFonciereTfb.toFixed(1)} %${externalKpis.taxeFonciereYear ? ` en ${externalKpis.taxeFonciereYear}` : ""} (commune + intercommunalité). Ce taux s'applique à la valeur locative cadastrale du bien, pas à son prix d'achat — pour estimer le montant réel, il faut appliquer ce taux à la valeur locative cadastrale (généralement 40 à 50 % de la valeur locative brute, avant abattement). Source : DGFiP.`,
+          },
+        ]
+      : []),
   ];
 
   const schemas = [
@@ -557,7 +566,7 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
           </section>
 
           {/* CONTEXTE LOCAL (INSEE / ADEME) */}
-          {externalKpis && (externalKpis.revenuMedian != null || externalKpis.population != null || externalKpis.dpeFgPct != null) && (
+          {externalKpis && (externalKpis.revenuMedian != null || externalKpis.population != null || externalKpis.dpeFgPct != null || externalKpis.taxeFonciereTfb != null) && (
             <section>
               <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Contexte local à {city.cityName}</h2>
               <p className="mt-2 text-sm text-slate-500">Données socio-démographiques et énergétiques publiques (INSEE, ADEME).</p>
@@ -591,6 +600,13 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                     <FireIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.dpeFgPct.toFixed(0)} %</p>
                     <p className="text-xs text-slate-400">Logements classés F/G ({(externalKpis.dpeTotal ?? 0).toLocaleString("fr-FR")} DPE)</p>
+                  </div>
+                )}
+                {externalKpis.taxeFonciereTfb != null && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <ReceiptPercentIcon className="h-4 w-4 text-slate-400" />
+                    <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.taxeFonciereTfb.toFixed(1)} %</p>
+                    <p className="text-xs text-slate-400">Taxe foncière{externalKpis.taxeFonciereYear ? ` (${externalKpis.taxeFonciereYear})` : ""}</p>
                   </div>
                 )}
               </div>

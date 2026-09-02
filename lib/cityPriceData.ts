@@ -777,13 +777,18 @@ export type CityExternalKpis = {
   // propre score, contrairement au revenu/population Filosofi.
   investmentScore: number | null;
   investmentScoreBand: string | null;
+  // Taux global de taxe foncière sur le bâti (commune + intercommunalité),
+  // en %. Source : DGFiP. cf. scripts/process-taxe-fonciere.py.
+  taxeFonciereTfb: number | null;
+  taxeFonciereYear: number | null;
 };
 
 // Paris/Lyon/Marseille sont découpés en arrondissements dans le DVF (donc
 // dans city_market_benchmarks) mais PAS dans le recensement/Filosofi INSEE
-// (revenu, population, vacance restent au niveau de la ville entière) — on
-// retombe sur le code de la ville parente pour ces trois indicateurs. Les
-// DPE et la Carte des loyers ont, eux, bien une granularité par arrondissement.
+// ni la taxe foncière (revenu, population, vacance, taux de taxe foncière
+// restent au niveau de la ville entière) — on retombe sur le code de la
+// ville parente pour ces indicateurs. Les DPE et la Carte des loyers ont,
+// eux, bien une granularité par arrondissement.
 const ARRONDISSEMENT_PARENT: Record<string, string> = { "751": "75056", "693": "69123", "132": "13055" };
 
 async function getExternalKpisRow(inseeCode: string) {
@@ -824,5 +829,7 @@ export async function getCityExternalKpis(inseeCode: string, priceM2: number | n
     prixRevenuRatio: priceM2 && revenuMedian ? (priceM2 * 50) / revenuMedian : null,
     investmentScore: direct?.investment_score ?? null,
     investmentScoreBand: direct?.investment_score_band ?? null,
+    taxeFonciereTfb: socialRow?.taxe_fonciere_tfb ?? null,
+    taxeFonciereYear: socialRow?.taxe_fonciere_year ?? null,
   };
 }
