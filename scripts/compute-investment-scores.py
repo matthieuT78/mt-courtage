@@ -3,10 +3,14 @@
 compute-investment-scores.py — Score lokt.fr : potentiel d'investissement
 locatif par commune (0-100), combinant 4 signaux déjà en base :
 
-  - rendement locatif brut (loyer officiel × 12 / prix DVF)     poids 35%
-  - tension locative (1 - taux de vacance INSEE)                poids 20%
+  - rendement locatif brut (loyer officiel × 12 / prix DVF)     poids 40%
+  - tension locative (1 - taux de vacance INSEE)                poids 25%
   - dynamique de prix (évolution DVF sur la période disponible) poids 20%
-  - risque réglementaire (1 - part de DPE F/G)                  poids 25%
+  - risque réglementaire (1 - part de DPE F/G)                  poids 15%
+
+Le DPE pèse volontairement moins que prix/loyer/tension : contrairement au
+prix ou à la tension locative, un mauvais DPE se corrige par des travaux —
+ce n'est pas une caractéristique figée de la ville.
 
 Chaque signal est converti en percentile national (rang parmi les communes
 éligibles) avant pondération, plutôt qu'un min-max linéaire — une commune
@@ -36,10 +40,10 @@ MIN_TRANSACTIONS = 20
 ARRONDISSEMENT_PARENT = {"751": "75056", "693": "69123", "132": "13055"}
 
 WEIGHTS = {
-    "rendement": 0.35,
-    "tension": 0.20,
+    "rendement": 0.40,
+    "tension": 0.25,
     "evolution": 0.20,
-    "dpe": 0.25,
+    "dpe": 0.15,
 }
 
 BANDS = [

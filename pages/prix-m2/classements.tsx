@@ -108,7 +108,7 @@ export default function Classements({
                 <span className="rounded-full bg-[#635bff]/10 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-[#635bff]">Score lokt.fr</span>
               </div>
               <p className="mt-1 text-sm text-slate-500">
-                Score composite 0-100 : rendement locatif brut (35 %), tension locative (20 %), dynamique des prix sur plusieurs années (20 %) et part de logements F/G (25 %) — chaque critère comparé au reste des communes françaises. Calculé uniquement pour les communes avec un loyer officiel et un marché suffisamment actif (20+ ventes/an) pour rester fiable.
+                Score composite 0-100 : rendement locatif brut (40 %), tension locative (25 %), dynamique des prix sur plusieurs années (20 %) et part de logements F/G (15 %) — chaque critère comparé au reste des communes françaises. Calculé uniquement pour les communes avec un loyer officiel et un marché suffisamment actif (20+ ventes/an) pour rester fiable.
               </p>
               <div className="mt-4">
                 <RankingTable
