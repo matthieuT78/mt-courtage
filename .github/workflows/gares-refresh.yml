@@ -1,0 +1,54 @@
+name: Gare la plus proche refresh (city_external_kpis)
+
+# Recalcule la gare voyageurs SNCF la plus proche par commune. Change très
+# rarement (ouverture/fermeture de gares) : refresh annuel largement
+# suffisant.
+
+on:
+  schedule:
+    - cron: "0 6 1 9 *" # 1er septembre, 6h UTC
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install "pandas>=2.2" "supabase>=2.9" "requests>=2.31" "scipy>=1.13"
+
+      - name: Run gare refresh
+        id: run
+        run: python3 scripts/process-gares.py --upload
+        env:
+          SUPABASE_URL: https://zjsflhzeujcujjqqantc.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: Notifier par email (succès ou échec)
+        if: always()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" = "success" ]; then
+            export SUBJECT="✅ lokt.fr — refresh gare la plus proche OK"
+            export BODY_TEXT="Le refresh annuel de la gare SNCF la plus proche par commune s'est terminé avec succès.
+
+Logs : ${RUN_URL}"
+          else
+            export SUBJECT="🚨 lokt.fr — le refresh gare la plus proche a échoué"
+            export BODY_TEXT="Le refresh annuel de la gare la plus proche par commune a échoué.
+
+Logs : ${RUN_URL}"
+          fi
+          curl -s -o /dev/null -w "Resend: %{http_code}\n" -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg from "lokt.fr <contact@lokt.fr>" --arg to "matthieu.turbier@gmail.com" --arg subject "$SUBJECT" --arg text "$BODY_TEXT" '{from:$from,to:$to,subject:$subject,text:$text}')"

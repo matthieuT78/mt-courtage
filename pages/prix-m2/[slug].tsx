@@ -23,6 +23,8 @@ import {
   ScaleIcon,
   ReceiptPercentIcon,
   InformationCircleIcon,
+  MapIcon,
+  ShieldExclamationIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
@@ -147,6 +149,17 @@ function EvolutionBadge({ pct }: { pct: number | null }) {
       {pct.toFixed(1)} %
     </span>
   );
+}
+
+function securiteBandColor(band: string | null | undefined) {
+  switch (band) {
+    case "Très sûr": return "text-emerald-600";
+    case "Sûr": return "text-teal-600";
+    case "Modéré": return "text-amber-600";
+    case "Vigilance": return "text-orange-600";
+    case "Élevé": return "text-rose-600";
+    default: return "text-slate-600";
+  }
 }
 
 function scoreBandColor(band: string | null | undefined) {
@@ -661,10 +674,10 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
           </section>
 
           {/* CONTEXTE LOCAL (INSEE / ADEME) */}
-          {externalKpis && (externalKpis.revenuMedian != null || externalKpis.population != null || externalKpis.dpeFgPct != null || externalKpis.taxeFonciereTfb != null) && (
+          {externalKpis && (externalKpis.revenuMedian != null || externalKpis.population != null || externalKpis.dpeFgPct != null || externalKpis.taxeFonciereTfb != null || externalKpis.gareNom != null || externalKpis.securiteTauxPourMille != null) && (
             <section>
               <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Contexte local à {city.cityName}</h2>
-              <p className="mt-2 text-sm text-slate-500">Données socio-démographiques et énergétiques publiques (INSEE, ADEME).</p>
+              <p className="mt-2 text-sm text-slate-500">Données socio-démographiques, énergétiques et de cadre de vie publiques (INSEE, ADEME, DGFiP, SNCF, Ministère de l'Intérieur).</p>
               <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {externalKpis.revenuMedian != null && (
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -716,6 +729,26 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                     <p className="flex items-center gap-1 text-xs text-slate-400">
                       Taxe foncière{externalKpis.taxeFonciereYear ? ` (${externalKpis.taxeFonciereYear})` : ""}
                       <InfoTip text="Taux appliqué à la valeur locative cadastrale du bien (pas au prix d'achat ni au loyer réel) — sert à comparer la pression fiscale entre communes." />
+                    </p>
+                  </div>
+                )}
+                {externalKpis.gareNom != null && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <MapIcon className="h-4 w-4 text-slate-400" />
+                    <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.gareDistanceKm != null ? `${externalKpis.gareDistanceKm.toFixed(1)} km` : "—"}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Gare la plus proche ({externalKpis.gareNom})
+                      <InfoTip text="Distance à vol d'oiseau jusqu'à la gare voyageurs SNCF la plus proche du centre de la commune — pas forcément la distance réelle par la route." />
+                    </p>
+                  </div>
+                )}
+                {externalKpis.securiteTauxPourMille != null && (
+                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                    <ShieldExclamationIcon className="h-4 w-4 text-slate-400" />
+                    <p className={`mt-2 text-lg font-bold ${securiteBandColor(externalKpis.securiteBand)}`}>{externalKpis.securiteBand}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Sécurité{externalKpis.securiteYear ? ` (${externalKpis.securiteYear})` : ""}
+                      <InfoTip text="Indicateur composite (cambriolages, violences, vols avec armes...) en taux pour 1000 habitants, comparé au reste des communes françaises (Ministère de l'Intérieur). Un taux plus élevé ne signifie pas un danger immédiat, mais une fréquence d'incidents plus élevée que la moyenne." />
                     </p>
                   </div>
                 )}
@@ -880,7 +913,7 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
           </section>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400 leading-5">
-            Prix calculés à partir des DVF (Demandes de Valeurs Foncières, DGFiP), mises à jour semestriellement — des ventes réellement actées, pas des prix d'annonce, ce qui explique un niveau généralement inférieur aux estimations d'agences (SeLoger, MeilleursAgents...). {rentIsOfficial ? "Le loyer provient de la Carte des loyers (DGALN/ANIL)." : "Le loyer est une estimation par heuristique de rendement, pas une donnée observée."} Revenu médian et population : INSEE (recensement, Filosofi). Part de logements F/G : ADEME (base DPE). Ces données sont indicatives et ne constituent pas un conseil en investissement.
+            Prix calculés à partir des DVF (Demandes de Valeurs Foncières, DGFiP), mises à jour semestriellement — des ventes réellement actées, pas des prix d'annonce, ce qui explique un niveau généralement inférieur aux estimations d'agences (SeLoger, MeilleursAgents...). {rentIsOfficial ? "Le loyer provient de la Carte des loyers (DGALN/ANIL)." : "Le loyer est une estimation par heuristique de rendement, pas une donnée observée."} Revenu médian et population : INSEE (recensement, Filosofi). Part de logements F/G : ADEME (base DPE). Taxe foncière : DGFiP. Gare la plus proche : SNCF. Indicateur de sécurité : Ministère de l'Intérieur (Interstats). Ces données sont indicatives et ne constituent pas un conseil en investissement.
           </div>
 
           <section className="flex flex-col items-center gap-4 text-center">
