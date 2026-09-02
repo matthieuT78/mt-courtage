@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   params.set("client_reference_id", auth.userId);
   params.set("line_items[0][price]", price.priceId);
   params.set("line_items[0][quantity]", "1");
-  params.set("success_url", `${baseUrl}/mon-compte/abonnement?checkout=success`);
+  params.set("success_url", `${baseUrl}/espace-bailleur?checkout=success`);
   params.set("cancel_url", `${baseUrl}/mon-compte/abonnement?checkout=cancel`);
   params.set("metadata[user_id]", auth.userId);
   params.set("metadata[plan]", price.plan.id);

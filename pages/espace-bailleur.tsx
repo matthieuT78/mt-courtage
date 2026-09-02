@@ -1,6 +1,7 @@
 // pages/espace-bailleur.tsx
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { useLandlordDashboard } from "../lib/landlord/useLandlordDashboard";
 import { DashboardShell } from "../components/landlord/DashboardShell";
@@ -11,10 +12,22 @@ import { computeOnboardingStatus } from "../lib/landlord/onboardingStatus";
 import { useWizardCompletionFlag } from "../lib/landlord/useWizardCompletionFlag";
 
 export default function EspaceBailleurPage() {
+  const router = useRouter();
   const d = useLandlordDashboard();
   const { dark, toggle } = useBailleurTheme();
   const { profile, loaded: profileLoaded, save: saveProfile } = useProfile(d.userId || null);
   const wizardFlag = useWizardCompletionFlag(d.userId || null);
+
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.checkout === "success") {
+      setShowCheckoutSuccess(true);
+      // Nettoie l'URL pour que le message ne réapparaisse pas après un refresh.
+      const { checkout, ...rest } = router.query;
+      router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query.checkout]);
 
   const onboardingStatus = computeOnboardingStatus({
     properties: d.properties,
@@ -125,6 +138,22 @@ export default function EspaceBailleurPage() {
         <meta name="robots" content="noindex, nofollow" />
       </Head>
       <AppHeader />
+
+      {showCheckoutSuccess ? (
+        <div className="px-4 pt-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            <span>Paiement validé, votre abonnement est activé. Configurons votre premier bien.</span>
+            <button
+              type="button"
+              onClick={() => setShowCheckoutSuccess(false)}
+              className="shrink-0 text-emerald-700 hover:text-emerald-900"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* On garde le shell monté même pendant loading,
           sinon l'onglet actif revient à "dashboard" après un refresh */}
