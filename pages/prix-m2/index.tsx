@@ -13,8 +13,8 @@ import {
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import {
-  getPopularCities, getMajorCitiesForMap, getDepartmentChoropleth, getAllRegionSlugs, getAllDepartmentsWithNames,
-  type MajorCityMarker, type DepartmentChoroplethEntry, type DepartmentLink,
+  getPopularCities, getMajorCitiesForMap, getDepartmentChoropleth, getAllRegionSlugs, getAllDepartmentsWithNames, getNationalStats,
+  type MajorCityMarker, type DepartmentChoroplethEntry, type DepartmentLink, type NationalStats,
 } from "../../lib/cityPriceData";
 
 const FranceMap = dynamic(() => import("../../components/FranceMap"), { ssr: false });
@@ -96,13 +96,14 @@ function CitySearchBox() {
 }
 
 export default function PrixM2Index({
-  popularCities, majorCities, departments, regions, allDepartments,
+  popularCities, majorCities, departments, regions, allDepartments, national,
 }: {
   popularCities: CityResult[];
   majorCities: MajorCityMarker[];
   departments: DepartmentChoroplethEntry[];
   regions: Array<{ name: string; slug: string }>;
   allDepartments: DepartmentLink[];
+  national: NationalStats;
 }) {
   const [mapView, setMapView] = useState<"villes" | "departements">("departements");
   const title = "Prix au m² par ville : évolution 2021-2025 | lokt.fr";
@@ -198,7 +199,24 @@ export default function PrixM2Index({
               </Link>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 border-t border-slate-100 pt-6 sm:max-w-lg">
+            <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:max-w-lg">
+              <div>
+                <p className="text-xl font-bold text-slate-950">{national.priceM2 ? `${Math.round(national.priceM2).toLocaleString("fr-FR")} €` : "—"}</p>
+                <p className="text-xs text-slate-500">Prix médian France{national.latestYear ? ` (${national.latestYear})` : ""}</p>
+              </div>
+              <div>
+                <p className={`text-xl font-bold ${national.evolution5y == null ? "text-slate-400" : national.evolution5y >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                  {national.evolution5y != null ? `${national.evolution5y >= 0 ? "+" : ""}${national.evolution5y.toFixed(1)} %` : "—"}
+                </p>
+                <p className="text-xs text-slate-500">Évolution sur la période</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#635bff]">{national.avgInvestmentScore != null ? `${national.avgInvestmentScore}/100` : "—"}</p>
+                <p className="text-xs text-slate-500">Score lokt.fr moyen</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 gap-3 border-t border-slate-100 pt-6 sm:max-w-lg">
               <div>
                 <p className="text-xl font-bold text-slate-950">29 000+</p>
                 <p className="text-xs text-slate-500">communes couvertes</p>
@@ -352,12 +370,13 @@ export default function PrixM2Index({
 }
 
 export async function getStaticProps() {
-  const [popularCities, majorCities, departments] = await Promise.all([
+  const [popularCities, majorCities, departments, national] = await Promise.all([
     getPopularCities(24),
     getMajorCitiesForMap(),
     getDepartmentChoropleth(),
+    getNationalStats(),
   ]);
   const regions = getAllRegionSlugs();
   const allDepartments = getAllDepartmentsWithNames();
-  return { props: { popularCities, majorCities, departments, regions, allDepartments }, revalidate: 60 * 60 * 24 };
+  return { props: { popularCities, majorCities, departments, regions, allDepartments, national }, revalidate: 60 * 60 * 24 };
 }

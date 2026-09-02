@@ -531,6 +531,42 @@ export function getDepartmentsForRegion(regionName: string): DepartmentLink[] {
     .sort((a, b) => a.name.localeCompare(b.name, "fr"));
 }
 
+export type NationalStats = {
+  priceM2: number | null;
+  latestYear: number | null;
+  evolution5y: number | null;
+  avgInvestmentScore: number | null;
+};
+
+// KPI "France entière" affichés sur le hub /prix-m2, à côté de la carte.
+export async function getNationalStats(): Promise<NationalStats> {
+  if (!supabaseAdmin) return { priceM2: null, latestYear: null, evolution5y: null, avgInvestmentScore: null };
+
+  const [history, scoreRows] = await Promise.all([
+    getGeoStatsHistory("national", "FR"),
+    // fetchAllPaginated indispensable ici : PostgREST plafonne un select sans
+    // .range() à 1000 lignes, largement sous les ~5 300 communes notées —
+    // une moyenne sur un sous-ensemble tronqué aurait été silencieusement fausse.
+    fetchAllPaginated<{ investment_score: number }>(() =>
+      supabaseAdmin!.from("city_external_kpis").select("investment_score").not("investment_score", "is", null)
+    ),
+  ]);
+
+  const withPrice = history.filter((p) => p.priceM2 != null);
+  const latest = withPrice[withPrice.length - 1] || null;
+  const { evolution5y } = computeEvolution(history);
+
+  const scores = scoreRows.map((r) => r.investment_score);
+  const avgInvestmentScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+  return {
+    priceM2: latest?.priceM2 ?? null,
+    latestYear: latest?.year ?? null,
+    evolution5y,
+    avgInvestmentScore,
+  };
+}
+
 export type DepartmentChoroplethEntry = { code: string; name: string; slug: string; priceM2: number | null };
 
 export async function getDepartmentChoropleth(): Promise<DepartmentChoroplethEntry[]> {
