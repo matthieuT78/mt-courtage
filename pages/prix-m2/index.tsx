@@ -104,7 +104,7 @@ export default function PrixM2Index({
   regions: Array<{ name: string; slug: string }>;
   allDepartments: DepartmentLink[];
 }) {
-  const [mapView, setMapView] = useState<"villes" | "departements">("villes");
+  const [mapView, setMapView] = useState<"villes" | "departements">("departements");
   const title = "Prix au m² par ville : évolution 2021-2025 | lokt.fr";
   const description =
     "Prix médian au m² pour plus de 29 000 communes françaises, évolution sur 5 ans, données DVF officielles (DGFiP). Recherchez votre ville.";
@@ -177,80 +177,82 @@ export default function PrixM2Index({
       <section className="relative overflow-hidden border-b border-slate-200 bg-white px-4 py-10 sm:py-16">
         <div className="pointer-events-none absolute -top-32 -right-20 h-80 w-80 rounded-full bg-[#635bff] opacity-[0.08] blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-[#00b4d8] opacity-[0.07] blur-3xl" />
-        <div className="relative mx-auto max-w-5xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-700">
-            Données DVF · 29 000+ communes
-          </div>
-          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
-            Prix au m² par ville en France
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Prix médian au m², évolution sur plusieurs années et loyer estimé pour chaque commune française — calculés à partir des transactions immobilières officielles (DVF, DGFiP).
-          </p>
-          <CitySearchBox />
-          <div className="mt-5 flex flex-wrap gap-3 text-sm">
-            <Link href="/prix-m2/classements" className="inline-flex items-center gap-1 font-medium text-[#635bff] hover:underline">
-              Voir les classements <ArrowUpRightIcon className="h-3.5 w-3.5" />
-            </Link>
-            <Link href="/prix-m2/comparer" className="inline-flex items-center gap-1 font-medium text-[#635bff] hover:underline">
-              Comparer deux villes <ArrowUpRightIcon className="h-3.5 w-3.5" />
-            </Link>
+        <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[0.72rem] font-semibold text-indigo-700">
+              Données DVF · 29 000+ communes
+            </div>
+            <h1 className="mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl">
+              Prix au m² par ville en France
+            </h1>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              Prix médian au m², évolution sur plusieurs années et loyer estimé pour chaque commune française — calculés à partir des transactions immobilières officielles (DVF, DGFiP).
+            </p>
+            <CitySearchBox />
+            <div className="mt-5 flex flex-wrap gap-3 text-sm">
+              <Link href="/prix-m2/classements" className="inline-flex items-center gap-1 font-medium text-[#635bff] hover:underline">
+                Voir les classements <ArrowUpRightIcon className="h-3.5 w-3.5" />
+              </Link>
+              <Link href="/prix-m2/comparer" className="inline-flex items-center gap-1 font-medium text-[#635bff] hover:underline">
+                Comparer deux villes <ArrowUpRightIcon className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="mt-8 grid grid-cols-3 gap-3 border-t border-slate-100 pt-6 sm:max-w-lg">
+              <div>
+                <p className="text-xl font-bold text-slate-950">29 000+</p>
+                <p className="text-xs text-slate-500">communes couvertes</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-950">2021-2025</p>
+                <p className="text-xs text-slate-500">historique de prix</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-slate-950">DVF / DGFiP</p>
+                <p className="text-xs text-slate-500">source officielle</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-3 gap-3 border-t border-slate-100 pt-6 sm:max-w-lg">
-            <div>
-              <p className="text-xl font-bold text-slate-950">29 000+</p>
-              <p className="text-xs text-slate-500">communes couvertes</p>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#635bff]/10">
+                  <MapIcon className="h-5 w-5 text-[#635bff]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {mapView === "villes" ? "Les 10 plus grandes villes de France" : "Prix médian par département"}
+                  </h2>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    {mapView === "villes" ? "Survolez ou cliquez sur une ville pour voir son prix au m²." : "Cliquez sur un département pour explorer ses communes."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex rounded-full border border-slate-200 bg-slate-50 p-1 text-sm">
+                <button
+                  onClick={() => setMapView("villes")}
+                  className={`rounded-full px-3 py-1.5 font-medium transition ${mapView === "villes" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
+                >
+                  Grandes villes
+                </button>
+                <button
+                  onClick={() => setMapView("departements")}
+                  className={`rounded-full px-3 py-1.5 font-medium transition ${mapView === "departements" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
+                >
+                  Départements
+                </button>
+              </div>
             </div>
-            <div>
-              <p className="text-xl font-bold text-slate-950">2021-2025</p>
-              <p className="text-xs text-slate-500">historique de prix</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-slate-950">DVF / DGFiP</p>
-              <p className="text-xs text-slate-500">source officielle</p>
+            <div className="mt-4">
+              {mapView === "villes" ? <FranceMap cities={majorCities} /> : <DepartmentChoropleth departments={departments} />}
             </div>
           </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-5xl px-4 py-10">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#635bff]/10">
-                <MapIcon className="h-5 w-5 text-[#635bff]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {mapView === "villes" ? "Les 10 plus grandes villes de France" : "Prix médian par département"}
-                </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {mapView === "villes" ? "Survolez ou cliquez sur une ville pour voir son prix au m²." : "Cliquez sur un département pour explorer ses communes."}
-                </p>
-              </div>
-            </div>
-            <div className="flex rounded-full border border-slate-200 bg-slate-50 p-1 text-sm">
-              <button
-                onClick={() => setMapView("villes")}
-                className={`rounded-full px-3 py-1.5 font-medium transition ${mapView === "villes" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
-              >
-                Grandes villes
-              </button>
-              <button
-                onClick={() => setMapView("departements")}
-                className={`rounded-full px-3 py-1.5 font-medium transition ${mapView === "departements" ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}
-              >
-                Départements
-              </button>
-            </div>
-          </div>
-          <div className="mt-4">
-            {mapView === "villes" ? <FranceMap cities={majorCities} /> : <DepartmentChoropleth departments={departments} />}
-          </div>
-        </section>
-
-        <section className="mt-12">
+        <section className="mt-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#00b4d8]/10">
               <GlobeEuropeAfricaIcon className="h-5 w-5 text-[#00b4d8]" />
