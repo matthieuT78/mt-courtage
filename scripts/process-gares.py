@@ -49,17 +49,25 @@ def load_communes() -> pd.DataFrame:
     # entière (75056/69123/13055) — leurs 45 arrondissements municipaux
     # (75101-75120, 69381-69389, 13201-13216) ne sortent qu'avec ce filtre
     # type= dédié, même souci que pour Filosofi/taxe foncière.
+    #
+    # On utilise "mairie" (coordonnées de l'hôtel de ville) plutôt que
+    # "centre" (centroïde géométrique du territoire communal) : pour une
+    # grande commune au contour irrégulier (ex. Toulouse), le centroïde peut
+    # être décalé de plusieurs km du vrai centre-ville perçu, ce qui fausse
+    # totalement "la gare la plus proche" — vérifié en prod (Toulouse
+    # ressortait Saint-Cyprien-Arènes au lieu de Matabiau). "mairie" est
+    # disponible à 100% (communes + arrondissements), donc pas de repli à gérer.
     for params in (
-        {"fields": "code,centre", "format": "json"},
-        {"type": "arrondissement-municipal", "fields": "code,centre", "format": "json"},
+        {"fields": "code,mairie", "format": "json"},
+        {"type": "arrondissement-municipal", "fields": "code,mairie", "format": "json"},
     ):
         resp = requests.get(COMMUNES_API, params=params, timeout=60)
         resp.raise_for_status()
         for c in resp.json():
-            centre = c.get("centre")
-            if not centre:
+            mairie = c.get("mairie")
+            if not mairie:
                 continue
-            lon, lat = centre["coordinates"]
+            lon, lat = mairie["coordinates"]
             rows.append({"insee_code": c["code"], "lon": lon, "lat": lat})
     return pd.DataFrame(rows)
 

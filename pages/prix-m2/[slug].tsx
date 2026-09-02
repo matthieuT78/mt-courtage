@@ -162,6 +162,20 @@ function securiteBandColor(band: string | null | undefined) {
   }
 }
 
+// Le bouclier fait office de baromètre : dégradé du vert (sûr) au rouge
+// (élevé), icône qui change aussi (plein = rassurant, avec exclamation =
+// vigilance) pour ne pas reposer sur la seule couleur.
+function securiteShieldStyle(band: string | null | undefined) {
+  switch (band) {
+    case "Très sûr": return { gradient: "from-emerald-500 to-emerald-600", shadow: "shadow-emerald-500/30", exclamation: false };
+    case "Sûr": return { gradient: "from-teal-500 to-teal-600", shadow: "shadow-teal-500/30", exclamation: false };
+    case "Modéré": return { gradient: "from-amber-500 to-amber-600", shadow: "shadow-amber-500/30", exclamation: true };
+    case "Vigilance": return { gradient: "from-orange-500 to-orange-600", shadow: "shadow-orange-500/30", exclamation: true };
+    case "Élevé": return { gradient: "from-rose-500 to-rose-600", shadow: "shadow-rose-500/30", exclamation: true };
+    default: return { gradient: "from-slate-400 to-slate-500", shadow: "shadow-slate-400/30", exclamation: true };
+  }
+}
+
 function scoreBandColor(band: string | null | undefined) {
   switch (band) {
     case "Excellent potentiel": return "text-emerald-600";
@@ -742,16 +756,22 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                     </p>
                   </div>
                 )}
-                {externalKpis.securiteTauxPourMille != null && (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
-                    <ShieldExclamationIcon className="h-4 w-4 text-slate-400" />
-                    <p className={`mt-2 text-lg font-bold ${securiteBandColor(externalKpis.securiteBand)}`}>{externalKpis.securiteBand}</p>
-                    <p className="flex items-center gap-1 text-xs text-slate-400">
-                      Sécurité{externalKpis.securiteYear ? ` (${externalKpis.securiteYear})` : ""}
-                      <InfoTip text="Indicateur composite (cambriolages, violences, vols avec armes...) en taux pour 1000 habitants, comparé au reste des communes françaises (Ministère de l'Intérieur). Un taux plus élevé ne signifie pas un danger immédiat, mais une fréquence d'incidents plus élevée que la moyenne." />
-                    </p>
-                  </div>
-                )}
+                {externalKpis.securiteTauxPourMille != null && (() => {
+                  const style = securiteShieldStyle(externalKpis.securiteBand);
+                  const ShieldIcon = style.exclamation ? ShieldExclamationIcon : ShieldCheckIcon;
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${style.gradient} shadow-md ${style.shadow}`}>
+                        <ShieldIcon className="h-5 w-5 text-white" />
+                      </div>
+                      <p className={`mt-2 text-lg font-bold ${securiteBandColor(externalKpis.securiteBand)}`}>{externalKpis.securiteBand}</p>
+                      <p className="flex items-center gap-1 text-xs text-slate-400">
+                        Sécurité{externalKpis.securiteYear ? ` (${externalKpis.securiteYear})` : ""}
+                        <InfoTip text="Indicateur composite (cambriolages, violences, vols avec armes...) en taux pour 1000 habitants, comparé au reste des communes françaises (Ministère de l'Intérieur). Un taux plus élevé ne signifie pas un danger immédiat, mais une fréquence d'incidents plus élevée que la moyenne." />
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </section>
           )}
