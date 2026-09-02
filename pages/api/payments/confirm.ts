@@ -5,6 +5,7 @@ import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 import { removeTrackedPartialPaymentTransactions, syncDelegatedRentTransaction } from "../../../lib/rentPaymentFinance";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
+import { invalidatePendingReceiptTokens } from "../../../lib/receiptWorkflow";
 
 type Json = Record<string, any>;
 
@@ -103,6 +104,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       periodStart: normalizedPeriodStart,
       periodEnd: normalizedPeriodEnd,
     });
+
+    await invalidatePendingReceiptTokens({ leaseId, periodStart: normalizedPeriodStart, periodEnd: normalizedPeriodEnd });
 
     // Quittances déléguées à une agence : aucune quittance/PDF lokt n'est générée,
     // donc pas de sync Finance possible via rent_receipts. On écrit directement

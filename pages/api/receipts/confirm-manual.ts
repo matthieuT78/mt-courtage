@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
+import { invalidatePendingReceiptTokens } from "../../../lib/receiptWorkflow";
 
 type Json = Record<string, any>;
 
@@ -260,6 +261,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       periodStart: receipt.period_start,
       periodEnd: receipt.period_end,
     });
+
+    await invalidatePendingReceiptTokens({ leaseId: receipt.lease_id, periodStart: receipt.period_start, periodEnd: receipt.period_end });
 
     // 5) Upsert transaction rent (Finance)
     const occurredAt = String(receipt.period_end || receipt.period_start || "").slice(0, 10);

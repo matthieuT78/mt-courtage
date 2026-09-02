@@ -156,6 +156,23 @@ async function sendEmailViaResend(params: {
   return { ok: true as const, disabled: false, error: null };
 }
 
+/**
+ * Invalide tout lien de confirmation par email encore en attente pour ce bail/cette période.
+ * À appeler après toute validation manuelle du paiement (section Quittances) : sans ça, un
+ * ancien token de rappel (valable jusqu'à 7 jours) peut encore déclencher l'envoi automatique
+ * d'une quittance déjà confirmée manuellement, les deux flux ne se parlant pas autrement.
+ */
+export async function invalidatePendingReceiptTokens(params: { leaseId: string; periodStart: string; periodEnd: string }) {
+  if (!supabaseAdmin) return;
+  await supabaseAdmin
+    .from("receipt_confirm_tokens")
+    .update({ used_at: new Date().toISOString() })
+    .eq("lease_id", params.leaseId)
+    .eq("period_start", params.periodStart)
+    .eq("period_end", params.periodEnd)
+    .is("used_at", null);
+}
+
 export async function confirmLeasePaymentAndSendReceipt(params: {
   userId: string;
   leaseId: string;
@@ -190,6 +207,38 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   const normalizedPeriodStart = rentPeriod.periodStart;
   const normalizedPeriodEnd = rentPeriod.periodEnd;
   const { rent, charges, total } = rentPeriod;
+
+  // Filet de sécurité : si le paiement a déjà été validé (typiquement une validation manuelle
+  // dans l'app pendant qu'un token de rappel par email était encore en attente), on ne relance
+  // ni la génération ni l'envoi. invalidatePendingReceiptTokens() couvre le cas normal en amont,
+  // ceci couvre la fenêtre de course résiduelle entre validation manuelle et invalidation du token.
+  const existingPaymentCheck = await supabaseAdmin
+    .from("rent_payments")
+    .select("id, paid_at, total_amount")
+    .eq("lease_id", leaseId)
+    .eq("period_start", normalizedPeriodStart)
+    .eq("period_end", normalizedPeriodEnd)
+    .maybeSingle();
+
+  if (existingPaymentCheck.data?.paid_at && Number(existingPaymentCheck.data.total_amount || 0) >= total) {
+    const existingReceiptCheck = await supabaseAdmin
+      .from("rent_receipts")
+      .select("id, status")
+      .eq("lease_id", leaseId)
+      .eq("period_start", normalizedPeriodStart)
+      .eq("period_end", normalizedPeriodEnd)
+      .maybeSingle();
+    const alreadySentEmail = String(existingReceiptCheck.data?.status || "").toLowerCase() === "sent";
+
+    return {
+      ok: true,
+      receiptId: existingReceiptCheck.data?.id || "",
+      paymentId: existingPaymentCheck.data.id,
+      status: alreadySentEmail ? "sent" : "generated",
+      email: { attempted: false, ok: alreadySentEmail, disabled: false, error: null, to: null, cc: null },
+      signedUrl: null,
+    };
+  }
 
   // Quittances déléguées à une agence : jamais de PDF ni d'envoi au locataire — cette
   // confirmation (déclenchée par un lien email ou l'app) ne sert qu'à alimenter la Finance
