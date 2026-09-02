@@ -46,7 +46,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const notice of dueNotices || []) {
       try {
         const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(notice.user_id);
-        if (userError) throw userError;
+        // "User not found" n'est pas une vraie erreur à alerter : le compte a déjà
+        // été supprimé par un autre chemin (ou la notice est orpheline). Sans ce
+        // garde-fou, throw userError faisait échouer — et réessayer indéfiniment,
+        // un email d'échec par jour — un cas qui doit juste être annulé comme
+        // "confirmé entre-temps" ci-dessous.
+        if (userError && userError.message !== "User not found") throw userError;
         const user = userData?.user;
 
         // Confirmé entre-temps (ou compte déjà supprimé autrement) : l'avis n'a plus lieu d'être.
