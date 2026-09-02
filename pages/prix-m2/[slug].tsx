@@ -225,12 +225,24 @@ function ScoreBadge({ score, band }: { score: number; band: string | null }) {
   );
 }
 
-function ReliabilityBadge({ nTransactions }: { nTransactions: number | null }) {
+// Seuils volontairement stricts : même 20-29 ventes/an reste un échantillon
+// fragile pour une commune (un prix médian peut bondir de +50 à +80 % d'une
+// année sur l'autre rien qu'en changeant la poignée de biens vendus — vérifié
+// empiriquement sur des milliers de communes). "Fiable" est réservé à un
+// volume qui absorbe mieux ce bruit d'échantillonnage.
+function reliabilityLevel(nTransactions: number | null): "fiable" | "moderee" | "limitee" {
   const n = nTransactions ?? 0;
+  if (n >= 30) return "fiable";
+  if (n >= 20) return "moderee";
+  return "limitee";
+}
+
+function ReliabilityBadge({ nTransactions }: { nTransactions: number | null }) {
+  const level = reliabilityLevel(nTransactions);
   const cfg =
-    n >= 30
+    level === "fiable"
       ? { label: "Fiable", color: "text-emerald-700 bg-emerald-50 border-emerald-200" }
-      : n >= 10
+      : level === "moderee"
       ? { label: "Modérée", color: "text-amber-700 bg-amber-50 border-amber-200" }
       : { label: "Limitée", color: "text-rose-700 bg-rose-50 border-rose-200" };
   return (
@@ -338,6 +350,18 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
   );
 
   const yearsWithPrice = city.history.filter((h) => h.priceM2 != null);
+  // Une évolution n'est réellement lisible que si les DEUX années comparées
+  // reposent sur un échantillon fiable — un seul côté fragile suffit à fausser
+  // le pourcentage affiché (cf. reliabilityLevel : un an à 15 ventes peut faire
+  // bondir le prix médian de 50-80 % sans rapport avec une vraie tendance).
+  const evolution5yReliable =
+    yearsWithPrice.length >= 2 &&
+    reliabilityLevel(yearsWithPrice[0].nTransactions) === "fiable" &&
+    reliabilityLevel(yearsWithPrice[yearsWithPrice.length - 1].nTransactions) === "fiable";
+  const evolution1yReliable =
+    yearsWithPrice.length >= 2 &&
+    reliabilityLevel(yearsWithPrice[yearsWithPrice.length - 2].nTransactions) === "fiable" &&
+    reliabilityLevel(yearsWithPrice[yearsWithPrice.length - 1].nTransactions) === "fiable";
   const activeYearsWithPrice = city.historyByType[propertyTypeView].filter((h) => h.priceM2 != null);
   const chartData = {
     labels: activeYearsWithPrice.map((h) => String(h.year)),
@@ -549,13 +573,21 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                   )}
                   <div className="flex gap-6 sm:gap-8">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                         Évolution {yearsWithPrice[0]?.year}-{yearsWithPrice[yearsWithPrice.length - 1]?.year}
+                        {!evolution5yReliable && (
+                          <InfoTip text="Basé sur un faible nombre de ventes sur au moins une des deux années comparées — avec un échantillon aussi restreint, le prix médian peut bondir d'une année sur l'autre sans refléter une vraie tendance de marché. À interpréter avec prudence." />
+                        )}
                       </p>
                       <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution5y} /></p>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">1 an</p>
+                      <p className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        1 an
+                        {!evolution1yReliable && (
+                          <InfoTip text="Basé sur un faible nombre de ventes sur au moins une des deux années comparées — avec un échantillon aussi restreint, le prix médian peut bondir d'une année sur l'autre sans refléter une vraie tendance de marché. À interpréter avec prudence." />
+                        )}
+                      </p>
                       <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution1y} /></p>
                     </div>
                   </div>
