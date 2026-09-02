@@ -13,7 +13,10 @@ import { planAllowsPerformance } from "../../../lib/permissions";
 import { LockedPremiumSection, StatCard } from "../LockedPremiumSection";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
-// meuble_saisonnier_classe = tourisme classé → abattement 71%
+// Depuis la loi Le Meur (n°2024-1039 du 19/11/2024, applicable aux revenus 2025
+// déclarés en 2026) : meuble_saisonnier (tourisme non classé) → abattement 30 %,
+// seuil 15 000 € ; meuble_saisonnier_classe (tourisme classé) → abattement 50 %,
+// seuil 77 700 € (aligné sur la location longue durée, fini le régime à 71 %/188 700 €).
 type LocationKind = "meuble_longue" | "meuble_saisonnier" | "meuble_saisonnier_classe";
 
 type Stored = {
@@ -305,10 +308,10 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Charges communes (toutes options) — hors CFE (spécifique nu réel)
   const commonCharges = interest + insurance + propertyTax + copro + repairs + managementFees + utilities + otherExpenses;
 
-  // Abattement micro-BIC selon type de meublé
-  // Longue durée / saisonnier non classé : 50% → base = 50%
-  // Meublé de tourisme classé : 71% → base = 29%
-  const microBicRate = locationKind === "meuble_saisonnier_classe" ? 0.29 : 0.5;
+  // Abattement micro-BIC selon type de meublé (barème post loi Le Meur, revenus 2025+)
+  // Longue durée / tourisme classé : 50% → base = 50%
+  // Tourisme non classé : 30% → base = 70%
+  const microBicRate = locationKind === "meuble_saisonnier" ? 0.7 : 0.5;
   const microBicBase = Math.max(0, receiptsTotal * microBicRate);
 
   // Micro-foncier : abattement 30% → base = 70%
@@ -673,7 +676,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       list.push({ tone: "red", text: "Plafond micro-foncier dépassé : les recettes > 15 000 € imposent le régime réel foncier." });
 
     if (isLmnp && isMicro) {
-      const microBicCeiling = locationKind === "meuble_saisonnier_classe" ? 188_700 : 77_700;
+      const microBicCeiling = locationKind === "meuble_saisonnier" ? 15_000 : 77_700;
       if (receiptsTotal > microBicCeiling)
         list.push({ tone: "red", text: `Plafond micro-BIC dépassé : les recettes > ${eur(microBicCeiling)} imposent le régime réel.` });
     }
@@ -778,7 +781,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (regime === "lmnp_micro") return {
       montantLabel: "Recettes brutes à déclarer",
       montant: receiptsTotal,
-      montantNote: `Les impôts appliquent ensuite l'abattement ${locationKind === "meuble_saisonnier_classe" ? "71 %" : "50 %"} automatiquement — base imposable résultante : ${eur(microBicBase)}`,
+      montantNote: `Les impôts appliquent ensuite l'abattement ${locationKind === "meuble_saisonnier" ? "30 %" : "50 %"} automatiquement — base imposable résultante : ${eur(microBicBase)}`,
       formulaire: "2042-C-PRO",
       caseHint: "Section « Locations meublées non professionnelles / Micro-BIC » — case recettes brutes (ex : 5ND)",
       isDeficit: false,
@@ -1178,15 +1181,15 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 </div>
                 <p className="mt-1.5 text-xs text-slate-400">
                   {isMicro
-                    ? isLmnp ? `Abattement ${locationKind === "meuble_saisonnier_classe" ? "71 %" : "50 %"} appliqué automatiquement par les impôts` : "Abattement 30 % appliqué automatiquement par les impôts"
+                    ? isLmnp ? `Abattement ${locationKind === "meuble_saisonnier" ? "30 %" : "50 %"} appliqué automatiquement par les impôts` : "Abattement 30 % appliqué automatiquement par les impôts"
                     : "Vous déduisez vos charges réelles — renseignez-les ci-dessous"}
                 </p>
                 {isLmnp && isMicro && (
                   <select value={locationKind} onChange={(e) => setLocationKind(e.target.value as LocationKind)}
                     className="mt-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                     <option value="meuble_longue">Meublé longue durée (abattement 50 %)</option>
-                    <option value="meuble_saisonnier">Meublé saisonnier non classé (abattement 50 %)</option>
-                    <option value="meuble_saisonnier_classe">Meublé de tourisme classé (abattement 71 %)</option>
+                    <option value="meuble_saisonnier">Meublé de tourisme non classé (abattement 30 %, seuil 15 000 €)</option>
+                    <option value="meuble_saisonnier_classe">Meublé de tourisme classé (abattement 50 %)</option>
                   </select>
                 )}
               </div>
