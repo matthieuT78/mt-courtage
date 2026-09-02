@@ -1,6 +1,7 @@
 // components/InvestissementWizard.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
+import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import {
   BanknotesIcon,
@@ -203,6 +204,7 @@ function getSourceLabel(): string {
 /* ======================== Component ======================== */
 export default function InvestissementWizard() {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
+  const router = useRouter();
 
   /* ======================== Session (pré-remplir email) ======================== */
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -516,6 +518,26 @@ export default function InvestissementWizard() {
     setShowCitySuggestions(false);
     setCityError(null);
   };
+
+  // Pré-remplissage depuis un lien /prix-m2/[ville] (?ville=...&cp=...&insee=...&prixM2=...) :
+  // simule une sélection manuelle pour réutiliser exactement le même flux
+  // (fetch du marché, mise à jour du prix suggéré) que l'autocomplétion, et
+  // pré-remplit un prix indicatif sur une surface par défaut de 50 m² pour
+  // que l'utilisateur voie un calcul concret sans ressaisir la surface.
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { ville, cp, insee, prixM2 } = router.query;
+    if (typeof ville === "string" && typeof cp === "string" && typeof insee === "string" && ville && cp && insee) {
+      handleSelectCity({ name: ville, postalCode: cp, inseeCode: insee });
+      const prixM2Num = typeof prixM2 === "string" ? parseFloat(prixM2) : NaN;
+      if (!Number.isNaN(prixM2Num) && prixM2Num > 0) {
+        const surfaceDefaut = 50;
+        setSurfaceM2(String(surfaceDefaut));
+        setPrixBien(String(Math.round(prixM2Num * surfaceDefaut)));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   const fetchMarketBenchmarks = async (
     city: CitySuggestion,

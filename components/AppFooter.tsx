@@ -67,6 +67,9 @@ export default function AppFooter() {
           <Link href="/rendement-locatif" className="underline hover:text-slate-700">
             Rendement locatif par ville
           </Link>
+          <Link href="/prix-m2" className="underline hover:text-slate-700">
+            Prix au m² par ville
+          </Link>
           <Link href="/investissement-locatif" className="underline hover:text-slate-700">
             Investissement locatif
           </Link>

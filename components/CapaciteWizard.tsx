@@ -1,5 +1,6 @@
 // components/CapaciteWizard.tsx
 import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from "react";
+import { useRouter } from "next/router";
 import {
   AdjustmentsHorizontalIcon,
   ArrowLeftIcon,
@@ -747,6 +748,8 @@ export type CapaciteWizardProps = {
 };
 
 export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizardProps) {
+  const router = useRouter();
+
   /* ======================== Session ======================== */
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
@@ -1413,6 +1416,19 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       console.error("Erreur de restauration de la simulation capacité :", e);
     }
   }, []);
+
+  // Pré-remplissage depuis un lien /prix-m2/[ville] (?departement=...) : la
+  // simulation restaurée depuis le localStorage (effet ci-dessus) reste la
+  // valeur par défaut, mais une arrivée explicite depuis une page ville doit
+  // primer sur une ancienne simulation enregistrée.
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { departement } = router.query;
+    if (typeof departement === "string" && departement.trim()) {
+      setProjectDepartment(departement);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   /* ======================== RPC lead capture ======================== */
   const captureLeadViaRpc = async (params: { email: string; computed: ComputedAll }) => {

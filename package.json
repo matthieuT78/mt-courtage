@@ -30,6 +30,7 @@
     "react": "18.2.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "18.2.0",
+    "react-simple-maps": "^3.0.0",
     "remark": "^15.0.1",
     "remark-gfm": "^4.0.1",
     "remark-html": "^16.0.1"
@@ -39,6 +40,7 @@
     "@types/node": "20.12.7",
     "@types/react": "18.2.74",
     "@types/react-dom": "18.2.24",
+    "@types/react-simple-maps": "^3.0.6",
     "autoprefixer": "10.4.19",
     "eslint-config-next": "^16.0.7",
     "postcss": "8.4.38",

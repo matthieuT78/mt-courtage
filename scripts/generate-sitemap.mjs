@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
 // ⚠️ adapte si besoin
 const siteUrl = "https://lokt.fr";
@@ -123,6 +124,42 @@ for (const slug of villesSlugs) {
 // Articles de blog (auto-inclus)
 for (const { slug, date } of blogEntries) {
   urls.push({ loc: `${siteUrl}/blog/${slug}`, pathname: `/blog/${slug}`, date: date || null });
+}
+
+// Pages prix au m² par ville (DVF) — seules les communes les plus actives
+// sont pré-générées (le reste est en fallback blocking, non inclus ici pour
+// ne pas faire exploser le sitemap à 29 000+ URLs).
+urls.push({ loc: `${siteUrl}/prix-m2`, pathname: "/prix-m2" });
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (supabaseUrl && supabaseKey) {
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const { data: yearRow } = await supabase
+    .from("city_market_benchmarks_history")
+    .select("year")
+    .order("year", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (yearRow?.year) {
+    const { data: topCities } = await supabase
+      .from("city_market_benchmarks_history")
+      .select("insee_code, city_name")
+      .eq("year", yearRow.year)
+      .order("n_transactions", { ascending: false })
+      .limit(300);
+    for (const c of topCities || []) {
+      if (!c.insee_code || !c.city_name) continue;
+      const slug = `${c.city_name
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")}-${c.insee_code}`;
+      urls.push({ loc: `${siteUrl}/prix-m2/${slug}`, pathname: `/prix-m2/${slug}` });
+    }
+  }
+} else {
+  console.warn("⚠️ SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY manquants : pages /prix-m2/[ville] non incluses dans le sitemap.");
 }
 
 if (INCLUDE_SIMULATEUR) {

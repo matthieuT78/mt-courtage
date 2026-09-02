@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Run DVF refresh
-        run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload --history
+        run: python3 scripts/process-dvf.py --year ${{ steps.target.outputs.year }} --upload --history --rooms
         env:
           # Pas un secret : c'est l'URL publique du projet Supabase, déjà
           # embarquée telle quelle dans le bundle JS du site (NEXT_PUBLIC_).
