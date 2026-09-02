@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -22,6 +22,7 @@ import {
   FireIcon,
   ScaleIcon,
   ReceiptPercentIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
@@ -159,21 +160,68 @@ function scoreBandColor(band: string | null | undefined) {
   }
 }
 
+// Même composant que components/landlord/sections/SectionFinance.tsx — cliquable
+// (pas seulement au survol) pour rester utilisable au tactile.
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={ref} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label="Plus d'informations"
+        className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-300"
+      >
+        <InformationCircleIcon className="h-3.5 w-3.5" />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-1/2 top-full z-20 mt-1.5 w-60 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-2.5 text-[0.7rem] leading-4 text-slate-600 shadow-lg"
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function ScoreBadge({ score, band }: { score: number; band: string | null }) {
   return (
-    <Link
-      href="/prix-m2/classements#potentiel-investissement"
-      className="group flex items-center gap-3 rounded-2xl border border-[#635bff]/20 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/50 hover:shadow-lg"
-    >
+    <div className="flex items-center gap-3 rounded-2xl border border-[#635bff]/20 bg-white px-4 py-3 shadow-sm transition hover:shadow-lg">
       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#635bff] to-[#00d4ff] shadow-md shadow-[#635bff]/30">
         <span className="text-xl font-extrabold text-white">{score}</span>
       </div>
       <div>
-        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Score lokt.fr</p>
+        <p className="flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">
+          Score lokt.fr
+          <InfoTip text="Score composite 0-100 : rendement locatif, tension locative, dynamique des prix et risque DPE, chaque critère comparé au reste des communes françaises." />
+        </p>
         <p className={`text-sm font-extrabold ${scoreBandColor(band)}`}>{band}</p>
-        <p className="text-[0.65rem] font-medium text-slate-400 group-hover:text-[#635bff] group-hover:underline">Voir le classement →</p>
+        <Link href="/prix-m2/classements#potentiel-investissement" className="text-[0.65rem] font-medium text-slate-400 hover:text-[#635bff] hover:underline">
+          Voir le classement →
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -520,17 +568,32 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <BanknotesIcon className="h-4 w-4 text-slate-400" />
                 <p className="mt-2 text-lg font-bold text-slate-900">{rentM2Display ? `${rentM2Display.toFixed(1)} €` : "—"}</p>
-                <p className="text-xs text-slate-400">Loyer {rentIsOfficial ? "constaté" : "estimé"} /m²/mois</p>
+                <p className="flex items-center gap-1 text-xs text-slate-400">
+                  Loyer {rentIsOfficial ? "constaté" : "estimé"} /m²/mois
+                  <InfoTip
+                    text={
+                      rentIsOfficial
+                        ? "Loyer d'annonce réel par m²/mois, issu de la Carte des loyers (DGALN/ANIL) — basé sur les annonces SeLoger/LeBonCoin, pas une estimation lokt.fr."
+                        : "Estimation indicative par m²/mois via un ratio de rendement standard — aucune donnée officielle de loyer n'est disponible pour cette commune."
+                    }
+                  />
+                </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <ChartBarIcon className="h-4 w-4 text-slate-400" />
                 <p className="mt-2 text-lg font-bold text-slate-900">{yieldPct != null ? `${yieldPct.toFixed(1)} %` : "—"}</p>
-                <p className="text-xs text-slate-400">Rendement brut estimé</p>
+                <p className="flex items-center gap-1 text-xs text-slate-400">
+                  Rendement brut estimé
+                  <InfoTip text="(loyer annuel ÷ prix d'achat) × 100. Ne tient pas compte des charges, de la vacance ni de la fiscalité — utilisez le simulateur pour un calcul net précis." />
+                </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <ShieldCheckIcon className="h-4 w-4 text-slate-400" />
                 <div className="mt-2"><ReliabilityBadge nTransactions={latestNTransactions} /></div>
-                <p className="mt-1 text-xs text-slate-400">{latestNTransactions ?? 0} ventes analysées</p>
+                <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+                  {latestNTransactions ?? 0} ventes analysées
+                  <InfoTip text="Indique la robustesse statistique du prix affiché : plus il y a de ventes récentes analysées, plus le prix médian est représentatif du marché réel de la commune." />
+                </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <MapPinIcon className="h-4 w-4 text-slate-400" />
@@ -575,7 +638,10 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <ScaleIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{Math.round(externalKpis.revenuMedian).toLocaleString("fr-FR")} €</p>
-                    <p className="text-xs text-slate-400">Revenu médian annuel{externalKpis.filosofiYear ? ` (${externalKpis.filosofiYear})` : ""}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Revenu médian annuel{externalKpis.filosofiYear ? ` (${externalKpis.filosofiYear})` : ""}
+                      <InfoTip text="Revenu médian annuel des foyers fiscaux de la commune (INSEE, données Filosofi) — la moitié des foyers gagnent plus, l'autre moitié moins." />
+                    </p>
                     {externalKpis.prixRevenuRatio != null && (
                       <p className="mt-1.5 text-xs font-medium text-[#635bff]">{externalKpis.prixRevenuRatio.toFixed(1)} ans de revenu pour 50 m²</p>
                     )}
@@ -585,28 +651,40 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <UserGroupIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.population.toLocaleString("fr-FR")}</p>
-                    <p className="text-xs text-slate-400">Habitants{externalKpis.filosofiYear ? ` (${externalKpis.filosofiYear})` : ""}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Habitants{externalKpis.filosofiYear ? ` (${externalKpis.filosofiYear})` : ""}
+                      <InfoTip text="Population totale de la commune au dernier recensement disponible (INSEE)." />
+                    </p>
                   </div>
                 )}
                 {externalKpis.tauxResidencesSecondaires != null && (
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <HomeModernIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.tauxResidencesSecondaires.toFixed(1)} %</p>
-                    <p className="text-xs text-slate-400">Résidences secondaires</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Résidences secondaires
+                      <InfoTip text="Part des logements de la commune utilisés comme résidence secondaire (INSEE) — un taux élevé peut signaler une zone touristique/saisonnière, avec une demande locative à l'année plus limitée." />
+                    </p>
                   </div>
                 )}
                 {externalKpis.dpeFgPct != null && (
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <FireIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.dpeFgPct.toFixed(0)} %</p>
-                    <p className="text-xs text-slate-400">Logements classés F/G ({(externalKpis.dpeTotal ?? 0).toLocaleString("fr-FR")} DPE)</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Logements classés F/G ({(externalKpis.dpeTotal ?? 0).toLocaleString("fr-FR")} DPE)
+                      <InfoTip text="Part des diagnostics de performance énergétique classés F ou G (ADEME) — les logements G sont interdits à la location depuis 2025, les F le seront en 2028." />
+                    </p>
                   </div>
                 )}
                 {externalKpis.taxeFonciereTfb != null && (
                   <div className="rounded-xl border border-slate-200 bg-white p-4">
                     <ReceiptPercentIcon className="h-4 w-4 text-slate-400" />
                     <p className="mt-2 text-lg font-bold text-slate-900">{externalKpis.taxeFonciereTfb.toFixed(1)} %</p>
-                    <p className="text-xs text-slate-400">Taxe foncière{externalKpis.taxeFonciereYear ? ` (${externalKpis.taxeFonciereYear})` : ""}</p>
+                    <p className="flex items-center gap-1 text-xs text-slate-400">
+                      Taxe foncière{externalKpis.taxeFonciereYear ? ` (${externalKpis.taxeFonciereYear})` : ""}
+                      <InfoTip text="Taux appliqué à la valeur locative cadastrale du bien (pas au prix d'achat ni au loyer réel) — sert à comparer la pression fiscale entre communes." />
+                    </p>
                   </div>
                 )}
               </div>
