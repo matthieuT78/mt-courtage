@@ -58,6 +58,35 @@ function EvolutionBadge({ pct }: { pct: number | null }) {
   );
 }
 
+function scoreBandColor(band: string | null | undefined) {
+  switch (band) {
+    case "Excellent potentiel": return "text-emerald-600";
+    case "Bon potentiel": return "text-teal-600";
+    case "Potentiel moyen": return "text-amber-600";
+    case "Potentiel limité": return "text-orange-600";
+    case "Faible potentiel": return "text-rose-600";
+    default: return "text-slate-600";
+  }
+}
+
+function ScoreBadge({ score, band }: { score: number; band: string | null }) {
+  return (
+    <Link
+      href="/prix-m2/classements#potentiel-investissement"
+      className="group flex items-center gap-3 rounded-2xl border border-[#635bff]/20 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/50 hover:shadow-lg"
+    >
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#635bff] to-[#00d4ff] shadow-md shadow-[#635bff]/30">
+        <span className="text-xl font-extrabold text-white">{score}</span>
+      </div>
+      <div>
+        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">Score lokt.fr</p>
+        <p className={`text-sm font-extrabold ${scoreBandColor(band)}`}>{band}</p>
+        <p className="text-[0.65rem] font-medium text-slate-400 group-hover:text-[#635bff] group-hover:underline">Voir le classement →</p>
+      </div>
+    </Link>
+  );
+}
+
 function ReliabilityBadge({ nTransactions }: { nTransactions: number | null }) {
   const n = nTransactions ?? 0;
   const cfg =
@@ -364,26 +393,21 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-end gap-6 sm:gap-8">
+                <div className="flex flex-col items-start gap-4 sm:items-end">
                   {externalKpis?.investmentScore != null && (
-                    <Link href="/prix-m2/classements#potentiel-investissement" className="group">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Score lokt.fr</p>
-                      <p className="mt-1 flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-[#635bff] group-hover:underline">{externalKpis.investmentScore}</span>
-                        <span className="text-xs font-medium text-slate-400">/100</span>
-                      </p>
-                      <p className="text-[0.68rem] font-medium text-slate-500">{externalKpis.investmentScoreBand}</p>
-                    </Link>
+                    <ScoreBadge score={externalKpis.investmentScore} band={externalKpis.investmentScoreBand} />
                   )}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Évolution {yearsWithPrice[0]?.year}-{yearsWithPrice[yearsWithPrice.length - 1]?.year}
-                    </p>
-                    <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution5y} /></p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">1 an</p>
-                    <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution1y} /></p>
+                  <div className="flex gap-6 sm:gap-8">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Évolution {yearsWithPrice[0]?.year}-{yearsWithPrice[yearsWithPrice.length - 1]?.year}
+                      </p>
+                      <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution5y} /></p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">1 an</p>
+                      <p className="mt-1 text-2xl font-bold"><EvolutionBadge pct={city.evolution1y} /></p>
+                    </div>
                   </div>
                 </div>
               </div>
