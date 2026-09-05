@@ -26,6 +26,21 @@ function benefitRow(params: { emoji: string; bg: string; title: string; text: st
     </tr>`;
 }
 
+function lokyTip(text: string) {
+  return `
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:4px 0 20px;background:#f8fafc;border:1px solid #eef2ff;border-radius:14px;">
+      <tr>
+        <td width="52" valign="top" style="padding:14px 0 14px 14px;">
+          <img src="https://lokt.fr/loky-avatar.png" alt="Loky" width="36" height="36" style="display:block;border-radius:10px;width:36px;height:36px;" />
+        </td>
+        <td valign="top" style="padding:14px 14px 14px 12px;">
+          <p style="margin:0 0 2px;font-size:12.5px;font-weight:700;color:#4338ca;">Loky, l'assistant lokt</p>
+          <p style="margin:0;font-size:13.5px;line-height:1.5;color:#334155;">${text}</p>
+        </td>
+      </tr>
+    </table>`;
+}
+
 function shell(params: {
   heroEmoji: string;
   heroLabel: string;
@@ -33,10 +48,12 @@ function shell(params: {
   intro: string;
   benefitsHtml: string;
   noteHtml?: string;
+  lokyTipHtml?: string;
   ctaLabel: string;
   ctaHref: string;
+  secondaryHtml?: string;
 }) {
-  const { heroEmoji, heroLabel, title, intro, benefitsHtml, noteHtml, ctaLabel, ctaHref } = params;
+  const { heroEmoji, heroLabel, title, intro, benefitsHtml, noteHtml, lokyTipHtml, ctaLabel, ctaHref, secondaryHtml } = params;
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -70,7 +87,9 @@ function shell(params: {
                 ${benefitsHtml}
               </table>
               ${noteHtml ? `<div style="margin:6px 0 22px;padding:12px 14px;border-left:3px solid #cbd5e1;background:#f8fafc;border-radius:0 10px 10px 0;"><p style="margin:0;font-size:13px;line-height:1.55;color:#64748b;">${noteHtml}</p></div>` : `<div style="height:8px;"></div>`}
+              ${lokyTipHtml || ""}
               <a href="${ctaHref}" style="display:inline-block;margin:4px 0 4px;padding:13px 26px;border-radius:999px;background:#0f172a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">${escapeHtml(ctaLabel)}</a>
+              ${secondaryHtml ? `<p style="margin:12px 0 4px;font-size:13px;line-height:1.5;">${secondaryHtml}</p>` : ""}
             </td>
           </tr>
 
@@ -116,6 +135,7 @@ export function buildNoPropertyEmail(params: { baseUrl: string; landlordName: st
       title: `${greet(landlordName)} ajoutez votre premier bien`,
       intro: "Ajouter votre premier bien est la première brique sur lokt : adresse, type de logement, quelques infos — 2 minutes suffisent. C'est ce qui débloque tout le reste.",
       benefitsHtml,
+      lokyTipHtml: lokyTip("Une fois connecté, vous pouvez aussi simplement me demander de créer votre bien : dites-moi juste l'adresse, je m'occupe du reste."),
       ctaLabel: "Ajouter mon premier bien",
       ctaHref: `${baseUrl}/espace-bailleur?tab=biens`,
     }),
@@ -138,6 +158,7 @@ export function buildNoLeaseEmail(params: { baseUrl: string; landlordName: strin
       intro: "Bien et locataire sont prêts dans lokt — il ne reste qu'à créer la <strong>location</strong> qui les rattache l'un à l'autre.",
       benefitsHtml,
       noteHtml: "Sans cette étape, votre bien et votre locataire existent chacun de leur côté : rien n'est encore suivi entre les deux.",
+      lokyTipHtml: lokyTip("Vous pouvez aussi me demander directement de créer la location : dites-moi qui loue quoi, je fais le lien."),
       ctaLabel: "Créer la location",
       ctaHref: `${baseUrl}/espace-bailleur?tab=baux`,
     }),
