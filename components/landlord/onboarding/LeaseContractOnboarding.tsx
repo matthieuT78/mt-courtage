@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownTrayIcon, ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
+import { depositCapForKind } from "../../../lib/landlord/depositCap";
 
 type Props = { userId: string; leaseId: string; onComplete: () => void; onBack?: () => void };
 
@@ -18,14 +19,6 @@ const KIND_LABELS: Record<string, string> = Object.fromEntries(KIND_OPTIONS);
 
 function fiscalIdRequired(country?: string) {
   return !["GP", "MQ", "GF", "RE", "YT"].includes(String(country || "FR").toUpperCase());
-}
-
-// Plafond légal du dépôt de garantie selon le type de bail.
-function depositCapForKind(kind: string, rent: number): number | null {
-  if (kind === "mobility") return 0;
-  if (kind === "furnished_primary" || kind === "furnished_student") return rent * 2;
-  if (kind === "empty_primary") return rent;
-  return null;
 }
 
 function propertyAddress(form: Record<string, any>) {

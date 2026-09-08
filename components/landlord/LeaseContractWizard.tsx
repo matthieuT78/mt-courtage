@@ -3,6 +3,7 @@ import { AcademicCapIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, Arro
 import { supabase } from "../../lib/supabaseClient";
 import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../UploadProgressBar";
+import { depositCapForKind } from "../../lib/landlord/depositCap";
 
 type Props = { userId: string; leaseId: string; onClose: () => void };
 const steps = ["Type", "Parties", "Logement", "Durée", "Finances", "Clauses", "Finaliser"];
@@ -20,16 +21,6 @@ function requiredFieldsForStep(step: number, kind: string, form: Record<string, 
 
 function fiscalIdRequired(country?: string) {
   return !["GP", "MQ", "GF", "RE", "YT"].includes(String(country || "FR").toUpperCase());
-}
-
-// Plafond légal du dépôt de garantie selon le type de bail (même règle que le
-// contrôle posé côté assistant de mise en route). null = pas de plafond défini
-// pour ce type (kind "other" — suivi libre).
-function depositCapForKind(kind: string, rent: number): number | null {
-  if (kind === "mobility") return 0;
-  if (kind === "furnished_primary" || kind === "furnished_student") return rent * 2;
-  if (kind === "empty_primary") return rent;
-  return null;
 }
 
 function missingRequiredFields(step: number, kind: string, form: Record<string, any>) {

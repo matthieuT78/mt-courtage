@@ -38,6 +38,7 @@ import { IrlRevisionPanel } from "./SectionRevision";
 import type { RentPayment, RentReceipt, PropertyLot } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../../lib/landlord/archiveFilters";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
+import { depositCapForKind } from "../../../lib/landlord/depositCap";
 
 /* ======================================================
    TYPES
@@ -1563,20 +1564,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       if (charges < 0) throw new Error("Les charges ne peuvent pas être négatives.");
       if (deposit != null && deposit < 0) throw new Error("Le dépôt de garantie ne peut pas être négatif.");
       if (deposit != null && deposit > 0) {
-        if (form.lease_kind === "mobility") {
+        const maxDeposit = depositCapForKind(form.lease_kind, rent);
+        if (maxDeposit === 0) {
           throw new Error("Le bail mobilité ne peut pas avoir de dépôt de garantie (interdit par la loi).");
         }
-        if (form.lease_kind === "furnished_primary" || form.lease_kind === "furnished_student") {
-          const maxDeposit = rent * 2;
-          if (deposit > maxDeposit) {
-            throw new Error(`Le dépôt de garantie en meublé est plafonné à 2 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`);
-          }
-        }
-        if (form.lease_kind === "empty_primary") {
-          const maxDeposit = rent;
-          if (deposit > maxDeposit) {
-            throw new Error(`Le dépôt de garantie en location nue est plafonné à 1 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`);
-          }
+        if (maxDeposit != null && deposit > maxDeposit) {
+          throw new Error(
+            form.lease_kind === "empty_primary"
+              ? `Le dépôt de garantie en location nue est plafonné à 1 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`
+              : `Le dépôt de garantie en meublé est plafonné à 2 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`
+          );
         }
       }
 
@@ -2658,6 +2655,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               onChange={(e) => setForm((s) => ({ ...s, deposit_amount: e.target.value }))}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             />
+            {(() => {
+              const rentForCap = toNumberOrNull(form.rent_amount) ?? 0;
+              const cap = depositCapForKind(form.lease_kind, rentForCap);
+              if (cap === 0) return <p className="text-[0.68rem] text-amber-700">Interdit pour un bail mobilité.</p>;
+              if (cap != null && rentForCap > 0) {
+                return <p className="text-[0.68rem] text-slate-500">Plafond légal : {cap.toLocaleString("fr-FR")} €.</p>;
+              }
+              return null;
+            })()}
           </div>
         </div>
 

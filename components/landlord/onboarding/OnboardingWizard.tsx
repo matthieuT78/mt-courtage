@@ -23,6 +23,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import type { Profile } from "../../../hooks/useProfile";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
+import { depositCapForKind } from "../../../lib/landlord/depositCap";
 import { usePermissions } from "../../PermissionProvider";
 
 /* ======================================================
@@ -131,15 +132,6 @@ function toNumOrNull(v: string): number | null {
 /* ======================================================
    HELPERS
 ====================================================== */
-
-// Plafond légal du dépôt de garantie selon le type de bail (même règle que
-// dans le générateur de contrat).
-function depositCapForKind(kind: string, rent: number): number | null {
-  if (kind === "mobility") return 0;
-  if (kind === "furnished_primary") return rent * 2;
-  if (kind === "empty_primary") return rent;
-  return null;
-}
 
 // Durée par défaut d'1 an à partir de la date de prise d'effet.
 function defaultEndDate(startDate?: string): string {
