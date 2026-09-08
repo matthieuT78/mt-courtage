@@ -975,10 +975,13 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
     };
   }, [userId]);
 
-  // Prix marché (DVF) par commune, pour l'estimation de valeur des biens ayant un code
-  // INSEE renseigné (cf. lib/cityPriceData.ts / city_market_benchmarks) — chargé à part
-  // (endpoint dédié, clé service role) car cette table est verrouillée en RLS.
-  const [marketPriceByInsee, setMarketPriceByInsee] = useState<Map<string, number>>(new Map());
+  // Historique du prix moyen/m² par commune (DVF), pour valoriser les biens ayant un
+  // code INSEE renseigné par évolution plutôt que par un prix moyen × surface — un
+  // prix moyen "toutes tailles/tous types" sous-estime structurellement un petit lot
+  // (qui se vend toujours au-dessus de la moyenne communale) ou surestime une grande
+  // maison. Chargé à part (endpoint dédié, clé service role) car city_market_benchmarks_history
+  // est verrouillée en RLS.
+  const [priceHistoryByInsee, setPriceHistoryByInsee] = useState<Map<string, Array<{ year: number; priceM2: number }>>>(new Map());
   const inseeCodesKey = useMemo(() => {
     const codes = new Set<string>();
     for (const property of propsById.values()) {
@@ -989,15 +992,15 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
   }, [propsById]);
   useEffect(() => {
     if (!inseeCodesKey) {
-      setMarketPriceByInsee(new Map());
+      setPriceHistoryByInsee(new Map());
       return;
     }
     let active = true;
     fetch(`/api/landlord/market-prices?insee=${encodeURIComponent(inseeCodesKey)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
-        if (!active || !json?.prices) return;
-        setMarketPriceByInsee(new Map(Object.entries(json.prices as Record<string, number>)));
+        if (!active || !json?.history) return;
+        setPriceHistoryByInsee(new Map(Object.entries(json.history as Record<string, Array<{ year: number; priceM2: number }>>)));
       })
       .catch(() => {});
     return () => {
@@ -1215,15 +1218,26 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         const holdingYears = earliestMs != null ? (Date.now() - earliestMs) / (365.25 * 86400_000) : null;
         const purchasePrice = Number(fin?.purchase_price || 0);
         const property = propsById.get(id);
-        const surfaceM2 = Number((property as any)?.surface_m2 || 0);
         const inseeCode = (property as any)?.insee_code as string | null | undefined;
-        const marketPriceM2 = inseeCode ? marketPriceByInsee.get(inseeCode) : undefined;
-        // Valeur estimée : prix moyen DVF de la commune × surface quand le bien a un code
-        // INSEE et une surface renseignés — sinon repli sur l'ancienne projection à +2 %/an
-        // du prix d'achat (biens sans commune reliée, terrains, immeubles sans surface
-        // propre...), pour ne jamais régresser vers "—" là où une estimation existait déjà.
-        const estimatedValueFromMarket =
-          marketPriceM2 != null && surfaceM2 > 0 ? Math.round(marketPriceM2 * surfaceM2) : null;
+        // Valeur estimée : prix d'achat × évolution du prix moyen DVF de la commune entre
+        // l'achat (approximé par holdingYears, faute de date d'acquisition connue) et
+        // aujourd'hui — pas un prix moyen commune × surface, qui sous/sur-estime tout bien
+        // dont la taille ou le type s'écarte de la moyenne (un studio se vend toujours
+        // au-dessus du prix moyen communal). Sinon repli sur l'ancienne projection à +2 %/an
+        // du prix d'achat (commune non reliée à un historique fiable), pour ne jamais
+        // régresser vers "—" là où une estimation existait déjà.
+        const priceHistory = inseeCode ? priceHistoryByInsee.get(inseeCode) : undefined;
+        let estimatedValueFromMarket: number | null = null;
+        if (priceHistory && priceHistory.length > 0 && purchasePrice > 0 && holdingYears != null && holdingYears >= 0.5) {
+          const purchaseYearApprox = Math.round(new Date().getFullYear() - holdingYears);
+          const baseline = priceHistory.reduce((best, cur) =>
+            Math.abs(cur.year - purchaseYearApprox) < Math.abs(best.year - purchaseYearApprox) ? cur : best
+          );
+          const latest = priceHistory[priceHistory.length - 1];
+          if (baseline.priceM2 > 0 && latest.priceM2 > 0) {
+            estimatedValueFromMarket = Math.round(purchasePrice * (latest.priceM2 / baseline.priceM2));
+          }
+        }
         const estimatedValueFromTrend =
           holdingYears != null && holdingYears >= 0.5 && purchasePrice > 0
             ? Math.round(purchasePrice * Math.pow(1.02, holdingYears))
@@ -1317,7 +1331,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
-  }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, marketPriceByInsee, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
+  }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, priceHistoryByInsee, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
 
   const portfolioSummary = useMemo(() => {
     const negativeRows = propertyRows.filter((row) => row.cashflow < 0);
@@ -1917,8 +1931,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                   nDvf === 0
                     ? "prix achat × (1 + 2 %/an)^durée · indicatif"
                     : nDvf === wrows.length
-                    ? "prix marché DVF (moyenne commune) × surface · indicatif"
-                    : `prix marché DVF pour ${nDvf}/${wrows.length} bien${wrows.length > 1 ? "s" : ""}, projection pour le reste · indicatif`;
+                    ? "prix d'achat × évolution du prix moyen commune · indicatif"
+                    : `évolution du prix commune pour ${nDvf}/${wrows.length} bien${wrows.length > 1 ? "s" : ""}, projection pour le reste · indicatif`;
                 return <><p className="mt-2 text-2xl font-semibold text-slate-900">{money(total)}</p><p className="mt-1 text-xs text-slate-500">{caption}</p></>;
               })()}
             </div>
