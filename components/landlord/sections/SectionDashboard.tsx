@@ -1379,7 +1379,7 @@ export function SectionDashboard({
       <section className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
 
         {/* Gradient header — compact, une seule ligne sur desktop plutôt que 4 blocs empilés */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] via-[#4d9cff] to-[#06b6d4] px-5 py-4 sm:px-7 sm:py-5">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] via-[#4d9cff] to-[#06b6d4] px-4 py-3 sm:px-7 sm:py-5">
           <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
           <div className="relative flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap">
             <div className="min-w-0 flex-1">
@@ -1413,16 +1413,16 @@ export function SectionDashboard({
             <div
               onMouseEnter={onScoreEnter}
               onMouseLeave={onScoreLeave}
-              className="flex shrink-0 cursor-default items-center gap-3 rounded-2xl bg-white/15 px-4 py-2.5 backdrop-blur transition-all duration-150 hover:bg-white/22"
+              className="flex shrink-0 cursor-default items-center gap-2 rounded-2xl bg-white/15 px-3 py-1.5 backdrop-blur transition-all duration-150 hover:bg-white/22 sm:gap-3 sm:px-4 sm:py-2.5"
             >
-              <div className="text-right">
+              <div className="hidden text-right sm:block">
                 <p className="text-[0.58rem] font-semibold uppercase tracking-widest text-white/55">Score</p>
                 <p className="text-[0.62rem] font-semibold text-white/70">
                   {healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Bon" : healthScore >= 50 ? "À améliorer" : "À traiter"}
                 </p>
               </div>
-              <p className="text-3xl font-extrabold leading-none text-white">
-                {healthScore}<span className="text-xs font-semibold text-white/45">/100</span>
+              <p className="text-lg font-extrabold leading-none text-white sm:text-3xl">
+                {healthScore}<span className="text-[0.6rem] font-semibold text-white/45 sm:text-xs">/100</span>
               </p>
             </div>
           </div>
@@ -1430,14 +1430,14 @@ export function SectionDashboard({
 
         {/* ── Loky — entrée principale, juste sous l'en-tête ── */}
         {onOpenAssistant && (
-          <div className="border-t border-slate-100 bg-white px-3 py-4 sm:px-5">
-            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-indigo-50 to-cyan-50 p-3.5 transition hover:border-indigo-200 sm:p-4">
+          <div className="border-t border-slate-100 bg-white px-3 py-3 sm:px-5 sm:py-4">
+            <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-indigo-50 to-cyan-50 p-3 transition hover:border-indigo-200 sm:p-4">
               <button
                 type="button"
                 onClick={() => onOpenAssistant()}
                 className="flex w-full items-center gap-3 text-left"
               >
-                <img src="/loky-avatar.png" alt="Loky" className="h-12 w-12 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
+                <img src="/loky-avatar.png" alt="Loky" className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-base font-bold text-slate-900 sm:text-lg">Loky, ton assistant IA</span>
                   <span className="mt-0.5 block text-sm text-slate-600">Dis-moi ce que tu veux faire, je m'en occupe — bail, paiement, locataire…</span>
@@ -1472,7 +1472,7 @@ export function SectionDashboard({
               </form>
             </div>
 
-            <div className="mt-2.5 flex flex-wrap gap-2">
+            <div className="mt-2.5 flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
               {[
                 "Créer un bail",
                 "Confirmer un paiement reçu",
@@ -1483,7 +1483,7 @@ export function SectionDashboard({
                   key={suggestion}
                   type="button"
                   onClick={() => onOpenAssistant(suggestion)}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                  className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
                 >
                   {suggestion}
                 </button>
