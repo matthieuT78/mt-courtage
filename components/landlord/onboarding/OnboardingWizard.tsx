@@ -424,6 +424,7 @@ export function OnboardingWizard({
   const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyPostalCode, setPropertyPostalCode] = useState("");
   const [propertyCity, setPropertyCity] = useState("");
+  const [propertyInseeCode, setPropertyInseeCode] = useState("");
   const [propertySurface, setPropertySurface] = useState("");
   const [propertyRooms, setPropertyRooms] = useState("");
   const [delegatedServices, setDelegatedServices] = useState<string[]>([]);
@@ -544,6 +545,7 @@ export function OnboardingWizard({
         address_line1: propertyAddress.trim(),
         postal_code: propertyPostalCode.trim() || null,
         city: propertyCity.trim() || null,
+        insee_code: propertyInseeCode.trim() || null,
         // Un immeuble n'a pas de surface/pièces uniques représentatives de tous ses
         // logements — ces caractéristiques se saisissent par lot ci-dessous.
         surface_m2: isBuilding ? null : propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
@@ -882,6 +884,7 @@ export function OnboardingWizard({
                 onAddressLine1Change={setPropertyAddress}
                 onPostalCodeChange={setPropertyPostalCode}
                 onCityChange={setPropertyCity}
+                onInseeCodeChange={setPropertyInseeCode}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
               {propertyType === "building" ? (

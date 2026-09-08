@@ -117,6 +117,7 @@ const EMPTY = {
   address_line1: "",
   postal_code: "",
   city: "",
+  insee_code: "",
   description: "",
   surface_m2: "",
   rooms: "",
@@ -567,6 +568,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
         address_line1: (form.address_line1 || "").trim(),
         postal_code: (form.postal_code || "").trim() || null,
         city: (form.city || "").trim() || null,
+        insee_code: (form.insee_code || "").trim() || null,
         description: (form.description || "").trim() || null,
         surface_m2: form.surface_m2 ? toNumOrNull(form.surface_m2) : null,
         rooms: form.rooms ? toNumOrNull(form.rooms) : null,
@@ -1010,6 +1012,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
             onAddressLine1Change={(v) => { clearFieldError(formId, "address_line1"); setForm((s) => ({ ...s, address_line1: v })); }}
             onPostalCodeChange={(v) => setForm((s) => ({ ...s, postal_code: v }))}
             onCityChange={(v) => setForm((s) => ({ ...s, city: v }))}
+            onInseeCodeChange={(v) => setForm((s) => ({ ...s, insee_code: v }))}
           />
           {fErr.address_line1 ? <p className="text-xs font-medium text-red-600">{fErr.address_line1}</p> : null}
         </div>
@@ -1562,6 +1565,7 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
         address_line1: activeProperty.address_line1 ?? "",
         postal_code: activeProperty.postal_code ?? "",
         city: activeProperty.city ?? "",
+        insee_code: activeProperty.insee_code ?? "",
         description: activeProperty.description ?? "",
         surface_m2: activeProperty.surface_m2 != null ? String(activeProperty.surface_m2) : "",
         rooms: activeProperty.rooms != null ? String(activeProperty.rooms) : "",

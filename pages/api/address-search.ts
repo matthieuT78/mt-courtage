@@ -9,6 +9,7 @@ export type AddressSuggestion = {
   addressLine1: string;
   postalCode: string;
   city: string;
+  inseeCode: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -37,6 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       addressLine1: f.properties?.name || "",
       postalCode: f.properties?.postcode || "",
       city: f.properties?.city || "",
+      inseeCode: f.properties?.citycode || "",
     }));
 
     res.setHeader("Cache-Control", "public, max-age=3600");

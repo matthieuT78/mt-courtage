@@ -27,6 +27,7 @@ export type Property = {
   postal_code: string | null;
   city: string | null;
   country: string | null;
+  insee_code?: string | null;
   status?: string | null;
   created_at: string;
   updated_at: string;

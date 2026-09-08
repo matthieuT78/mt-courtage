@@ -18,6 +18,10 @@ type Props = {
   onAddressLine1Change: (value: string) => void;
   onPostalCodeChange: (value: string) => void;
   onCityChange: (value: string) => void;
+  // Code INSEE de la commune sélectionnée (citycode BAN) — optionnel, utile
+  // pour relier un bien aux données de marché DVF (city_market_benchmarks).
+  // Non fourni par les usages qui n'en ont pas besoin (locataire, profil...).
+  onInseeCodeChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
   hint?: boolean;
@@ -32,6 +36,7 @@ export default function AddressAutocomplete({
   onAddressLine1Change,
   onPostalCodeChange,
   onCityChange,
+  onInseeCodeChange,
   placeholder = "Commencez à taper une adresse…",
   className = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm",
   hint = true,
@@ -81,6 +86,7 @@ export default function AddressAutocomplete({
     onAddressLine1Change(s.addressLine1);
     onPostalCodeChange(s.postalCode);
     onCityChange(s.city);
+    onInseeCodeChange?.(s.inseeCode);
     setManualOverride(false);
     setSuggestions([]);
     setOpen(false);
@@ -141,7 +147,7 @@ export default function AddressAutocomplete({
       {locked ? (
         <button
           type="button"
-          onClick={() => setManualOverride(true)}
+          onClick={() => { setManualOverride(true); onInseeCodeChange?.(""); }}
           className="text-xs text-indigo-600 underline underline-offset-2 hover:text-indigo-800"
         >
           Modifier manuellement
