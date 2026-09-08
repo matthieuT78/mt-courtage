@@ -835,6 +835,7 @@ type PropertyRow = {
   activeLeaseCount: number;
   grossYield: number | null;
   estimatedValue: number | null;
+  estimatedValueSource: "dvf" | "trend" | null;
   latentGain: number | null;
   holdingYears: number | null;
   irr: number | null;
@@ -973,6 +974,36 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  // Prix marché (DVF) par commune, pour l'estimation de valeur des biens ayant un code
+  // INSEE renseigné (cf. lib/cityPriceData.ts / city_market_benchmarks) — chargé à part
+  // (endpoint dédié, clé service role) car cette table est verrouillée en RLS.
+  const [marketPriceByInsee, setMarketPriceByInsee] = useState<Map<string, number>>(new Map());
+  const inseeCodesKey = useMemo(() => {
+    const codes = new Set<string>();
+    for (const property of propsById.values()) {
+      const code = (property as any)?.insee_code;
+      if (code) codes.add(code);
+    }
+    return Array.from(codes).sort().join(",");
+  }, [propsById]);
+  useEffect(() => {
+    if (!inseeCodesKey) {
+      setMarketPriceByInsee(new Map());
+      return;
+    }
+    let active = true;
+    fetch(`/api/landlord/market-prices?insee=${encodeURIComponent(inseeCodesKey)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!active || !json?.prices) return;
+        setMarketPriceByInsee(new Map(Object.entries(json.prices as Record<string, number>)));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [inseeCodesKey]);
 
   const leaseById = useMemo(() => {
     const map = new Map<string, Lease>();
@@ -1183,10 +1214,23 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         const earliestMs = earliestDateByProperty.get(id);
         const holdingYears = earliestMs != null ? (Date.now() - earliestMs) / (365.25 * 86400_000) : null;
         const purchasePrice = Number(fin?.purchase_price || 0);
-        const estimatedValue =
+        const property = propsById.get(id);
+        const surfaceM2 = Number((property as any)?.surface_m2 || 0);
+        const inseeCode = (property as any)?.insee_code as string | null | undefined;
+        const marketPriceM2 = inseeCode ? marketPriceByInsee.get(inseeCode) : undefined;
+        // Valeur estimée : prix moyen DVF de la commune × surface quand le bien a un code
+        // INSEE et une surface renseignés — sinon repli sur l'ancienne projection à +2 %/an
+        // du prix d'achat (biens sans commune reliée, terrains, immeubles sans surface
+        // propre...), pour ne jamais régresser vers "—" là où une estimation existait déjà.
+        const estimatedValueFromMarket =
+          marketPriceM2 != null && surfaceM2 > 0 ? Math.round(marketPriceM2 * surfaceM2) : null;
+        const estimatedValueFromTrend =
           holdingYears != null && holdingYears >= 0.5 && purchasePrice > 0
             ? Math.round(purchasePrice * Math.pow(1.02, holdingYears))
             : null;
+        const estimatedValue = estimatedValueFromMarket ?? estimatedValueFromTrend;
+        const estimatedValueSource: "dvf" | "trend" | null =
+          estimatedValueFromMarket != null ? "dvf" : estimatedValueFromTrend != null ? "trend" : null;
         const latentGain = estimatedValue != null ? estimatedValue - investment : null;
         const loanBalanceApprox =
           loanRemainingMonths != null && loanRemainingMonths > 0 ? loanMonthly * loanRemainingMonths * 0.65 : 0;
@@ -1254,6 +1298,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           activeLeaseCount: occupancy.activeLeaseCount,
           grossYield,
           estimatedValue,
+          estimatedValueSource,
           latentGain,
           holdingYears,
           irr,
@@ -1272,7 +1317,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
-  }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
+  }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, marketPriceByInsee, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
 
   const portfolioSummary = useMemo(() => {
     const negativeRows = propertyRows.filter((row) => row.cashflow < 0);
@@ -1864,9 +1909,17 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-semibold text-slate-500">Valeur estimée totale</p>
               {(() => {
-                const total = sum(propertyRows.filter((r) => r.estimatedValue != null).map((r) => r.estimatedValue!));
+                const wrows = propertyRows.filter((r) => r.estimatedValue != null);
+                const total = sum(wrows.map((r) => r.estimatedValue!));
                 if (total === 0) return <><p className="mt-2 text-xl font-semibold text-slate-400">À compléter</p><p className="mt-1 text-xs text-slate-400">prix d'achat manquant</p></>;
-                return <><p className="mt-2 text-2xl font-semibold text-slate-900">{money(total)}</p><p className="mt-1 text-xs text-slate-500">prix achat × (1 + 2 %/an)^durée · indicatif</p></>;
+                const nDvf = wrows.filter((r) => r.estimatedValueSource === "dvf").length;
+                const caption =
+                  nDvf === 0
+                    ? "prix achat × (1 + 2 %/an)^durée · indicatif"
+                    : nDvf === wrows.length
+                    ? "prix marché DVF (moyenne commune) × surface · indicatif"
+                    : `prix marché DVF pour ${nDvf}/${wrows.length} bien${wrows.length > 1 ? "s" : ""}, projection pour le reste · indicatif`;
+                return <><p className="mt-2 text-2xl font-semibold text-slate-900">{money(total)}</p><p className="mt-1 text-xs text-slate-500">{caption}</p></>;
               })()}
             </div>
 
@@ -2138,7 +2191,10 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                           value={row.irr != null ? pct(row.irr * 100) : "—"}
                           strong={row.irr != null ? (row.irr >= 0.07 ? "good" : row.irr < 0 ? "bad" : undefined) : undefined}
                         />
-                        <Stat label="Valeur estimée" value={row.estimatedValue != null ? money(row.estimatedValue) : "—"} />
+                        <Stat
+                          label={row.estimatedValueSource === "dvf" ? "Valeur estimée (marché DVF)" : "Valeur estimée (projection)"}
+                          value={row.estimatedValue != null ? money(row.estimatedValue) : "—"}
+                        />
                         <Stat
                           label="Plus-value latente"
                           value={row.latentGain != null ? `${row.latentGain >= 0 ? "+" : ""}${money(row.latentGain)}` : "—"}
