@@ -121,9 +121,11 @@ function makePdf(payload: any) {
       if (d.mandataire_address) row("Adresse du mandataire", d.mandataire_address);
     }
     doc.moveDown(0.4);
+    if (d.landlord_phone) row("Téléphone portable du bailleur", d.landlord_phone);
     row("Locataire", d.tenant_name);
     if (d.co_tenant_name) row("Co-locataire", d.co_tenant_name);
     if (d.tenant_email) row("Adresse e-mail du locataire", d.tenant_email);
+    if (d.tenant_phone) row("Téléphone portable du locataire", d.tenant_phone);
     if (d.garant_name) {
       doc.moveDown(0.4);
       row("Garant / caution solidaire", d.garant_name);
@@ -235,15 +237,30 @@ function makePdf(payload: any) {
     if (d.tenant_agency_fees) row("Honoraires imputés au locataire", euro(d.tenant_agency_fees));
     if (d.tenant_inventory_fees) row("Honoraires d’état des lieux imputés au locataire", euro(d.tenant_inventory_fees));
 
+    // Bail résidence principale (vide/meublé/étudiant) : contrat-type fixé par le décret
+    // n°2015-587 du 29 mai 2015, modifié par le décret n°2026-596 du 6 juillet 2026 —
+    // clause résolutoire ramenée à six semaines (au lieu de deux mois) et restreinte à
+    // trois motifs, défaut d'assurance et troubles de voisinage devenant des clauses
+    // facultatives distinctes, et ajout d'une clause de servitude de résidence principale.
+    // Cette réforme ne concerne ni le bail mobilité (art. 25-12, régime dérogatoire non
+    // visé par le décret) ni le bail professionnel (loi n°86-1290, hors décret 2015-587) :
+    // ces deux cas gardent leur clause résolutoire antérieure, inchangée.
+    const isResidencePrincipaleLease = !isProfessional && payload.contract_kind !== "mobility";
+
     if (isProfessional) {
       clause(
         "Clause résolutoire",
         "Le contrat prévoit sa résiliation de plein droit en cas de défaut de paiement du loyer, des charges ou du dépôt de garantie, ou de manquement grave à une obligation essentielle du contrat, un mois après une mise en demeure restée infructueuse (résolution pour inexécution, articles 1224 et suivants du Code civil)."
       );
+    } else if (payload.contract_kind === "mobility") {
+      clause(
+        "Clause résolutoire",
+        "Le contrat prévoit sa résiliation de plein droit, deux mois après un commandement de payer resté infructueux, en cas de défaut de paiement du loyer ou des charges aux termes convenus, ou de défaut de souscription d’une assurance des risques locatifs (art. 24 loi du 6 juillet 1989)."
+      );
     } else {
       clause(
         "Clause résolutoire",
-        "Le contrat prévoit sa résiliation de plein droit, deux mois après un commandement de payer resté infructueux, en cas de : défaut de paiement du loyer ou des charges aux termes convenus ; non-versement du dépôt de garantie ; défaut de souscription d’une assurance des risques locatifs ; troubles de voisinage constatés par une décision de justice passée en force de chose jugée (art. 24 loi du 6 juillet 1989)."
+        "Le contrat prévoit sa résiliation de plein droit, six semaines après la date d’un commandement de payer demeuré infructueux, en cas de défaut de paiement du loyer ou des charges aux termes convenus, ou de non-versement du dépôt de garantie (art. 24 de la loi n°89-462 du 6 juillet 1989 ; décret n°2015-587 du 29 mai 2015, modifié par le décret n°2026-596 du 6 juillet 2026)."
       );
     }
 
@@ -253,6 +270,26 @@ function makePdf(payload: any) {
         isProfessional
           ? "Le locataire est tenu de souscrire une assurance responsabilité civile professionnelle et une assurance couvrant les risques locatifs afférents aux locaux (incendie, dégâts des eaux), et de remettre une attestation au bailleur lors de la remise des clés, puis à chaque renouvellement et sur simple demande."
           : "Le locataire est tenu de souscrire une assurance contre les risques locatifs (incendie, dégâts des eaux, responsabilité civile) et de remettre une attestation au bailleur lors de la remise des clés, puis à chaque renouvellement et sur simple demande (art. 7 g) de la loi du 6 juillet 1989)."
+      );
+      if (isResidencePrincipaleLease) {
+        clause(
+          "Clause résolutoire pour défaut d’assurance",
+          "Le contrat peut être résilié de plein droit, un mois après un commandement resté infructueux, en cas de non-souscription par le locataire d’une assurance contre les risques locatifs."
+        );
+      }
+    }
+
+    if (isResidencePrincipaleLease) {
+      clause(
+        "Clause résolutoire pour troubles de voisinage",
+        "Le contrat peut être résilié de plein droit en cas de troubles de voisinage constatés par une décision de justice passée en force de chose jugée."
+      );
+    }
+
+    if (isResidencePrincipaleLease && d.primary_residence_servitude) {
+      clause(
+        "Servitude de résidence principale",
+        "Le logement objet du présent contrat est soumis à l’obligation prévue à l’article L. 151-14-1 du code de l’urbanisme : il est à usage exclusif de résidence principale. En cas de non-respect de cette servitude, le contrat peut être résilié de plein droit à l’expiration d’un délai de mise en demeure fixé par le maire (décret n°2026-596 du 6 juillet 2026)."
       );
     }
 

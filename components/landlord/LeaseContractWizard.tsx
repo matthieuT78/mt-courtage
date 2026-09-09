@@ -138,6 +138,8 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           landlord_is_company: !!profile.company_name,
           tenant_name: tenant.full_name || "",
           tenant_email: tenant.email || "",
+          landlord_phone: "",
+          tenant_phone: "",
           property_address: [property.address_line1, lot?.label || property.address_line2, property.postal_code, property.city, property.country].filter(Boolean).join(", "),
           property_address_line1: property.address_line1 || "",
           // Un bail sur un lot d'immeuble n'a pas de complément d'adresse propre — le nom
@@ -192,6 +194,11 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           garant_name: "",
           garant_address: "",
           annual_insurance_clause: true,
+          // Servitude de résidence principale (art. L.151-14-1 code de l'urbanisme) : ne
+          // concerne que certains logements neufs dans des communes/zones PLU délimitées.
+          // Décoché par défaut — cf. décret n°2026-596 du 6 juillet 2026, applicable aux
+          // baux vide/meublé/étudiant conclus ou renouvelés à partir du 1er octobre 2026.
+          primary_residence_servitude: false,
           previous_rent: "",
           previous_tenant_departure_date: "",
           estimated_energy_cost: "",
@@ -551,6 +558,9 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
               <Fields form={form} set={set} names={[["garant_name","Nom du garant"],["garant_address","Adresse du garant"]]} />
             </CollapsibleExtra>
+            <CollapsibleExtra label="Ajouter les numéros de téléphone portable (optionnel)">
+              <Fields form={form} set={set} names={[["landlord_phone","Téléphone portable du bailleur"],["tenant_phone","Téléphone portable du locataire"]]} />
+            </CollapsibleExtra>
           </>
         ) : null}
         {step === 2 ? (
@@ -735,7 +745,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             </>
           );
         })() : null}
-        {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause", kind === "professional" ? "Clause assurance des locaux professionnels annuelle (recommandée)" : "Clause assurance habitation annuelle (recommandée)"]]} /></> : null}
+        {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause", kind === "professional" ? "Clause assurance des locaux professionnels annuelle (recommandée)" : "Clause assurance habitation annuelle (recommandée)"]]} />
+        {["empty_primary","furnished_primary","furnished_student"].includes(kind) ? (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+            <Checks form={form} set={set} names={[["primary_residence_servitude","Ce logement est soumis à la servitude de résidence principale (art. L.151-14-1 code de l'urbanisme)"]]} />
+            <p className="text-xs leading-5 text-slate-500">
+              Concerne certains logements neufs dans des communes/zones délimitées par le PLU. Si vous n'êtes pas concerné, laissez décoché.
+            </p>
+          </div>
+        ) : null}
+        </> : null}
         {step === 6 ? <><AnnexChecks form={form} set={set} /><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["signature_place","Lieu de signature"],["signature_date","Date de signature","date"]]} /></> : null}
       </div>
       <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
