@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/sync-irl",
       "schedule": "0 5 5 * *"
+    },
+    {
+      "path": "/api/cron/legal-watch",
+      "schedule": "35 9 * * 1"
     }
   ]
 }

@@ -69,6 +69,13 @@ const jobs = [
     hours: [9],
     minutes: [25],
   },
+  {
+    title: "lokt - veille juridique bail/location (hebdo)",
+    url: `${siteUrl}/api/cron/legal-watch`,
+    hours: [9],
+    minutes: [35],
+    wdays: [1], // lundi uniquement — cf. payloadFor, wdays: [-1] par défaut (tous les jours)
+  },
 ];
 
 async function request(url, options = {}) {
@@ -110,7 +117,7 @@ function payloadFor(job) {
         mdays: [-1],
         minutes: job.minutes,
         months: [-1],
-        wdays: [-1],
+        wdays: job.wdays || [-1],
       },
       requestMethod: 0,
     },
