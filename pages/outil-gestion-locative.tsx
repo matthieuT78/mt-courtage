@@ -440,6 +440,94 @@ export default function OutilGestionLocativePage() {
               </div>
             </section>
 
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
+                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
+                  <span className="block text-2xl sm:text-3xl">Loky s’occupe des tâches.</span>
+                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Vous gardez la main.</span>
+                </h2>
+                <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Décrivez ce que vous voulez faire, en une phrase. Loky prépare l’action à partir des vraies données de votre compte — jamais une estimation générique — et attend votre confirmation avant d’écrire quoi que ce soit.
+                </p>
+              </div>
+
+              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 grid gap-5 bg-slate-950 p-5 sm:p-8 lg:grid-cols-2">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Crée-moi un bail meublé pour Julien Morel, 650€/mois, à partir du 1er novembre
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Bail meublé préparé pour Julien Morel.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>🏠 Studio Bellevue · 650€/mois</p>
+                          <p>📅 Début le 1er novembre 2026</p>
+                        </div>
+                        <p className="text-white/80">Je le crée ?</p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Confirmer
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Bail créé — Julien Morel, Studio Bellevue
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
+                  <div className="space-y-3.5">
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Le locataire du T2 a payé son loyer de janvier, confirme et envoie la quittance
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                        <p>Je confirme le loyer de janvier — la quittance PDF sera générée puis envoyée au locataire.</p>
+                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                          <p>🏠 T2 · loyer janvier 2026</p>
+                          <p>📄 Quittance générée → envoi locataire</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                        Confirmer
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pl-[42px]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                        ✓ Paiement confirmé — quittance envoyée
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 pt-1 text-right sm:px-8 sm:pb-8">
+                <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
+                  Découvrir toutes les capacités de Loky →
+                </Link>
+              </div>
+            </section>
+
             <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
