@@ -20,9 +20,9 @@ import { useScrollReveal } from "../hooks/useScrollReveal";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
 const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
-const title = "Outil de gestion locative gratuit 2026 | lokt.fr";
+const title = "Logiciel de gestion locative gratuit 2026 | lokt.fr";
 const description =
-  "Gérez baux, loyers et locataires sans agence ni tableur. lokt.fr automatise quittances, relances et révision IRL — gratuit pour les bailleurs particuliers, prêt en 10 minutes.";
+  "lokt.fr, le logiciel (outil) de gestion locative qui automatise quittances, relances et révision IRL — gratuit pour les bailleurs particuliers, prêt en 10 minutes.";
 
 type Feature = {
   title: string;
@@ -136,7 +136,7 @@ export default function OutilGestionLocativePage() {
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: "lokt.fr - Outil de gestion locative",
+      name: "lokt.fr - Logiciel de gestion locative",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       url: pageUrl,
@@ -163,7 +163,7 @@ export default function OutilGestionLocativePage() {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
-        { "@type": "ListItem", position: 2, name: "Outil de gestion locative", item: pageUrl },
+        { "@type": "ListItem", position: 2, name: "Logiciel de gestion locative", item: pageUrl },
       ],
     },
     {
@@ -252,7 +252,7 @@ export default function OutilGestionLocativePage() {
                   Gratuit pour un logement actif
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Outil de gestion locative gratuit.</span>
+                  <span className="block text-[2.55rem] sm:text-6xl">Logiciel de gestion locative gratuit.</span>
                   <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">Simple et complet pour propriétaire bailleur.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
