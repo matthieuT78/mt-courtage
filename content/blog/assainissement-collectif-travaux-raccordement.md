@@ -34,7 +34,7 @@ L'assainissement collectif désigne un système dans lequel plusieurs logements 
 
 Les eaux usées domestiques sont collectées par des canalisations enterrées, puis transportées jusqu'à une station d'épuration. Elles y sont traitées avant leur rejet dans le milieu naturel.
 
-Ce système se distingue de l'**assainissement non collectif**, utilisé lorsque le logement n'est pas desservi par un réseau public. Dans ce cas, une installation individuelle, comme une fosse toutes eaux ou une micro-station, est nécessaire — avec son propre entretien récurrent, comme la [vidange de la fosse septique](/blog/charges-locatives-recuperables), qui reste à la charge du bailleur ou du locataire selon ce que prévoit le bail.
+Ce système se distingue de l'**assainissement non collectif**, utilisé lorsque le logement n'est pas desservi par un réseau public. Dans ce cas, une installation individuelle, comme une fosse toutes eaux ou une micro-station, est nécessaire.
 
 ---
 
@@ -46,7 +46,7 @@ Le cas le plus courant concerne la construction d'une maison neuve située dans 
 
 Des travaux peuvent également être nécessaires lorsqu'un réseau collectif est créé dans une commune ou étendu à un nouveau quartier. Les propriétaires concernés doivent alors adapter leur installation afin de pouvoir y raccorder leur habitation.
 
-Enfin, une intervention peut être nécessaire lors d'une rénovation, d'un problème d'évacuation, d'une canalisation endommagée ou d'une installation devenue non conforme.
+Enfin, une intervention peut être nécessaire lors d'une rénovation, d'un problème d'évacuation, d'une [canalisation endommagée](/blog/degat-des-eaux-procedure-declaration-assurance) ou d'une installation devenue non conforme.
 
 ---
 
@@ -93,8 +93,6 @@ Le prix dépend également de la profondeur des canalisations, de la nature du s
 
 Pour connaître le budget réel de votre projet, il est donc préférable de demander une estimation auprès du service d'assainissement et plusieurs devis détaillés auprès d'entreprises locales.
 
-Pour un bailleur en location meublée, ces travaux ne sont pas nécessairement déductibles immédiatement : selon leur nature, ils peuvent relever de l'entretien courant ou être amortis comme des [travaux d'amélioration au régime réel LMNP](/blog/charges-deductibles-lmnp-regime-reel).
-
 ---
 
 ## Le raccordement à l'assainissement collectif est-il obligatoire ?
@@ -111,7 +109,7 @@ Après les travaux, un contrôle peut également être réalisé afin de vérifi
 
 Lorsqu'une maison auparavant équipée d'un assainissement individuel est raccordée au réseau collectif, l'ancienne installation ne doit généralement plus recevoir les eaux usées.
 
-La fosse peut nécessiter une vidange, un nettoyage puis une mise hors service selon les prescriptions applicables. Elle peut notamment être comblée ou supprimée afin d'éviter les risques liés à une cuve inutilisée.
+La fosse peut nécessiter une [vidange](/blog/charges-locatives-recuperables), un nettoyage puis une mise hors service selon les prescriptions applicables. Elle peut notamment être comblée ou supprimée afin d'éviter les risques liés à une cuve inutilisée.
 
 Cette opération doit être intégrée au projet de raccordement et peut représenter un coût supplémentaire.
 
@@ -126,5 +124,3 @@ Une mauvaise installation peut provoquer des odeurs, des bouchons, des infiltrat
 Faire appel à une entreprise spécialisée comme [SOS déboucheur Paris](https://sos-deboucheur.paris) permet donc de sécuriser le chantier et de disposer d'une installation adaptée aux caractéristiques du logement et aux exigences du réseau public.
 
 Avant le début des travaux, prenez le temps de comparer plusieurs professionnels, de demander des devis détaillés et de vérifier les modalités imposées par votre commune. Un raccordement correctement réalisé permet ensuite d'assurer une évacuation fiable et durable des eaux usées de votre habitation.
-
-*Suivez le coût de ces travaux et conservez vos devis et factures par bien depuis votre [espace bailleur lokt.fr](/outil-gestion-locative), pour les retrouver facilement au moment de votre déclaration fiscale.*
