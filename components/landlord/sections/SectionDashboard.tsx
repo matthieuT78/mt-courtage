@@ -12,7 +12,7 @@ import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLmnpItemCompliant, lotRequiresLmnpInventory, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
-import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
+import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
 import { TransitionPanel, isInTransition } from "./TransitionPanel";
 
@@ -276,10 +276,13 @@ export function SectionDashboard({
 
       // Bail approchant son échéance réelle (reconduction tacite déroulée —
       // sinon un bail déjà reconduit plusieurs fois, dont la date de fin
-      // d'origine reste dans le passé, n'apparaîtrait jamais ici).
-      const watchDate = computeLeaseWatchDate(l, now);
-      if (watchDate) {
-        const days = Math.ceil((watchDate.getTime() - now.getTime()) / 86400000);
+      // d'origine reste dans le passé, n'apparaîtrait jamais ici). Ignoré tant
+      // que la reconduction tacite s'applique encore (renewalEnabled) : sinon
+      // ce bail continue tout seul sans action du bailleur, même signal trompeur
+      // que celui corrigé dans TransitionPanel.tsx (isInTransition).
+      const watchInfo = computeLeaseWatchInfo(l, now);
+      if (watchInfo.watchDate && !watchInfo.renewalEnabled) {
+        const days = Math.ceil((watchInfo.watchDate.getTime() - now.getTime()) / 86400000);
         if (days >= 0 && days <= 90) {
           events.push({ type: "expiring", leaseId: l.id, tenantName, propertyLabel, days, urgency: days <= 30 ? "high" : "medium" });
         }
@@ -898,9 +901,11 @@ export function SectionDashboard({
       // Échéance réelle à surveiller (déroule la reconduction tacite) plutôt
       // que la date de fin brute, figée sur le contrat d'origine et jamais
       // avancée par les renouvellements silencieux — sinon un bail reconduit
-      // depuis longtemps reste signalé "à surveiller" indéfiniment.
-      const watchDate = computeLeaseWatchDate(lease, now);
-      const leaseEndingSoon = !!watchDate && watchDate <= in90Days;
+      // depuis longtemps reste signalé "à surveiller" indéfiniment. Ignoré si
+      // la reconduction tacite s'applique encore (renewalEnabled) : le bail se
+      // poursuit tout seul sans action du bailleur, ce n'est pas une échéance.
+      const watchInfo = computeLeaseWatchInfo(lease, now);
+      const leaseEndingSoon = !!watchInfo.watchDate && !watchInfo.renewalEnabled && watchInfo.watchDate <= in90Days;
       const paymentState = paymentStatusForLease(lease, currentMonth, payment);
       const dueDate = getLeasePaymentDueDate(lease, currentMonth);
       const paymentStatus =
@@ -928,7 +933,7 @@ export function SectionDashboard({
         receiptsDisabled: !!(lease as any).receipts_disabled,
         receiptSent: !!receipt?.sent_at,
         leaseEndingSoon,
-        watchDate,
+        watchDate: watchInfo.watchDate,
         endDate,
       };
     });
