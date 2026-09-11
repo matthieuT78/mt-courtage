@@ -46,7 +46,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const setting of settings || []) {
       const { data: lease } = await supabaseAdmin.from("leases").select("*").eq("id", setting.lease_id).maybeSingle();
-      if (!lease || String(lease.status || "").toLowerCase() === "draft") {
+      // "ended" exclu au même titre que "draft" : un bail peut passer à "ended"
+      // sans que ce réglage de relance n'ait été désactivé (ex. via le champ
+      // Statut manuel de SectionBaux.tsx) — ne jamais relancer un locataire
+      // pour un bail officiellement terminé.
+      if (!lease || ["draft", "ended"].includes(String(lease.status || "").toLowerCase())) {
         skipped++;
         continue;
       }

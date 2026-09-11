@@ -67,7 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .from("leases")
       .select("id,user_id,property_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status,receipts_disabled")
       .eq("auto_reminder_enabled", true)
-      .neq("status", "draft");
+      .neq("status", "draft")
+      // Filet de sécurité : un bail peut passer à "ended" sans que
+      // auto_reminder_enabled n'ait été désactivé (ex. via le champ Statut
+      // manuel de SectionBaux.tsx, qui contourne le parcours guidé de départ)
+      // — ne jamais relancer un locataire pour un bail officiellement terminé.
+      .neq("status", "ended");
 
     if (error) return res.status(500).json({ error: error.message });
 

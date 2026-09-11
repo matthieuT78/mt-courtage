@@ -72,7 +72,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq("id", token.lease_id)
           .maybeSingle();
         if (leaseError) throw leaseError;
-        if (!lease || String(lease.user_id) !== String(token.user_id) || !lease.auto_reminder_enabled) {
+        if (
+          !lease ||
+          String(lease.user_id) !== String(token.user_id) ||
+          !lease.auto_reminder_enabled ||
+          String(lease.status || "").toLowerCase() === "ended"
+        ) {
           skipped++;
           continue;
         }

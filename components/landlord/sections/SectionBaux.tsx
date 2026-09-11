@@ -1586,6 +1586,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
           : null;
 
+      const nextStatus = form.status || "active";
+      // Transition manuelle vers "Terminé" via ce champ Statut (contourne le
+      // parcours guidé "Gérer le départ") : sans ça, les automatisations
+      // quittance/relance continuaient de tourner sur un bail officiellement
+      // terminé — même trou que celui bouché dans les crons rent-reminders /
+      // rent-followups / tenant-payment-reminders. Ne se déclenche que sur la
+      // transition elle-même, pas à chaque sauvegarde d'un bail déjà terminé.
+      const originalForStatus = mode === "edit" && editingId ? safeLeases.find((l) => l.id === editingId) : null;
+      const justEnded = nextStatus === "ended" && String(originalForStatus?.status || "").toLowerCase() !== "ended";
+
       const payload: any = {
         user_id: userId,
         property_id: form.property_id,
@@ -1601,11 +1611,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         payment_day: paymentDayNum,
         payment_method: form.payment_method || null,
         payment_type: form.payment_type || null,
-        status: form.status || "active",
-        auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
+        status: nextStatus,
+        auto_quittance_enabled: justEnded ? false : canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
         // Délégué à une agence : pas de quittance auto, mais le rappel email de confirmation
         // paiement (Finance) reste indépendamment réglable via sa propre case à cocher.
-        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
+        auto_reminder_enabled: justEnded ? false : canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
         receipts_disabled: !!form.receipts_disabled,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
@@ -1640,6 +1650,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         setOk(
           renewalSchemaSkipped
             ? "Bail mis à jour ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."
+            : justEnded
+            ? "Bail marqué terminé ✅ Quittances et relances auto désactivées. Pense à archiver la fiche du locataire depuis la section Locataires si ce n'est pas déjà fait."
             : "Bail mis à jour ✅"
         );
         setExpandedId(editingId);
