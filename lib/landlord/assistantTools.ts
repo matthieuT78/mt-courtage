@@ -12,6 +12,7 @@ import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
 import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
 import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../irlData";
+import { expectedLeaseEndDate } from "./leaseRenewal";
 import { randomUUID } from "crypto";
 import { LEASE_CONTRACT_BUCKET, externalContractPdfPath, isLeaseContractKind } from "../leaseContract";
 import { invalidateStorageCache } from "../storageQuota";
@@ -777,6 +778,11 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
         lease_kind: args.lease_kind || "furnished_primary",
         status: "active",
       };
+      // Le formulaire conversationnel de Loky n'offre pas de champ end_date :
+      // sans ce calcul, le bail garderait end_date à null indéfiniment et ne
+      // serait jamais détecté par le panneau "Logement en transition" (voir
+      // expectedLeaseEndDate). null pour bail mobilité/"autre", sans durée fixe.
+      payload.end_date = expectedLeaseEndDate(payload.start_date, payload.lease_kind);
       const data = await callInternalApi(ctx, "/api/landlord/leases", { userId: ctx.userId, payload });
       const leaseId = data?.id;
       const isFurnished = ["furnished_primary", "furnished_student", "mobility"].includes(String(payload.lease_kind));

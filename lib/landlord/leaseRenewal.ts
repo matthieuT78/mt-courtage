@@ -102,3 +102,20 @@ export function computeLeaseWatchInfo(lease: LeaseForWatchDate, now: Date = new 
 export function computeLeaseWatchDate(lease: LeaseForWatchDate, now: Date = new Date()): Date | null {
   return computeLeaseWatchInfo(lease, now).watchDate;
 }
+
+// Date de fin par défaut (début + durée légale du type de bail), la même que
+// celle pré-remplie automatiquement dans le formulaire du cockpit
+// (expectedEndDate dans SectionBaux.tsx). Utilisée par l'outil create_lease
+// de Loky, dont le formulaire conversationnel n'offre pas de champ end_date :
+// sans elle, un bail créé par Loky garde end_date à null indéfiniment, ce qui
+// le rend invisible pour computeLeaseWatchDate/le panneau "Logement en
+// transition" même quand son échéance approche vraiment. Retourne null pour
+// les types sans durée fixe (bail mobilité, "autre") — cohérent avec
+// DURATION_MONTHS_BY_KIND ci-dessus, jamais une durée inventée.
+export function expectedLeaseEndDate(startDate?: string | null, leaseKind?: string | null): string | null {
+  const start = parseISODateLocal(startDate);
+  const durationMonths = DURATION_MONTHS_BY_KIND[String(leaseKind || "")] ?? null;
+  if (!start || !durationMonths) return null;
+  const end = dateMinusOneDay(addMonthsLocal(start, durationMonths));
+  return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+}

@@ -9,7 +9,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { cx } from "../ui/uiHelpers";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
-import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
+import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 
 type Props = {
   leases: Lease[];
@@ -80,7 +80,22 @@ export function isInTransition(lease: Lease, allLeases: Lease[], propertyById: M
   // reste dans le passé, ne serait jamais détecté ici même si son échéance
   // courante approche vraiment. Un bail "ended" a une fin définitive : pas de
   // reconduction à dérouler.
-  const endDate = status === "active" ? computeLeaseWatchDate(lease, now)! : new Date(lease.end_date + "T00:00:00");
+  let endDate: Date;
+  if (status === "active") {
+    const watchInfo = computeLeaseWatchInfo(lease, now);
+    if (!watchInfo.watchDate) return false;
+    // Tant que la reconduction tacite s'applique (type de bail concerné, et
+    // case "reconduction tacite" toujours cochée), le bail continue tout seul
+    // sans action du bailleur : afficher "en transition" 6 mois avant chaque
+    // anniversaire serait un faux signal ("Départ de locataire" alors que
+    // rien n'indique un départ). Seul un bail sans reconduction (mobilité,
+    // étudiant, "autre") ou dont le bailleur a explicitement décoché la
+    // reconduction (congé donné, décision prise) doit apparaître ici.
+    if (watchInfo.renewalEnabled) return false;
+    endDate = watchInfo.watchDate;
+  } else {
+    endDate = new Date(lease.end_date + "T00:00:00");
+  }
   const sixMonthsAhead = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate());
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
 
@@ -98,12 +113,16 @@ export function isInTransition(lease: Lease, allLeases: Lease[], propertyById: M
     if (hasActiveSuccessor) return false;
   }
 
+  // Comparé à endDate (échéance réelle recalculée), pas à lease.end_date brut :
+  // sur un bail déjà reconduit plusieurs fois, la date brute peut être très
+  // ancienne et ferait manquer un successeur dont le début se situe après la
+  // vraie échéance courante mais avant l'ancienne date contractuelle.
   const hasSuccessor = allLeases.some(
     (l) =>
       l.id !== lease.id &&
       l.property_id === lease.property_id &&
       String(l.status || "").toLowerCase() === "active" &&
-      l.start_date >= lease.end_date!  // >= handles same-day handover
+      new Date(l.start_date + "T00:00:00") >= endDate  // >= handles same-day handover
   );
   return !hasSuccessor;
 }
