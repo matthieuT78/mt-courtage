@@ -11,6 +11,7 @@ import {
 import { getServerUserPlan } from "../../../lib/serverPermissions";
 import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import type { DelegatedServiceKey } from "../../../lib/landlord/delegatedServices";
 
 type AlertTone = "red" | "amber" | "slate";
@@ -613,10 +614,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (leaseEnd) {
-          const daysToEnd = daysBetween(today, leaseEnd);
           const leaseStatus = String(lease.status || "").toLowerCase();
+          // `end_date` en base reste figé sur la date de fin d'origine : une
+          // reconduction tacite ne l'avance jamais (cf. leaseRenewal.ts). Pour
+          // un bail actif, recalculer l'échéance réelle du cycle en cours —
+          // sinon un bail qui se reconduit tout seul sans action du bailleur
+          // se retrouve alerté "expiré" ou "bientôt à échéance" indéfiniment
+          // (incident réel constaté : 7 relances hebdo envoyées à tort).
+          const watchInfo = leaseStatus === "active" ? computeLeaseWatchInfo(lease, today) : null;
+          const renewing = !!watchInfo?.renewalEnabled;
+          const effectiveEnd = watchInfo?.watchDate || leaseEnd;
+          const daysToEnd = daysBetween(today, effectiveEnd);
 
-          if (leaseStatus === "active" && daysToEnd < 0) {
+          if (!renewing && leaseStatus === "active" && daysToEnd < 0) {
             const scheduleKey = recurringScheduleKey(`expired-active:${lease.id}`, Math.abs(daysToEnd), [1, 7], 7);
             if (scheduleKey) {
               alerts.push({
@@ -629,7 +639,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 propertyId: lease.property_id,
               });
             }
-          } else if (active && [60, 30, 7].includes(daysToEnd)) {
+          } else if (!renewing && active && [60, 30, 7].includes(daysToEnd)) {
             alerts.push({
               key: `lease-end:${lease.id}:${daysToEnd}`,
               preferenceKey: "lease_end",
@@ -642,6 +652,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           if (
+            !renewing &&
             ["active", "ended"].includes(leaseStatus) &&
             (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase()))
           ) {
