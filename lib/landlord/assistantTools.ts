@@ -4,6 +4,7 @@
 // Chaque outil qui écrit en base réutilise la logique de validation déjà en
 // place (routes API existantes, fonctions de gating par plan) au lieu de la
 // redéfinir — voir le plan d'implémentation pour le détail de ce choix.
+import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "../supabaseAdmin";
 import { getServerUserPlan } from "../serverPermissions";
 import { landlordMaxActiveProperties } from "../permissions";
@@ -11,6 +12,10 @@ import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
 import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
 import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../irlData";
+import { randomUUID } from "crypto";
+import { LEASE_CONTRACT_BUCKET, externalContractPdfPath, isLeaseContractKind } from "../leaseContract";
+import { invalidateStorageCache } from "../storageQuota";
+import { callCostUsd } from "./assistantCost";
 
 export type AssistantToolContext = {
   userId: string;
@@ -398,6 +403,79 @@ export const assistantTools: AssistantTool[] = [
     },
   },
   {
+    name: "extract_lease_document",
+    description: "Analyse un document PDF (ex. un bail déjà rédigé par une agence) que l'utilisateur vient de joindre dans la conversation, et en extrait les informations locataire/bien/bail sous forme structurée. À appeler dès qu'un message utilisateur contient une annotation '[Pièce jointe : chemin_document=\"...\", nom_fichier=\"...\"]' — utilise EXACTEMENT le chemin et le nom donnés dans cette annotation comme staging_path/file_name, ne les invente et ne les modifie jamais. Ne crée rien : présente ensuite à l'utilisateur ce qui a été compris (avec les champs manquants ou incertains signalés dans notes) et demande explicitement s'il souhaite créer le locataire/bien/bail correspondants avant d'appeler le moindre outil d'écriture — ne les enchaîne jamais automatiquement à la suite de cet outil. Une fois le bail effectivement créé (create_lease confirmé) à partir de ce document, propose ensuite d'appeler attach_lease_document avec le même staging_path/file_name pour classer le PDF original dans le bail.",
+    input_schema: {
+      type: "object",
+      properties: {
+        staging_path: { type: "string", description: "Chemin exact donné dans l'annotation [Pièce jointe : chemin_document=\"...\"] du message utilisateur." },
+        file_name: { type: "string", description: "Nom de fichier donné dans la même annotation (nom_fichier=\"...\")." },
+      },
+      required: ["staging_path"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const path = String(args.staging_path || "");
+      // Un utilisateur ne doit jamais pouvoir faire lire un fichier hors de son
+      // propre emplacement de transit (ex. en donnant le chemin d'un autre
+      // compte) : la seule garantie qu'on ait ici est ce préfixe, imposé côté
+      // serveur par document-upload-url.ts, jamais choisi par le client.
+      if (!path.startsWith(`${ctx.userId}/loky-imports/`)) {
+        throw new Error("Document introuvable ou non autorisé.");
+      }
+      const { data: file, error: downloadError } = await admin.storage.from(LEASE_CONTRACT_BUCKET).download(path);
+      if (downloadError || !file) throw new Error("Document introuvable — a-t-il bien fini d'être envoyé ?");
+      const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error("Extraction indisponible (clé API manquante).");
+      const client = new Anthropic({ apiKey });
+      // Sonnet plutôt que le modèle Haiku utilisé pour la conversation : un bail
+      // scanné par une agence est souvent une image de mauvaise qualité, la
+      // lecture de document bénéficie nettement d'un modèle plus capable — ce
+      // n'est qu'un seul appel ponctuel par import, pas le coût de la boucle.
+      const model = process.env.ANTHROPIC_DOCUMENT_MODEL || "claude-sonnet-5";
+      const response = await client.messages.create({
+        model,
+        max_tokens: 1500,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+              {
+                type: "text",
+                text: `Ce document est probablement un bail de location. Extrais les informations dans EXACTEMENT ce format JSON, sans aucun texte avant ou après, sans bloc markdown \`\`\` :
+{
+  "is_lease": boolean (false si ce document n'est manifestement pas un bail de location),
+  "tenant": { "full_name": string|null, "email": string|null, "phone": string|null },
+  "property": { "label": string|null (nom court, ex. "Appartement rue de Paris"), "address_line1": string|null, "postal_code": string|null, "city": string|null, "type": "apartment"|"house"|"other"|null, "surface_m2": number|null, "rooms": number|null },
+  "lease": { "start_date": string|null (YYYY-MM-DD), "end_date": string|null (YYYY-MM-DD), "rent_amount": number|null, "charges_amount": number|null, "deposit_amount": number|null, "payment_day": number|null, "lease_kind": "furnished_primary"|"furnished_student"|"mobility"|"empty_primary"|"professional"|"other"|null },
+  "notes": string (en français, signale ce qui est absent du document, ambigu, ou qu'il faudra faire confirmer par l'utilisateur — chaîne vide si rien à signaler)
+}
+N'invente jamais une valeur absente du document : utilise null. Les montants sont en euros, nombres sans symbole.`,
+              },
+            ],
+          },
+        ],
+      });
+      const extraCostUsd = callCostUsd(response.usage as any, model);
+      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+      let parsed: Record<string, any>;
+      try {
+        const raw = (textBlock?.text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Le document n'a pas pu être analysé (réponse inattendue). Réessaie, ou renseigne les informations manuellement.");
+      }
+      if (parsed.is_lease === false) {
+        return { is_lease: false, notes: parsed.notes || "Ce document ne ressemble pas à un bail de location.", _extra_cost_usd: extraCostUsd };
+      }
+      return { ...parsed, staging_path: path, file_name: args.file_name || null, _extra_cost_usd: extraCostUsd };
+    },
+  },
+  {
     name: "create_property",
     description: "Crée un nouveau bien. Pour un immeuble à plusieurs lots (type='building'), fournir la liste des lots dans 'lots' : chacun sera créé rattaché à l'immeuble. Action irréversible sans suppression manuelle ensuite : nécessite confirmation.",
     input_schema: {
@@ -738,6 +816,75 @@ export const assistantTools: AssistantTool[] = [
       ];
       if (args.deposit_amount != null) rows.push({ label: "Dépôt", value: euro(args.deposit_amount) });
       return rows;
+    },
+  },
+  {
+    name: "attach_lease_document",
+    description: "Classe dans le bail le PDF précédemment importé (via extract_lease_document) et déplace le fichier de son emplacement de transit vers le dossier définitif du bail. À appeler seulement après que le bail correspondant a été créé (create_lease confirmé) et que l'utilisateur a confirmé vouloir y attacher ce document. Un bail ne peut avoir qu'un seul document de contrat : si un contrat existe déjà pour ce bail, il est remplacé.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string", description: "Id du bail venant d'être créé." },
+        staging_path: { type: "string", description: "Chemin renvoyé par extract_lease_document pour ce document, inchangé." },
+        file_name: { type: "string", description: "Nom de fichier renvoyé par extract_lease_document, si connu." },
+      },
+      required: ["lease_id", "staging_path"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const path = String(args.staging_path || "");
+      if (!path.startsWith(`${ctx.userId}/loky-imports/`)) {
+        throw new Error("Document introuvable ou non autorisé.");
+      }
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,lease_kind")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable.");
+      const contractKind = isLeaseContractKind(lease.lease_kind) ? lease.lease_kind : "other";
+
+      const documentId = randomUUID();
+      const finalPath = externalContractPdfPath(ctx.userId, lease.id, documentId);
+      const { error: moveError } = await admin.storage.from(LEASE_CONTRACT_BUCKET).move(path, finalPath);
+      if (moveError) throw new Error(moveError.message || "Déplacement du document impossible.");
+
+      const { error: upsertError } = await admin
+        .from("lease_contract_documents")
+        .upsert(
+          {
+            id: documentId,
+            user_id: ctx.userId,
+            lease_id: lease.id,
+            contract_kind: contractKind,
+            document_source: "external",
+            external_pdf_url: `${LEASE_CONTRACT_BUCKET}:${finalPath}`,
+            original_file_name: String(args.file_name || "bail-importé.pdf").slice(0, 180),
+            pdf_url: null,
+            signed_pdf_url: null,
+            generated_at: null,
+            status: "signed",
+            signed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "lease_id" }
+        );
+      if (upsertError) throw new Error(upsertError.message);
+      invalidateStorageCache(ctx.userId);
+
+      return {
+        ok: true,
+        next_steps: [{ section: "baux", link: { leaseId: lease.id, openContract: true }, label: "Voir le contrat classé" }],
+      };
+    },
+    summarize: async (ctx, args) => {
+      const summary = await resolveLeaseSummary(requireAdmin(), ctx.userId, args.lease_id);
+      return [
+        { label: "Bail", value: summary ? `${summary.tenantName} — ${summary.propertyLabel}` : "—" },
+        { label: "Document", value: String(args.file_name || "bail importé") },
+      ];
     },
   },
   {

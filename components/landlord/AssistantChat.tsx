@@ -1,7 +1,8 @@
 // components/landlord/AssistantChat.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowTopRightOnSquareIcon, XMarkIcon, PaperAirplaneIcon, HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, XMarkIcon, PaperAirplaneIcon, HandThumbUpIcon, HandThumbDownIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
+import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
 
 type ContentBlock =
   | { type: "text"; text: string }
@@ -33,6 +34,7 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   invite_tenant_portal: "Inviter ce locataire au portail",
   toggle_tenant_messaging: "Modifier la messagerie de ce locataire",
   create_lease: "Créer ce bail",
+  attach_lease_document: "Classer ce document dans le bail",
   confirm_payment: "Confirmer ce paiement",
   cancel_payment: "Annuler ce paiement",
   resend_receipt: "Renvoyer cette quittance",
@@ -57,6 +59,18 @@ function textOf(content: string | ContentBlock[]): string {
     .map((b) => b.text)
     .join("\n")
     .trim();
+}
+
+// Annotation ajoutée en fin de message quand l'utilisateur joint un document
+// (voir handleAttachClick/send) : lue par Loky côté serveur (extract_lease_document),
+// mais jamais affichée telle quelle dans la bulle de chat — on en extrait juste
+// le nom de fichier pour montrer un petit badge "📎 fichier.pdf" à la place.
+const ATTACHMENT_ANNOTATION = /\n\n\[Pièce jointe : chemin_document="([^"]*)", nom_fichier="([^"]*)"\]$/;
+
+function splitAttachment(text: string): { text: string; attachmentFileName: string | null } {
+  const match = text.match(ATTACHMENT_ANNOTATION);
+  if (!match) return { text, attachmentFileName: null };
+  return { text: text.slice(0, match.index).trim(), attachmentFileName: match[2] || null };
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -116,6 +130,11 @@ export default function AssistantChat({
   const [quotaLimit, setQuotaLimit] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [feedbackByIndex, setFeedbackByIndex] = useState<Record<number, "up" | "down">>({});
+  const [attachedFile, setAttachedFile] = useState<{ path: string; fileName: string } | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const quotaUsedPercent = useMemo(() => {
@@ -127,8 +146,8 @@ export default function AssistantChat({
   const displayMessages = useMemo(
     () =>
       apiMessages
-        .map((m) => ({ role: m.role, text: textOf(m.content) }))
-        .filter((m) => m.text.length > 0),
+        .map((m) => ({ role: m.role, ...splitAttachment(textOf(m.content)) }))
+        .filter((m) => m.text.length > 0 || m.attachmentFileName),
     [apiMessages]
   );
 
@@ -204,10 +223,14 @@ export default function AssistantChat({
   };
 
   const send = async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim();
-    if (!text || sending || pendingAction || limitReached) return;
+    const typed = (overrideText ?? input).trim();
+    if ((!typed && !attachedFile) || sending || uploadingFile || pendingAction || limitReached) return;
     setError(null);
     setInput("");
+    const text = attachedFile
+      ? `${typed || "Voici un document à analyser."}\n\n[Pièce jointe : chemin_document="${attachedFile.path}", nom_fichier="${attachedFile.fileName}"]`
+      : typed;
+    setAttachedFile(null);
     const nextMessages: ApiMessage[] = [...apiMessages, { role: "user", content: text }];
     setApiMessages(nextMessages);
     setSending(true);
@@ -218,6 +241,38 @@ export default function AssistantChat({
       setError(err?.message || "Une erreur est survenue.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleFileSelect = async (file?: File | null) => {
+    if (!file) return;
+    setUploadError(null);
+    if (file.type !== "application/pdf") {
+      setUploadError("Seuls les fichiers PDF sont acceptés.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Le fichier doit faire 10 Mo maximum.");
+      return;
+    }
+    setUploadingFile(true);
+    setUploadProgress(0);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Session expirée, merci de recharger la page.");
+      const res = await fetch("/api/landlord/assistant/document-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sizeBytes: file.size }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Import impossible.");
+      await xhrUploadToSignedUrl(data.signedUrl, file, setUploadProgress);
+      setAttachedFile({ path: data.path, fileName: file.name });
+    } catch (err: any) {
+      setUploadError(err?.message || "Import impossible.");
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -282,6 +337,12 @@ export default function AssistantChat({
                       : "rounded-bl-sm border border-slate-200 bg-white text-slate-800")
                   }
                 >
+                  {m.attachmentFileName && (
+                    <div className={"mb-1.5 flex items-center gap-1.5 text-xs " + (m.role === "user" ? "text-white/80" : "text-slate-500") + (m.text ? " border-b border-white/15 pb-1.5" : "")}>
+                      <PaperClipIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{m.attachmentFileName}</span>
+                    </div>
+                  )}
                   {renderWithLinks(m.text)}
                 </div>
               </div>
@@ -396,7 +457,48 @@ export default function AssistantChat({
         </div>
 
         <div className="border-t border-slate-200 bg-white p-3">
+          {(attachedFile || uploadingFile) && (
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <PaperClipIcon className="h-3.5 w-3.5 shrink-0" />
+              {uploadingFile ? (
+                <>
+                  <span className="min-w-0 flex-1 truncate">Envoi en cours… {uploadProgress}%</span>
+                  <div className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="min-w-0 flex-1 truncate">{attachedFile?.fileName}</span>
+                  <button type="button" onClick={() => setAttachedFile(null)} aria-label="Retirer le fichier" className="shrink-0 text-slate-400 hover:text-slate-600">
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {uploadError && <p className="mb-2 text-xs font-medium text-red-600">{uploadError}</p>}
           <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                handleFileSelect(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || uploadingFile || !!pendingAction || limitReached || !!attachedFile}
+              aria-label="Joindre un document (PDF)"
+              title="Joindre un bail existant (PDF)"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <PaperClipIcon className="h-4 w-4" />
+            </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -414,7 +516,7 @@ export default function AssistantChat({
             <button
               type="button"
               onClick={() => send()}
-              disabled={sending || !!pendingAction || limitReached || !input.trim()}
+              disabled={sending || uploadingFile || !!pendingAction || limitReached || (!input.trim() && !attachedFile)}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 text-white disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Envoyer"
             >
