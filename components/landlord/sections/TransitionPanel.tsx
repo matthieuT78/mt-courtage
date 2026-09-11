@@ -17,7 +17,6 @@ type Props = {
   tenantById: Map<string, Tenant>;
   userId: string;
   onGo: (k: LandlordSectionKey, link?: { leaseId?: string; openPanel?: string; openCreate?: boolean; prefillPropertyId?: string }) => void;
-  onPrepareDeparture?: (tenantId: string) => void;
   onRefresh: () => Promise<void>;
 };
 

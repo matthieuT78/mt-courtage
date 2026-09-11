@@ -445,6 +445,33 @@ export function DashboardShell(props: any) {
     setDeepLink(resolvedLink ? { ...resolvedLink, key: ++deepLinkKeyRef.current } : null);
   }
 
+  // Point d'entrée unique pour "gérer le départ d'un locataire", quel que soit
+  // le bouton d'origine (carte du tableau de bord ou bail dans la section
+  // Baux) : décoche la reconduction tacite du bail avant de naviguer vers la
+  // fiche locataire, pour que ce clic — et lui seul — fasse apparaître le bail
+  // dans le panneau "Logement en transition" (voir isInTransition,
+  // TransitionPanel.tsx). Centralisé ici plutôt que dupliqué par bouton pour
+  // qu'un futur point d'entrée en hérite automatiquement.
+  async function handlePrepareDeparture(leaseId: string) {
+    const lease = leases.find((l: any) => l.id === leaseId);
+    if (lease && (lease as any).auto_renewal_enabled !== false && supabase) {
+      try {
+        await supabase
+          .from("leases")
+          .update({ auto_renewal_enabled: false, updated_at: new Date().toISOString() })
+          .eq("id", leaseId)
+          .eq("user_id", userId);
+        await refresh?.();
+      } catch {
+        // Non bloquant : même en cas d'échec, on laisse le bailleur continuer
+        // vers la gestion du départ — il pourra décocher la reconduction
+        // manuellement depuis le formulaire du bail.
+      }
+    }
+    if (lease) setDepartureTenantId(lease.tenant_id);
+    onChangeTab("locataires");
+  }
+
   // ── Index de recherche ────────────────────────────────────────────────────
   const searchItems = useMemo<SearchItem[]>(() => {
     const items: SearchItem[] = [];
@@ -717,10 +744,7 @@ export function DashboardShell(props: any) {
             tenantById={tenantById}
             profile={profile}
             profileLoaded={profileLoaded}
-            onPrepareDeparture={(tenantId) => {
-              setDepartureTenantId(tenantId);
-              onChangeTab("locataires");
-            }}
+            onPrepareDeparture={handlePrepareDeparture}
           />
         );
 
@@ -763,10 +787,7 @@ export function DashboardShell(props: any) {
             onRefresh={refresh}
             deepLink={deepLink}
             onNavigateDeep={navigateDeep}
-            onPrepareDeparture={(tenantId) => {
-              setDepartureTenantId(tenantId);
-              onChangeTab("locataires");
-            }}
+            onPrepareDeparture={handlePrepareDeparture}
           />
         );
 

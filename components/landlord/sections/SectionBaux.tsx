@@ -120,7 +120,7 @@ type Props = {
   payments?: RentPayment[];
   receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
-  onPrepareDeparture?: (tenantId: string) => void;
+  onPrepareDeparture?: (leaseId: string) => void;
   deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string } | null;
   onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean }) => void;
 };
@@ -1774,7 +1774,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                     disabled={loading}
                     onClick={(e) => {
                       stop(e);
-                      onPrepareDeparture?.(l.tenant_id);
+                      onPrepareDeparture?.(l.id);
                     }}
                   >
                     Gérer le départ

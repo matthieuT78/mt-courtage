@@ -219,7 +219,7 @@ export function SectionDashboard({
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
   onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
-  onPrepareDeparture?: (tenantId: string) => void;
+  onPrepareDeparture?: (leaseId: string) => void;
   onRefresh?: () => Promise<void>;
   onOpenAssistant?: (presetMessage?: string) => void;
   userId?: string;
@@ -2254,7 +2254,7 @@ export function SectionDashboard({
                   {card.leaseEndingSoon ? (
                     <button
                       type="button"
-                      onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
+                      onClick={() => onPrepareDeparture?.(card.lease.id)}
                       className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
                     >
                       Échéance proche
@@ -2262,7 +2262,7 @@ export function SectionDashboard({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
+                      onClick={() => onPrepareDeparture?.(card.lease.id)}
                       className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                     >
                       Départ
