@@ -65,10 +65,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq("id", userId);
   if (profileError) return res.status(500).json({ ok: false, error: profileError.message });
 
+  // Les deux flags de mise en route doivent être effacés, pas juste celui du
+  // wizard modal : onboarding_done_at (SectionDashboard.tsx) fait disparaître
+  // définitivement le widget de checklist du tableau de bord dès qu'un bien
+  // actif existe, sans regarder si les autres étapes sont faites — l'oublier
+  // ici laissait le compte "neuf" avec un widget déjà masqué par un ancien
+  // run de test resté en base.
   const { error: settingsError } = await supabaseAdmin
     .from("app_settings")
     .delete()
-    .eq("key", `onboarding_wizard_done:${userId}`);
+    .in("key", [`onboarding_wizard_done:${userId}`, `onboarding_done_at:${userId}`]);
   if (settingsError) return res.status(500).json({ ok: false, error: settingsError.message });
 
   console.log(

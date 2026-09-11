@@ -25,6 +25,13 @@ type Props = {
   placeholder?: string;
   className?: string;
   hint?: boolean;
+  // Quand true, chacun des 3 champs (adresse/CP/ville) qui est vide reçoit
+  // errorClassName et l'attribut data-highlight-empty (pour le scroll/focus
+  // automatique vers le premier champ manquant) — voir pages/mon-compte/profil.tsx.
+  // Sans ça, un seul className partagé par les 3 champs ne peut refléter que
+  // l'état de addressLine1, jamais celui de postalCode/city pris isolément.
+  highlightEmpty?: boolean;
+  errorClassName?: string;
 };
 
 export default function AddressAutocomplete({
@@ -40,6 +47,8 @@ export default function AddressAutocomplete({
   placeholder = "Commencez à taper une adresse…",
   className = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm",
   hint = true,
+  highlightEmpty = false,
+  errorClassName,
 }: Props) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -48,6 +57,10 @@ export default function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const locked = !manualOverride && !!postalCode.trim() && !!city.trim();
+
+  const fieldClass = (value: string) => (highlightEmpty && !value.trim() && errorClassName ? errorClassName : className);
+  const highlightProps = (value: string) =>
+    highlightEmpty && !value.trim() ? { "data-highlight-empty": "" } : {};
 
   useEffect(() => {
     const query = addressLine1.trim();
@@ -103,7 +116,8 @@ export default function AddressAutocomplete({
         placeholder={placeholder}
         onChange={(e) => { onAddressLine1Change(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        className={className}
+        className={fieldClass(addressLine1)}
+        {...highlightProps(addressLine1)}
       />
       {open && (loading || suggestions.length > 0) && (
         <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -134,14 +148,16 @@ export default function AddressAutocomplete({
           onChange={(e) => onPostalCodeChange(e.target.value)}
           placeholder="Code postal"
           disabled={locked}
-          className={locked ? `${className} cursor-not-allowed bg-slate-100 text-slate-500` : className}
+          className={locked ? `${className} cursor-not-allowed bg-slate-100 text-slate-500` : fieldClass(postalCode)}
+          {...(locked ? {} : highlightProps(postalCode))}
         />
         <input
           value={city}
           onChange={(e) => onCityChange(e.target.value)}
           placeholder="Ville"
           disabled={locked}
-          className={locked ? `${className} cursor-not-allowed bg-slate-100 text-slate-500` : className}
+          className={locked ? `${className} cursor-not-allowed bg-slate-100 text-slate-500` : fieldClass(city)}
+          {...(locked ? {} : highlightProps(city))}
         />
       </div>
       {locked ? (

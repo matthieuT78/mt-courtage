@@ -269,7 +269,9 @@ export default function MonCompteProfilPage() {
                   onAddressLine1Change={(v) => set({ address_line1: v })}
                   onPostalCodeChange={(v) => set({ postal_code: v })}
                   onCityChange={(v) => set({ city: v })}
-                  className={inputC(profile?.address_line1)}
+                  className={inputCls}
+                  highlightEmpty={showHighlight}
+                  errorClassName={inputErrorCls}
                 />
               </div>
               <Field label="Adresse ligne 2" full>
