@@ -5,6 +5,7 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:unit": "vitest run",
     "dev": "next dev",
     "build": "npm run sitemap && next build",
     "start": "next start",
@@ -46,6 +47,7 @@
     "postcss": "8.4.38",
     "puppeteer": "^24.36.1",
     "tailwindcss": "3.4.4",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "vitest": "^4.1.11"
   }
 }
