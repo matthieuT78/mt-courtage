@@ -132,7 +132,7 @@ export function computeOnboardingStatus({
       ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
       : next?.key === "baux"
       ? "Créez la location : elle relie le bien, le locataire, le loyer et les quittances."
-      : "Complétez le socle Finance du bien : prix d'achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
+      : "Complétez le socle Finance : prix d'achat et taux du crédit permettent à lokt de mesurer la rentabilité de votre parc immobilier.";
 
   const cta = next ? { key: next.key, label: next.label } : null;
   const mandatoryStepsComplete = profileComplete && hasProperty && hasTenant && leaseWorkflowReady;
