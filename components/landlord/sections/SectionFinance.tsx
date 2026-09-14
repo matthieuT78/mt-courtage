@@ -1437,14 +1437,24 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const openTransactionDocument = async (doc: TransactionDocument) => {
     if (!supabase) return;
     setErr(null);
+    // Ouvrir la fenêtre AVANT l'appel async : après un await, le navigateur ne
+    // considère plus le window.open comme déclenché par le clic utilisateur et
+    // le bloque silencieusement (pas d'erreur visible, juste "rien ne se passe").
+    // Pas de "noopener" ici : sur Chrome récent, noopener fait renvoyer null par
+    // window.open, ce qui empêche justement de récupérer la référence dont on a
+    // besoin pour rediriger cet onglet une fois l'URL signée obtenue (l'onglet
+    // reste alors ouvert mais vide, sur about:blank).
+    const win = window.open("about:blank", "_blank");
     const { data, error: signedError } = await supabase.storage
       .from(doc.storage_bucket)
       .createSignedUrl(doc.storage_path, 60 * 10);
     if (signedError || !data?.signedUrl) {
+      win?.close();
       setErr(signedError?.message || "Impossible d’ouvrir ce document.");
       return;
     }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    if (win) win.location.href = data.signedUrl;
+    else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   const deleteTransactionDocument = async (doc: TransactionDocument) => {
@@ -3256,6 +3266,51 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                     placeholder="Optionnel"
                   />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Facture / justificatif</p>
+                <div className="mt-3 space-y-2">
+                  {(txDocsByTransactionId.get(editTxId || "") || []).map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => void openTransactionDocument(doc)}
+                        className="min-w-0 flex-1 truncate text-left text-sm font-medium text-slate-900 hover:text-indigo-700"
+                        title={doc.file_name}
+                      >
+                        {doc.file_name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { if (window.confirm("Supprimer cette pièce jointe ?")) void deleteTransactionDocument(doc); }}
+                        title="Supprimer"
+                        className="shrink-0 rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {(txDocsByTransactionId.get(editTxId || "") || []).length === 0 && (
+                    <p className="text-xs text-slate-500">Aucun fichier joint.</p>
+                  )}
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-white">
+                    <DocumentArrowUpIcon className="h-4 w-4" />
+                    {uploadingDocId === editTxId ? (uploadDocProgress !== null ? `${uploadDocProgress}%` : "…") : "Joindre"}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploadingDocId === editTxId}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        const editingTx = tx.find((t) => t.id === editTxId);
+                        if (editingTx && file) void attachDocumentFromLedger(editingTx, file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
