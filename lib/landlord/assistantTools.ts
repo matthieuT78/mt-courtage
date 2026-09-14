@@ -477,6 +477,73 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
     },
   },
   {
+    name: "extract_invoice_document",
+    description: "Analyse un document PDF (facture fournisseur : travaux, assurance, taxe, copropriété...) que l'utilisateur vient de joindre dans la conversation, et en extrait fournisseur/montant/date/catégorie sous forme structurée. À appeler dès qu'un message utilisateur contient une annotation '[Pièce jointe : chemin_document=\"...\", nom_fichier=\"...\"]' ET que le contexte laisse penser à une facture plutôt qu'à un bail (sinon utiliser extract_lease_document) — utilise EXACTEMENT le chemin et le nom donnés dans cette annotation comme staging_path/file_name, ne les invente et ne les modifie jamais. Ne crée rien : présente ensuite à l'utilisateur ce qui a été compris (avec les champs manquants ou incertains signalés dans notes) et demande explicitement confirmation avant d'appeler add_finance_transaction. Une fois cette écriture créée et confirmée, propose ensuite d'appeler attach_invoice_document avec le même staging_path/file_name pour classer la facture d'origine dans cette écriture.",
+    input_schema: {
+      type: "object",
+      properties: {
+        staging_path: { type: "string", description: "Chemin exact donné dans l'annotation [Pièce jointe : chemin_document=\"...\"] du message utilisateur." },
+        file_name: { type: "string", description: "Nom de fichier donné dans la même annotation (nom_fichier=\"...\")." },
+      },
+      required: ["staging_path"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const path = String(args.staging_path || "");
+      if (!path.startsWith(`${ctx.userId}/loky-imports/`)) {
+        throw new Error("Document introuvable ou non autorisé.");
+      }
+      const { data: file, error: downloadError } = await admin.storage.from(LEASE_CONTRACT_BUCKET).download(path);
+      if (downloadError || !file) throw new Error("Document introuvable — a-t-il bien fini d'être envoyé ?");
+      const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error("Extraction indisponible (clé API manquante).");
+      const client = new Anthropic({ apiKey });
+      const model = process.env.ANTHROPIC_DOCUMENT_MODEL || "claude-sonnet-5";
+      const response = await client.messages.create({
+        model,
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+              {
+                type: "text",
+                text: `Ce document est probablement une facture fournisseur liée à un bien locatif. Extrais les informations dans EXACTEMENT ce format JSON, sans aucun texte avant ou après, sans bloc markdown \`\`\` :
+{
+  "is_invoice": boolean (false si ce document n'est manifestement pas une facture/justificatif de dépense),
+  "vendor": string|null (nom du fournisseur/émetteur),
+  "amount": number|null (montant TTC total à payer, en euros, sans symbole),
+  "invoice_date": string|null (YYYY-MM-DD, date de la facture ou d'échéance),
+  "category": one of ["fees","management","repairs","copro","insurance","tax","utilities","charges_recovered","regularization","loan","other"]|null — devine la plus probable parmi : fees=frais plateforme/conciergerie, management=gestion/agence, repairs=entretien/travaux (plombier, électricien...), copro=charges de copropriété, insurance=assurance (PNO/GLI...), tax=taxe foncière, utilities=eau/électricité/internet, charges_recovered=charges récupérées/refacturées, regularization=régularisation de charges, loan=crédit/mensualité, other=si aucune ne correspond clairement,
+  "label": string|null (libellé court, ex. "Facture Plombier Dupont"),
+  "notes": string (en français, signale ce qui est absent du document, ambigu, ou une éventuelle distinction HT/TVA/TTC visible — chaîne vide si rien à signaler)
+}
+N'invente jamais une valeur absente du document : utilise null. Les montants sont en euros, nombres sans symbole.`,
+              },
+            ],
+          },
+        ],
+      });
+      const extraCostUsd = callCostUsd(response.usage as any, model);
+      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+      let parsed: Record<string, any>;
+      try {
+        const raw = (textBlock?.text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Le document n'a pas pu être analysé (réponse inattendue). Réessaie, ou renseigne les informations manuellement.");
+      }
+      if (parsed.is_invoice === false) {
+        return { is_invoice: false, notes: parsed.notes || "Ce document ne ressemble pas à une facture.", _extra_cost_usd: extraCostUsd };
+      }
+      return { ...parsed, staging_path: path, file_name: args.file_name || null, _extra_cost_usd: extraCostUsd };
+    },
+  },
+  {
     name: "create_property",
     description: "Crée un nouveau bien. Pour un immeuble à plusieurs lots (type='building'), fournir la liste des lots dans 'lots' : chacun sera créé rattaché à l'immeuble. Action irréversible sans suppression manuelle ensuite : nécessite confirmation.",
     input_schema: {
@@ -1351,6 +1418,82 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       rows.push({ label: "Date", value: String(args.occurred_at || "—") });
       if (args.label) rows.push({ label: "Libellé", value: String(args.label) });
       return rows;
+    },
+  },
+  {
+    name: "attach_invoice_document",
+    description: "Classe dans une écriture Finance le PDF de facture précédemment importé (via extract_invoice_document) et déplace le fichier de son emplacement de transit vers le dossier définitif de l'écriture. À appeler seulement après que l'écriture correspondante a été créée (add_finance_transaction confirmé) et que l'utilisateur a confirmé vouloir y attacher ce document.",
+    input_schema: {
+      type: "object",
+      properties: {
+        transaction_id: { type: "string", description: "Id de l'écriture venant d'être créée." },
+        staging_path: { type: "string", description: "Chemin renvoyé par extract_invoice_document pour ce document, inchangé." },
+        file_name: { type: "string", description: "Nom de fichier renvoyé par extract_invoice_document, si connu." },
+      },
+      required: ["transaction_id", "staging_path"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const path = String(args.staging_path || "");
+      if (!path.startsWith(`${ctx.userId}/loky-imports/`)) {
+        throw new Error("Document introuvable ou non autorisé.");
+      }
+      const { data: transaction } = await admin
+        .from("transactions")
+        .select("id,property_id")
+        .eq("id", args.transaction_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!transaction) throw new Error("Écriture introuvable.");
+
+      const { data: file, error: downloadError } = await admin.storage.from(LEASE_CONTRACT_BUCKET).download(path);
+      if (downloadError || !file) throw new Error("Document introuvable — a-t-il bien fini d'être envoyé ?");
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      const documentId = randomUUID();
+      const finalPath = `${ctx.userId}/${transaction.id}/${documentId}.pdf`;
+      const { error: uploadError } = await admin.storage
+        .from("finance-documents")
+        .upload(finalPath, buffer, { contentType: "application/pdf", upsert: true });
+      if (uploadError) throw new Error(uploadError.message || "Classement du document impossible.");
+      // Best-effort : le classement a déjà réussi à ce stade (upload + ligne
+      // transaction_documents à venir), une erreur de nettoyage du fichier de
+      // transit ne doit pas faire échouer l'action aux yeux de l'utilisateur.
+      await admin.storage.from(LEASE_CONTRACT_BUCKET).remove([path]).catch(() => {});
+
+      const { error: insertError } = await admin.from("transaction_documents").insert({
+        user_id: ctx.userId,
+        transaction_id: transaction.id,
+        property_id: transaction.property_id || null,
+        storage_bucket: "finance-documents",
+        storage_path: finalPath,
+        file_name: String(args.file_name || "facture.pdf").slice(0, 180),
+        mime_type: "application/pdf",
+        size_bytes: buffer.byteLength,
+        document_kind: "invoice",
+        updated_at: new Date().toISOString(),
+      });
+      if (insertError) throw new Error(insertError.message);
+      invalidateStorageCache(ctx.userId);
+
+      return {
+        ok: true,
+        next_steps: [{ section: "finance", link: { financeTab: "finance" }, label: "Voir l'écriture classée" }],
+      };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: transaction } = await admin
+        .from("transactions")
+        .select("label,category")
+        .eq("id", args.transaction_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      return [
+        { label: "Écriture", value: transaction?.label || FINANCE_CATEGORY_LABEL[String(transaction?.category)] || "—" },
+        { label: "Document", value: String(args.file_name || "facture importée") },
+      ];
     },
   },
   {

@@ -149,6 +149,7 @@ type Props = {
   properties?: Property[];
   onRefresh?: () => Promise<void> | void;
   deepLink?: { key: number; openCreate?: boolean; prefillPropertyId?: string; financeTab?: "finance" | "declaration" } | null;
+  onOpenAssistant?: (presetMessage?: string) => void;
 };
 
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -546,7 +547,7 @@ function buildRecurringInstances(
   return instances;
 }
 
-export function SectionFinance({ userId, leases, payments, receipts, propertyById, properties, onRefresh, deepLink }: Props) {
+export function SectionFinance({ userId, leases, payments, receipts, propertyById, properties, onRefresh, deepLink, onOpenAssistant }: Props) {
   const [tab, setTab] = useState<FinanceTab>("finance");
 
   // 🎨 lokt.fr
@@ -2947,6 +2948,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Facture / justificatif</p>
+            {onOpenAssistant && (
+              <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-indigo-900">
+                  Plutôt que remplir ce formulaire à la main, vous pouvez joindre la facture à Loky : il lit le montant, la date et la catégorie et prépare l'écriture pour vous.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTxWizardOpen(false);
+                    setInvoiceFile(null);
+                    onOpenAssistant("Je voudrais importer une facture pour créer une écriture Finance.");
+                  }}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+                >
+                  <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+                  Importer avec Loky
+                </button>
+              </div>
+            )}
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">

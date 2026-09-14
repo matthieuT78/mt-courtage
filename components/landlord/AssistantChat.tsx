@@ -42,6 +42,7 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   terminate_lease: "Résilier ce bail",
   manage_deposit: "Confirmer cette opération sur le dépôt",
   add_finance_transaction: "Ajouter cette écriture",
+  attach_invoice_document: "Classer cette facture dans l'écriture",
   delete_finance_transaction: "Supprimer cette écriture",
   stop_recurring_transaction: "Arrêter cette récurrente",
   update_recurring_transaction: "Modifier cette récurrente",
@@ -494,7 +495,7 @@ export default function AssistantChat({
               onClick={() => fileInputRef.current?.click()}
               disabled={sending || uploadingFile || !!pendingAction || limitReached || !!attachedFile}
               aria-label="Joindre un document (PDF)"
-              title="Joindre un bail existant (PDF)"
+              title="Joindre un bail ou une facture (PDF)"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <PaperClipIcon className="h-4 w-4" />

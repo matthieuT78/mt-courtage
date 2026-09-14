@@ -824,6 +824,7 @@ export function DashboardShell(props: any) {
             properties={properties}
             onRefresh={refresh}
             deepLink={deepLink}
+            onOpenAssistant={openAssistant}
           />
         );
 
