@@ -952,7 +952,7 @@ export default function Home() {
         <div className="relative px-4">
           <div className="anim-fadeUp d-5 mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-3 text-center backdrop-blur sm:flex-row sm:gap-4 sm:rounded-[1.5rem] sm:px-5 sm:text-left">
             <div className="flex items-center gap-2 text-xs text-white/80">
-              <span className="hidden font-medium sm:inline">Loyer</span>
+              <span className="font-medium">Loyer</span>
               <input
                 id="savings-rent"
                 type="range"
@@ -1463,17 +1463,17 @@ export default function Home() {
                       </svg>
                     </span>
                     <div>
-                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Différenciant</span>
-                      <h3 className="text-lg font-semibold text-slate-950">Candidatures en ligne & scoring automatique</h3>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Remplace une agence</span>
+                      <h3 className="text-lg font-semibold text-slate-950">Le travail d'une agence, sans les frais d'agence</h3>
                     </div>
                   </div>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Partagez un lien unique sur vos annonces. Les candidats postulent sans créer de compte. Vous recevez des dossiers scorés automatiquement — ratio loyer/revenu, type de contrat, garant — et choisissez le bon profil en quelques minutes.
+                    Publier l'annonce, planifier les visites, trier les dossiers : c'est exactement ce que facture une agence. Avec lokt, vos candidats réservent leur créneau de visite en ligne — sans un seul appel — postulent sans créer de compte, et vous recevez des dossiers déjà scorés.
                   </p>
                   <ul className="mt-4 space-y-1.5">
                     {[
                       "Lien dédié par annonce — aucune saisie manuelle",
-                      "Agenda de visite intégré — le candidat réserve un créneau",
+                      "Agenda de visite intégré — le candidat réserve un créneau, sans appel ni échange de mails",
                       "Scoring automatique : revenus, stabilité, garant",
                       "Données des candidats non retenus supprimées (RGPD)",
                       "Dossier retenu pré-remplit le bail automatiquement",
@@ -1494,9 +1494,10 @@ export default function Home() {
                 <div className="space-y-2.5">
                   {[
                     { step: "01", label: "Annonce publiée", sub: "Lien lokt.fr partagé sur SeLoger, LeBonCoin…", color: "bg-slate-100 text-slate-600" },
-                    { step: "02", label: "Candidat postule", sub: "Dossier rempli en ligne, sans créer de compte", color: "bg-sky-100 text-sky-700" },
-                    { step: "03", label: "Score calculé", sub: "Ratio loyer/revenu · CDI/CDD/TNS · Garant ✓", color: "bg-violet-100 text-violet-700" },
-                    { step: "04", label: "Vous choisissez", sub: "Profils comparés côte à côte · Bail pré-rempli", color: "bg-[#635bff]/10 text-[#635bff]" },
+                    { step: "02", label: "Visite réservée", sub: "Le candidat choisit son créneau, sans appel", color: "bg-sky-100 text-sky-700" },
+                    { step: "03", label: "Dossier complété", sub: "Rempli en ligne, sans créer de compte", color: "bg-cyan-100 text-cyan-700" },
+                    { step: "04", label: "Score calculé", sub: "Ratio loyer/revenu · CDI/CDD/TNS · Garant ✓", color: "bg-violet-100 text-violet-700" },
+                    { step: "05", label: "Vous choisissez", sub: "Profils comparés côte à côte · Bail pré-rempli", color: "bg-[#635bff]/10 text-[#635bff]" },
                   ].map(({ step, label, sub, color }) => (
                     <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
                       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
