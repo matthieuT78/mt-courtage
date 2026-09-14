@@ -1484,8 +1484,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         {docs.length > 0 ? (
           <button
             type="button"
-            onClick={() => setDocsMenuOpenId(isMenuOpen ? null : r.id)}
-            title={`${docs.length} pièce${docs.length > 1 ? "s" : ""}`}
+            onClick={() => {
+              // Une seule pièce : autant l'ouvrir directement plutôt que
+              // forcer un menu à choisir parmi une liste à un seul élément
+              // (menu qui, en bas de tableau, peut déborder hors écran).
+              if (docs.length === 1) {
+                void openTransactionDocument(docs[0]);
+                return;
+              }
+              setDocsMenuOpenId(isMenuOpen ? null : r.id);
+            }}
+            title={docs.length === 1 ? docs[0].file_name : `${docs.length} pièces`}
             className={cx(
               compact
                 ? "inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -2709,6 +2718,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
 
         <div className="p-5">
+          {onOpenAssistant && (
+            <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-indigo-900">
+                Une facture à saisir ? Joignez-la à Loky : il lit le montant, la date et la catégorie et prépare l'écriture pour vous.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTxWizardOpen(false);
+                  setInvoiceFile(null);
+                  onOpenAssistant("Je voudrais importer une facture pour créer une écriture Finance.");
+                }}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              >
+                <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded-full object-cover" />
+                Importer avec Loky
+              </button>
+            </div>
+          )}
           <div className="grid gap-3 md:grid-cols-2">
             <button
               type="button"
@@ -2948,25 +2976,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Facture / justificatif</p>
-            {onOpenAssistant && (
-              <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-indigo-900">
-                  Plutôt que remplir ce formulaire à la main, vous pouvez joindre la facture à Loky : il lit le montant, la date et la catégorie et prépare l'écriture pour vous.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTxWizardOpen(false);
-                    setInvoiceFile(null);
-                    onOpenAssistant("Je voudrais importer une facture pour créer une écriture Finance.");
-                  }}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
-                >
-                  <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded-full object-cover" />
-                  Importer avec Loky
-                </button>
-              </div>
-            )}
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">

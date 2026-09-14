@@ -1372,12 +1372,12 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
   },
   {
     name: "add_finance_transaction",
-    description: "Ajoute une écriture manuelle dans Finance (charge ou recette hors loyer, ex. travaux, assurance, taxe foncière, crédit). Ne jamais utiliser pour un loyer (géré uniquement via confirm_payment/quittances) ni pour le dépôt de garantie (voir manage_deposit).",
+    description: "Ajoute une écriture manuelle dans Finance (charge ou recette hors loyer, ex. travaux, assurance, taxe foncière, crédit). Ne jamais utiliser pour un loyer (géré uniquement via confirm_payment/quittances) ni pour le dépôt de garantie (voir manage_deposit). Le bien concerné est obligatoire (même règle que le formulaire manuel) : fournis property_id, ou à défaut lease_id (le bien sera déduit du bail) — ne laisse jamais les deux vides, résous d'abord via list_properties/list_leases si l'utilisateur n'a donné qu'un nom/une adresse.",
     input_schema: {
       type: "object",
       properties: {
-        property_id: { type: "string", description: "Optionnel : bien concerné." },
-        lease_id: { type: "string", description: "Optionnel : bail concerné." },
+        property_id: { type: "string", description: "Bien concerné. Obligatoire sauf si lease_id est fourni (le bien sera alors déduit du bail)." },
+        lease_id: { type: "string", description: "Optionnel : bail concerné. Si fourni sans property_id, le bien du bail est utilisé automatiquement." },
         direction: { type: "string", enum: ["in", "out"], description: "'in' = recette, 'out' = dépense." },
         category: { type: "string", enum: ["fees", "management", "repairs", "copro", "insurance", "tax", "utilities", "charges_recovered", "regularization", "loan", "other"] },
         label: { type: "string", description: "Libellé court de l'écriture." },
@@ -1390,9 +1390,27 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
     mutates: true,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
+      // Le bien est un champ obligatoire (même invariant que le formulaire
+      // manuel de Finance) : si seul le bail est fourni, on résout le bien
+      // depuis le bail plutôt que de faire confiance à ce que le modèle ait
+      // pensé à passer aussi property_id — sinon l'écriture se crée avec un
+      // bien vide, invisible tant qu'on ne rouvre pas l'écriture.
+      let propertyId = args.property_id ? String(args.property_id) : null;
+      if (!propertyId && args.lease_id) {
+        const { data: lease } = await admin
+          .from("leases")
+          .select("property_id")
+          .eq("id", String(args.lease_id))
+          .eq("user_id", ctx.userId)
+          .maybeSingle();
+        propertyId = lease?.property_id || null;
+      }
+      if (!propertyId) {
+        throw new Error("Le bien concerné est obligatoire : précise un bien ou un bail existant avant de créer cette écriture.");
+      }
       const payload = {
         user_id: ctx.userId,
-        property_id: args.property_id || null,
+        property_id: propertyId,
         lease_id: args.lease_id || null,
         receipt_id: null,
         direction: String(args.direction),
