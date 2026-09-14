@@ -14,7 +14,7 @@ import { isLmnpItemCompliant, lotRequiresLmnpInventory, propertyRequiresLmnpInve
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
-import { TransitionPanel, isInTransition } from "./TransitionPanel";
+import { TransitionPanel } from "./TransitionPanel";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -1034,27 +1034,26 @@ export function SectionDashboard({
       onClick?: () => void;
       cta?: string;
       snoozable?: boolean;
+      // Clé de regroupement visuel : deux alertes qui portent sur le même bail
+      // sont affichées comme une seule carte avec des sous-lignes plutôt que
+      // comme deux tuiles indépendantes sans lien apparent entre elles. Posée
+      // uniquement quand l'alerte concerne sans ambiguïté un seul bail (jamais
+      // sur un total agrégé portant sur plusieurs baux à la fois).
+      leaseId?: string;
     }> = [];
     const onboardingIncomplete = onboarding.percent < 100;
-    // Si un logement est déjà en transition (départ locataire en cours), ce
-    // panneau dédié guide déjà le bailleur vers la remise en location — pas
-    // besoin de faire doublon avec une relance générique "mise en route".
-    const anyLeaseInTransition = leases.some((lease) => isInTransition(lease, leases, propertyById));
+    // La bannière de mise en route (plus haut dans ce même écran) couvre déjà
+    // exactement cette information avec plus de détail (étapes, progression) :
+    // la dupliquer ici comme une alerte de plus n'apporte rien et produisait
+    // deux cartes identiques à la suite l'une de l'autre.
 
-    if (onboardingIncomplete && onboarding.next && !anyLeaseInTransition) {
-      actions.push({
-        tone: "indigo",
-        title: "Terminer la mise en route",
-        desc: onboarding.sub,
-        details: [
-          `${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`,
-          `Prochaine étape : ${onboarding.next.label}`,
-        ],
-        target: onboarding.next.key === "profil" ? undefined : onboarding.next.key as LandlordSectionKey,
-        onClick: onboarding.next.key === "profil" ? () => router.push("/mon-compte/profil?highlight=1") : undefined,
-        cta: onboarding.next.label,
-      });
-    }
+    // Bail actif unique sur un bien donné — permet de rattacher une alerte
+    // portant sur un bien (ex. inventaire LMNP) au bail correspondant pour le
+    // regroupement visuel, seulement quand ce lien est sans ambiguïté.
+    const singleLeaseIdForProperty = (propertyId: string): string | undefined => {
+      const matches = activeLeases.filter((lease) => lease.property_id === propertyId);
+      return matches.length === 1 ? matches[0].id : undefined;
+    };
 
     const leasesMissingContract = activeLeases.filter((lease) => {
       if (leaseIdsWithContract?.has(lease.id)) return false;
@@ -1074,12 +1073,13 @@ export function SectionDashboard({
         desc: `${propertyLabel} · ${tenantName} : cette location est active mais aucun contrat de bail n'a encore été généré ou archivé dans lokt.`,
         onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id, openContract: true }),
         cta: "Générer le contrat",
+        leaseId: lease.id,
       });
     }
 
     if (lateCount > 0) {
-      const lateDetails = leaseCards
-        .filter((card) => card.paymentStatus === "En retard")
+      const lateCards = leaseCards.filter((card) => card.paymentStatus === "En retard");
+      const lateDetails = lateCards
         .slice(0, 3)
         .map((card) => `${card.propertyLabel} · ${card.tenantName} · ${formatEuro(card.total)}`);
 
@@ -1090,6 +1090,7 @@ export function SectionDashboard({
         details: lateDetails,
         target: "quittances",
         cta: "Voir les retards",
+        leaseId: lateCards.length === 1 ? lateCards[0].lease.id : undefined,
       });
     }
 
@@ -1103,6 +1104,7 @@ export function SectionDashboard({
           .map((card) => `${card.propertyLabel} · ${card.tenantName} · reste ${formatEuro(card.missingAmount || 0)}`),
         target: "quittances",
         cta: "Traiter le solde",
+        leaseId: incompletePayments.length === 1 ? incompletePayments[0].lease.id : undefined,
       });
     }
 
@@ -1121,6 +1123,7 @@ export function SectionDashboard({
         details: pendingDetails.length ? pendingDetails : ["Contrôlez les paiements du mois et marquez les loyers reçus."],
         target: "quittances",
         cta: "Confirmer les loyers",
+        leaseId: rentsToCollect.length === 1 ? rentsToCollect[0].lease.id : undefined,
       });
     }
 
@@ -1135,6 +1138,7 @@ export function SectionDashboard({
         details: missingReceiptDetails,
         target: "quittances",
         cta: "Gérer les quittances",
+        leaseId: missingReceiptCards.length === 1 ? missingReceiptCards[0].lease.id : undefined,
       });
     }
 
@@ -1149,6 +1153,7 @@ export function SectionDashboard({
           .map((card) => `${card.propertyLabel} · ${card.tenantName} · échéance ${card.watchDate ? fmtDate(toISODate(card.watchDate)) : "—"}`),
         target: "locataires",
         cta: "Voir les baux concernés",
+        leaseId: endingSoonCards.length === 1 ? endingSoonCards[0].lease.id : undefined,
       });
     }
 
@@ -1194,7 +1199,7 @@ export function SectionDashboard({
     // ── Inventaire LMNP non conforme ──────────────────────────────────────
     const lmnpInventoryIssues = lmnpInventoryCompliance
       .filter((d) => d.compliance < 100)
-      .map((d) => ({ label: d.label, compliance: d.compliance, missingCount: d.missingCount }));
+      .map((d) => ({ label: d.label, compliance: d.compliance, missingCount: d.missingCount, unitId: d.unitId }));
 
     if (lmnpInventoryIssues.length > 0) {
       const allEmpty = lmnpInventoryIssues.every((b) => b.compliance === 0 && b.missingCount === 0);
@@ -1217,6 +1222,7 @@ export function SectionDashboard({
         target: "inventaire",
         cta: "Vérifier l'inventaire",
         snoozable: true,
+        leaseId: lmnpInventoryIssues.length === 1 ? singleLeaseIdForProperty(lmnpInventoryIssues[0].unitId) : undefined,
       });
     }
 
@@ -1296,7 +1302,6 @@ export function SectionDashboard({
     lateCount,
     leaseCards,
     leaseIdsWithContract,
-    leases,
     loanRenegotiationOpportunities,
     monthlyExpected,
     onNavigateDeep,
@@ -1315,6 +1320,65 @@ export function SectionDashboard({
     remainingToCollect,
     tenantById,
   ]);
+
+  // Regroupe les alertes qui partagent le même leaseId sous une seule carte
+  // (en-tête bien/locataire + sous-lignes) au lieu de tuiles indépendantes
+  // sans lien apparent — deux alertes sur le même bail sont deux symptômes
+  // du même problème, pas deux problèmes différents.
+  const priorityActionGroups = useMemo(() => {
+    type Action = (typeof priorityActions)[number];
+    const groups: Array<{ key: string; leaseId?: string; label: string; sub: string; actions: Action[] }> = [];
+    const singles: Array<{ key: string; action: Action }> = [];
+    const byLease = new Map<string, Action[]>();
+
+    for (const action of priorityActions) {
+      if (!action.leaseId) continue;
+      const list = byLease.get(action.leaseId) || [];
+      list.push(action);
+      byLease.set(action.leaseId, list);
+    }
+
+    const groupedLeaseIds = new Set<string>();
+    for (const [leaseId, list] of byLease) {
+      if (list.length > 1) groupedLeaseIds.add(leaseId);
+    }
+
+    for (const action of priorityActions) {
+      const key = action.id || `${action.title}-${priorityActions.indexOf(action)}`;
+      if (action.leaseId && groupedLeaseIds.has(action.leaseId)) continue; // rendu via le groupe
+      singles.push({ key, action });
+    }
+
+    for (const leaseId of groupedLeaseIds) {
+      const list = byLease.get(leaseId) || [];
+      const card = leaseCards.find((c) => c.lease.id === leaseId);
+      groups.push({
+        key: `lease-group-${leaseId}`,
+        leaseId,
+        label: card ? `${card.propertyLabel} · ${card.tenantName}` : "Bail",
+        sub: `${list.length} points à traiter sur ce bail`,
+        actions: list,
+      });
+    }
+
+    // Ordre d'affichage : on suit l'ordre d'apparition d'origine, un groupe
+    // prenant la place de sa première alerte membre.
+    const order: Array<{ type: "single"; key: string; action: Action } | { type: "group"; key: string; group: (typeof groups)[number] }> = [];
+    const seenGroupKeys = new Set<string>();
+    for (const action of priorityActions) {
+      if (action.leaseId && groupedLeaseIds.has(action.leaseId)) {
+        const group = groups.find((g) => g.leaseId === action.leaseId)!;
+        if (!seenGroupKeys.has(group.key)) {
+          seenGroupKeys.add(group.key);
+          order.push({ type: "group", key: group.key, group });
+        }
+        continue;
+      }
+      const single = singles.find((s) => s.action === action)!;
+      order.push({ type: "single", key: single.key, action: single.action });
+    }
+    return order;
+  }, [priorityActions, leaseCards]);
 
   const healthDetails = useMemo(() => {
     const hasActiveLease = activeLeases.length > 0;
@@ -1373,6 +1437,76 @@ export function SectionDashboard({
 
   const toneFromPercent = (percent: number) =>
     (percent >= 100 ? "emerald" : percent >= 66 ? "indigo" : percent >= 33 ? "amber" : "slate");
+
+  const renderSnoozeMenu = (actionId: string, variant: "standalone" | "nested" = "standalone") => (
+    <div className="relative" data-alert-snooze-menu>
+      <button
+        type="button"
+        onClick={() => setOpenAlertMenuId(openAlertMenuId === actionId ? null : actionId)}
+        className={
+          "inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2.5 text-[0.68rem] font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 " +
+          (variant === "nested" ? "md:group-hover/row:opacity-100" : "md:group-hover:opacity-100")
+        }
+        aria-expanded={openAlertMenuId === actionId}
+      >
+        Masquer
+      </button>
+      {openAlertMenuId === actionId && (
+        <div className="absolute right-0 top-9 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
+          <div className="px-2 pb-2 pt-1">
+            <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
+          </div>
+          <div className="grid gap-1">
+            <button type="button" onClick={() => snoozePriorityAction(actionId, "tomorrow")}
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]">
+              <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" /> Me le rappeler demain
+            </button>
+            <button type="button" onClick={() => snoozePriorityAction(actionId, "forever")}
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700">
+              <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" /> Ignorer définitivement
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Ligne compacte utilisée pour une alerte affichée à l'intérieur d'une
+  // carte groupée (même bail que d'autres alertes) — reprend le même
+  // comportement (clic, CTA, masquer) qu'une carte autonome, en plus dense.
+  const renderNestedActionRow = (action: (typeof priorityActions)[number]) => {
+    const toneDot =
+      action.tone === "red" ? "bg-red-500" : action.tone === "amber" ? "bg-amber-500" : action.tone === "indigo" ? "bg-[#635bff]" : "bg-emerald-500";
+    return (
+      <div key={action.id || action.title} className="group/row relative flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }}
+          disabled={!action.target && !action.onClick}
+          className={"flex min-w-0 flex-1 items-start gap-2.5 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}
+        >
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${toneDot}`} />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-slate-900">{action.title}</span>
+            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{action.desc}</span>
+          </span>
+        </button>
+        <div className="flex shrink-0 items-center gap-2 pl-4 sm:pl-0">
+          {action.cta ? (
+            <button
+              type="button"
+              onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }}
+              className="shrink-0 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {action.cta}
+            </button>
+          ) : null}
+          {action.snoozable !== false && action.id ? renderSnoozeMenu(action.id, "nested") : null}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -1768,73 +1902,77 @@ export function SectionDashboard({
       )}
 
       {/* ── Alertes (déplacées juste au-dessus de la météo : c'est le cœur du cockpit) ── */}
-      {priorityActions.length > 0 && (
+      {priorityActionGroups.length > 0 && (
         <div className="space-y-2">
-          {priorityActions.map((action, index) => (
-            <div
-              key={`${action.title}-${index}`}
-              className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
-            >
-              <button type="button" onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }} disabled={!action.target && !action.onClick}
-                className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}>
-                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className={
-                      "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
-                      (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
-                    }>!</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-300" />
-                        <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
+          {priorityActionGroups.map((entry) => {
+            if (entry.type === "group") {
+              const { group } = entry;
+              return (
+                <div key={entry.key} className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => group.leaseId && onNavigateDeep?.("baux", { leaseId: group.leaseId })}
+                    className="flex w-full flex-col gap-2 border-b border-red-100 bg-red-50/60 px-4 py-3 text-left sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700">!</span>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{group.label}</p>
+                        <p className="text-xs text-red-700">{group.sub}</p>
                       </div>
-                      <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
-                      {action.details?.length ? (
-                        <ul className="mt-1.5 space-y-0.5">
-                          {action.details.map((d, i) => (
-                            <li key={i} className="break-words text-xs font-semibold text-slate-500">{d}</li>
-                          ))}
-                        </ul>
-                      ) : null}
                     </div>
+                    <span className="shrink-0 rounded-full border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-700">Ouvrir ce bail →</span>
+                  </button>
+                  <div className="divide-y divide-slate-100">
+                    {group.actions.map((action) => renderNestedActionRow(action))}
                   </div>
-                  {action.cta ? (
-                    <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">{action.cta}</span>
-                  ) : null}
                 </div>
-              </button>
-              {action.snoozable !== false && action.id ? (
-                <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
-                  <div className="relative" data-alert-snooze-menu>
-                    <button type="button" onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
-                      className="inline-flex min-h-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 md:group-hover:opacity-100"
-                      aria-expanded={openAlertMenuId === action.id}>
-                      Masquer
-                    </button>
-                    {openAlertMenuId === action.id && (
-                      <div className="absolute right-0 top-10 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
-                        <div className="px-2 pb-2 pt-1">
-                          <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
-                          <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
+              );
+            }
+
+            const { action } = entry;
+            return (
+              <div
+                key={entry.key}
+                className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
+              >
+                <button type="button" onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }} disabled={!action.target && !action.onClick}
+                  className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}>
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className={
+                        "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
+                        (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
+                      }>!</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
+                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
                         </div>
-                        <div className="grid gap-1">
-                          <button type="button" onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]">
-                            <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" /> Me le rappeler demain
-                          </button>
-                          <button type="button" onClick={() => snoozePriorityAction(action.id!, "forever")}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700">
-                            <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" /> Ignorer définitivement
-                          </button>
-                        </div>
+                        <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
+                        {action.details?.length ? (
+                          <ul className="mt-1.5 space-y-0.5">
+                            {action.details.map((d, i) => (
+                              <li key={i} className="break-words text-xs font-semibold text-slate-500">{d}</li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
-                    )}
+                    </div>
+                    {action.cta ? (
+                      <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">{action.cta}</span>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
-            </div>
-          ))}
+                </button>
+                {action.snoozable !== false && action.id ? (
+                  <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
+                    {renderSnoozeMenu(action.id)}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       )}
 
