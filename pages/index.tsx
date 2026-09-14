@@ -1,6 +1,6 @@
 // pages/index.tsx
 import Head from "next/head";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -10,6 +10,20 @@ import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import { PAID_BILLING_PLANS } from "../lib/billingPlans";
+import {
+  CheckCircleIcon,
+  BellAlertIcon,
+  DocumentTextIcon,
+  ChartBarIcon,
+  DocumentPlusIcon,
+  UserPlusIcon,
+  HomeModernIcon,
+  ArrowPathIcon,
+  ArrowUpTrayIcon,
+  SparklesIcon,
+  LinkIcon,
+  ArchiveBoxIcon,
+} from "@heroicons/react/24/outline";
 
 // Même taux que celui déjà cité dans le texte de /gestion-locative-lmnp
 // ("une agence facture en moyenne 7 à 8 % de frais de gestion courante") —
@@ -20,12 +34,27 @@ const AGENCY_COMMISSION_RATE = 0.075;
 // prix ("Module en préparation"), donc pas de calcul d'économie possible.
 const SAVINGS_PLAN_CHOICES = PAID_BILLING_PLANS.filter((p) => p.id === "landlord_5" || p.id === "landlord_15");
 
+// Mot-clé mis en avant dans un titre de démo Loky : violet en dégradé +
+// taille supérieure au reste du titre, plutôt qu'un bloc de texte uniforme
+// — même logique que "Loky" en dégradé dans le H2 juste au-dessus, adaptée
+// à un fond clair (dégradé plus saturé pour rester lisible sur blanc).
+function LokyTitleKeyword({ children }: { children: ReactNode }) {
+  return (
+    <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-2xl font-bold text-transparent sm:text-3xl">
+      {children}
+    </span>
+  );
+}
+
 type LokyDemo = {
   id: string;
   tab: string;
-  title: string;
+  title: ReactNode;
   description: string;
   speedNote: string;
+  // Autres capacités du même registre — pas juste l'exemple montré à droite,
+  // pour donner une vraie idée de l'étendue plutôt qu'un seul cas isolé.
+  capabilities: { icon: ComponentType<SVGProps<SVGSVGElement>>; text: string }[];
   userMessage: string;
   lokyIntro: string;
   dataLines: string[];
@@ -41,9 +70,15 @@ const LOKY_DEMOS: LokyDemo[] = [
   {
     id: "relance",
     tab: "Confirmer un paiement",
-    title: "Vérifiez vos loyers en une question",
+    title: <>Vérifiez vos <LokyTitleKeyword>loyers</LokyTitleKeyword> en une question</>,
     description: "Plus besoin d'ouvrir chaque bail un par un pour croiser les paiements reçus. Loky retrouve l'état de tous vos loyers du mois et propose la relance si besoin.",
     speedNote: "Ce qui prenait 5 à 10 minutes de vérification manuelle tient en une phrase et une confirmation.",
+    capabilities: [
+      { icon: CheckCircleIcon, text: "Confirmer un paiement reçu" },
+      { icon: BellAlertIcon, text: "Relancer un locataire en retard" },
+      { icon: DocumentTextIcon, text: "Générer et envoyer une quittance" },
+      { icon: ChartBarIcon, text: "Faire le point sur tous les loyers du mois" },
+    ],
     userMessage: "Ai-je bien reçu tous mes loyers ce mois-ci ?",
     lokyIntro: "Presque : 2 loyers sur 3 sont confirmés.",
     dataLines: [
@@ -58,9 +93,15 @@ const LOKY_DEMOS: LokyDemo[] = [
   {
     id: "bail",
     tab: "Créer un bail",
-    title: "Un bail créé en une phrase, pas un formulaire",
+    title: <>Un <LokyTitleKeyword>bail</LokyTitleKeyword> créé en une phrase, pas un formulaire</>,
     description: "Décrivez le bail en langage naturel — Loky retrouve le bien et le locataire déjà dans votre compte, prépare les champs et attend votre accord avant d'enregistrer quoi que ce soit.",
     speedNote: "Aucun champ à remplir un par un : une phrase suffit, la validation finale reste entièrement entre vos mains.",
+    capabilities: [
+      { icon: DocumentPlusIcon, text: "Créer un bail (nu, meublé, mobilité, étudiant)" },
+      { icon: UserPlusIcon, text: "Créer ou rattacher un locataire" },
+      { icon: HomeModernIcon, text: "Créer une fiche bien" },
+      { icon: ArrowPathIcon, text: "Générer un congé ou un avenant" },
+    ],
     userMessage: "Crée un bail meublé pour Julien Morel sur le studio Bellevue, 650 € à partir du 1er septembre",
     lokyIntro: "Je crée le bail meublé pour Julien Morel.",
     dataLines: ["🏠 Studio Bellevue · Julien Morel", "📅 Début 01/09/2026 · 650 €/mois · meublé"],
@@ -70,9 +111,15 @@ const LOKY_DEMOS: LokyDemo[] = [
   {
     id: "import",
     tab: "Importer un document",
-    title: "Un bail existant, numérisé en 2 minutes",
+    title: <>Un bail existant, <LokyTitleKeyword>numérisé</LokyTitleKeyword> en 2 minutes</>,
     description: "Envoyez le PDF d'un bail déjà signé — Loky en extrait automatiquement le locataire, le loyer et les dates, puis propose de le rattacher au bon bien de votre compte.",
     speedNote: "Fini la ressaisie manuelle d'un contrat de plusieurs pages : extraction et rattachement se font en un échange.",
+    capabilities: [
+      { icon: ArrowUpTrayIcon, text: "Importer un bail PDF déjà signé" },
+      { icon: SparklesIcon, text: "Extraire automatiquement les données" },
+      { icon: LinkIcon, text: "Rattacher au bon bien et au bon locataire" },
+      { icon: ArchiveBoxIcon, text: "Archiver dans le dossier du bail" },
+    ],
     userMessage: "📎 bail_signe_dupond.pdf",
     lokyIntro: "J'ai extrait les infos du bail.",
     dataLines: ["🏠 Appartement B · Mme Dupond", "📅 01/07/2026 · 850 €/mois · nu"],
@@ -978,12 +1025,21 @@ export default function Home() {
               zoom sur l'onglet actif. Le panneau change de contenu avec une
               transition qui glisse depuis la gauche ou la droite selon le
               sens du changement (pas un simple fondu). */}
-          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 max-w-5xl">
-            <div className="relative mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-1 rounded-[1.5rem] bg-white/5 p-1.5 ring-1 ring-white/10">
+          {/* Un seul module Loky, bien délimité — coque claire (blanc +
+              couleurs de marque du site) qui tranche encore plus nettement
+              sur le dégradé sombre du hero qu'une coque noire, tout en
+              gardant la fenêtre de chat sombre à l'intérieur pour l'effet
+              "vrai écran d'app" en contraste. */}
+          <div
+            data-scroll-reveal
+            data-reveal-delay="400"
+            className="relative mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2rem] border border-white/20 bg-white shadow-2xl shadow-black/40"
+          >
+            <div className="relative flex flex-wrap items-center justify-center gap-1 border-b border-slate-100 bg-slate-50 p-3">
               {lokyIndicator && (
                 <span
                   aria-hidden
-                  className="absolute rounded-full bg-white shadow-lg shadow-black/20 transition-all duration-300 ease-out"
+                  className="absolute rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 shadow-lg shadow-indigo-500/30 transition-all duration-300 ease-out"
                   style={{ left: lokyIndicator.left, top: lokyIndicator.top, width: lokyIndicator.width, height: lokyIndicator.height }}
                 />
               )}
@@ -995,7 +1051,7 @@ export default function Home() {
                   onClick={() => selectLokyDemo(i)}
                   className={
                     "relative z-10 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-300 sm:text-sm " +
-                    (activeLokyDemo === i ? "scale-110 text-[#3f37c9]" : "scale-100 text-white/70 hover:text-white")
+                    (activeLokyDemo === i ? "scale-110 text-white" : "scale-100 text-slate-500 hover:text-slate-900")
                   }
                 >
                   {demo.tab}
@@ -1009,26 +1065,39 @@ export default function Home() {
                 <div
                   key={demo.id}
                   className={
-                    "mt-8 grid gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/50 backdrop-blur sm:p-9 lg:grid-cols-[0.95fr,1.05fr] lg:items-center " +
+                    "grid gap-6 p-6 sm:p-9 lg:grid-cols-[0.95fr,1.05fr] lg:items-center " +
                     (lokyDemoDirection === "right" ? "lokt-demo-slide-right" : "lokt-demo-slide-left")
                   }
                 >
                   {/* Explication du cas d'usage */}
                   <div className="text-left">
-                    <h3 className="text-xl font-semibold text-white sm:text-2xl">{demo.title}</h3>
-                    <p className="mt-3 text-sm leading-6 text-white/70">{demo.description}</p>
-                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3">
-                      <span className="mt-0.5 text-cyan-300">⚡</span>
-                      <p className="text-xs leading-5 text-cyan-100">{demo.speedNote}</p>
+                    <h3 className="text-xl font-semibold text-slate-950 sm:text-2xl">{demo.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{demo.description}</p>
+                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                      <span className="mt-0.5 text-[#635bff]">⚡</span>
+                      <p className="text-xs leading-5 text-indigo-900">{demo.speedNote}</p>
                     </div>
+
+                    {/* Autres capacités du même registre — vend l'étendue,
+                        pas seulement l'exemple montré dans la fenêtre. */}
+                    <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                      {demo.capabilities.map(({ icon: Icon, text }) => (
+                        <li key={text} className="flex items-center gap-2 text-xs text-slate-600">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#635bff]">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          {text}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   {/* Mockup de conversation — cadré comme une vraie fenêtre
-                      d'app (barre de titre + pastilles), pour se détacher
-                      nettement du texte d'explication à gauche plutôt que de
-                      flotter sur le même fond que lui. */}
-                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b0718]/80 shadow-xl shadow-black/40">
-                    <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+                      d'app sombre (barre de titre + pastilles), qui reste
+                      volontairement sombre même dans la coque claire : effet
+                      "vrai écran d'app" en contraste avec le texte autour. */}
+                  <div className="overflow-hidden rounded-2xl bg-[#211a45] shadow-xl shadow-black/30">
+                    <div className="flex items-center gap-2 border-b border-white/10 bg-black/20 px-4 py-3">
                       <div className="flex gap-1.5">
                         <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
                         <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
