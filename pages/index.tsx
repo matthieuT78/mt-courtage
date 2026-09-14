@@ -4,10 +4,21 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import TrustpilotStars from "../components/TrustpilotStars";
 import ReviewsSection from "../components/ReviewsSection";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 import { useScrollReveal } from "../hooks/useScrollReveal";
+import { PAID_BILLING_PLANS } from "../lib/billingPlans";
+
+// Même taux que celui déjà cité dans le texte de /gestion-locative-lmnp
+// ("une agence facture en moyenne 7 à 8 % de frais de gestion courante") —
+// 7,5 % est le point médian, gardé ici comme seule source pour ce calcul
+// plutôt que dupliqué en dur dans chaque endroit qui en a besoin.
+const AGENCY_COMMISSION_RATE = 0.075;
+// lokt·one et lokt·plus seulement — le plan Pro/agence n'a pas encore de
+// prix ("Module en préparation"), donc pas de calcul d'économie possible.
+const SAVINGS_PLAN_CHOICES = PAID_BILLING_PLANS.filter((p) => p.id === "landlord_5" || p.id === "landlord_15");
 
 type SimpleUser = {
   email?: string;
@@ -425,6 +436,13 @@ function ToolPickerModal({ open, onClose }: { open: boolean; onClose: () => void
 export default function Home() {
   const [user, setUser] = useState<SimpleUser | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [savingsRent, setSavingsRent] = useState(800);
+  const [savingsPlanId, setSavingsPlanId] = useState(SAVINGS_PLAN_CHOICES[0].id);
+  const savingsPlan = SAVINGS_PLAN_CHOICES.find((p) => p.id === savingsPlanId) ?? SAVINGS_PLAN_CHOICES[0];
+  const savingsAmount = Math.max(
+    0,
+    Math.round(savingsRent * 12 * AGENCY_COMMISSION_RATE - (savingsPlan.yearlyPrice ?? 0))
+  );
 
   // Si un lien d'invitation locataire atterrit ici par erreur (mauvaise config Supabase redirect),
   // le renvoyer vers la bonne page avant que le token soit perdu
@@ -670,16 +688,24 @@ export default function Home() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="lokt-public-hero relative overflow-hidden bg-[#07040f] px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
-          {/* Conic gradient rotatif */}
-          <div aria-hidden className="lokt-hero-spin" />
-          {/* Le glow est animé (rotation 20s en boucle) : sans ce fondu, la couleur visible
-              en bas du hero varie selon l'instant du chargement — parfois vive, parfois sur
-              un secteur sombre qui ressort comme une bande plate. Ce fondu masque toujours
-              vers #0b0718 (couleur de base de la section Loky qui suit), donc le raccord
-              reste garanti quelle que soit la phase de l'animation, sans virer au noir pur. */}
-          <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-b from-transparent to-[#0b0718]" />
+        {/* Hero + section Loky partagent UN SEUL calque de dégradé (ci-dessous),
+            posé sur ce wrapper commun plutôt que dupliqué dans chacune des deux
+            <section>. Deux calques indépendants, même bien réglés chacun de son
+            côté, laissent toujours une frontière mathématique exactement là où
+            une section finit et où l'autre commence (chacun est borné par son
+            propre inset-0). Un seul calque continu, dimensionné sur la hauteur
+            combinée des deux sections, élimine cette couture par construction. */}
+        <div className="relative overflow-hidden bg-[#07040f]">
+          <div
+            aria-hidden
+            className="lokt-hero-glow pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(70% 60% at 12% 8%, rgba(99,91,255,0.8), transparent 68%), radial-gradient(65% 55% at 60% 5%, rgba(0,188,232,0.65), transparent 70%), radial-gradient(70% 60% at 82% 38%, rgba(0,229,168,0.6), transparent 70%), radial-gradient(60% 55% at 22% 58%, rgba(124,58,237,0.5), transparent 72%), radial-gradient(65% 55% at 65% 82%, rgba(79,70,229,0.45), transparent 72%)",
+            }}
+          />
 
+        <section className="lokt-public-hero relative px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-7xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.88fr,1.12fr] lg:items-center">
               <div>
@@ -722,16 +748,31 @@ export default function Home() {
                     Gratuit pour 1 logement, sans limite de durée.
                   </p>
                 )}
+
+                <a
+                  href="https://fr.trustpilot.com/review/lokt.fr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="anim-fadeUp d-3 mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-xs font-medium text-white/90 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/15"
+                >
+                  <TrustpilotStars rating={4.3} size={15} />
+                  <span className="font-semibold text-white">4,3</span>
+                  <span className="text-white/70">sur Trustpilot</span>
+                </a>
               </div>
 
               <div className="anim-fadeUp d-4">
-                <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-black/30 sm:rounded-[2rem] ring-1 ring-white/10">
+                <div className="relative">
+                  {/* Image au fond transparent (mockups laptop/téléphone détourés,
+                      cf. public/index2.png) : pas de carte blanche autour, le
+                      drop-shadow suit le contour réel des appareils plutôt que le
+                      rectangle de l'image. */}
                   <img
-                    src="/cockpit-bailleur-lokt-v2.webp"
+                    src="/cockpit-bailleur-lokt-v3.webp"
                     alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
-                    width={1400}
-                    height={933}
-                    className="w-full h-auto block"
+                    width={1536}
+                    height={1024}
+                    className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(0,0,0,0.45)]"
                     loading="eager"
                   />
                 </div>
@@ -740,22 +781,54 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ─── ÉCONOMIES VS AGENCE — bandeau discret ─────────────────── */}
+        <div className="relative px-4">
+          <div className="anim-fadeUp d-5 mx-auto flex max-w-3xl flex-col items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-3 text-center backdrop-blur sm:flex-row sm:gap-4 sm:rounded-[1.5rem] sm:px-5 sm:text-left">
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              <span className="hidden font-medium sm:inline">Loyer</span>
+              <input
+                id="savings-rent"
+                type="range"
+                min={300}
+                max={3000}
+                step={10}
+                value={savingsRent}
+                onChange={(e) => setSavingsRent(Number(e.target.value))}
+                className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-white/20 accent-[#00d4ff] sm:w-28"
+                aria-label="Loyer mensuel"
+              />
+              <span className="w-14 shrink-0 font-semibold text-white">{savingsRent} €</span>
+            </div>
+
+            <div className="flex items-center gap-1 rounded-full bg-white/10 p-1 text-[0.7rem]">
+              {SAVINGS_PLAN_CHOICES.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setSavingsPlanId(plan.id)}
+                  className={
+                    "rounded-full px-2.5 py-1 font-semibold transition " +
+                    (savingsPlanId === plan.id ? "bg-white text-[#3f37c9]" : "text-white/70 hover:text-white")
+                  }
+                >
+                  {plan.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-baseline gap-1.5 text-sm">
+              <span className="text-white/60">économie estimée</span>
+              <span className="font-bold text-emerald-300">{savingsAmount.toLocaleString("fr-FR")} € / an</span>
+            </div>
+
+            <Link href="/tarifs" className="text-xs font-semibold text-white underline underline-offset-4 hover:text-cyan-200">
+              Voir les offres →
+            </Link>
+          </div>
+        </div>
+
         {/* ─── LOKY — SOUS LES PROJECTEURS ────────────────────────────── */}
-        <section className="relative overflow-hidden bg-[#0b0718] px-4 py-16 sm:py-24">
-          {/* Dégradé radial statique (pas animé) ancré vers le bas/milieu : le
-              haut de la section reste sur la couleur de base #0b0718, identique
-              au fondu qui termine le hero juste au-dessus, donc pas de raccord
-              visible entre les deux — contrairement à deux glows animés
-              indépendamment, qui ne peuvent pas garantir la même couleur à la
-              jonction à tout instant. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(65% 75% at 28% 45%, rgba(99,91,255,0.6), transparent 72%), radial-gradient(60% 65% at 78% 85%, rgba(0,229,168,0.5), transparent 72%), radial-gradient(55% 60% at 55% 40%, rgba(0,188,232,0.4), transparent 72%)",
-            }}
-          />
+        <section className="relative px-4 py-16 sm:py-24">
           <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-white" />
 
           <div className="relative mx-auto max-w-5xl text-center">
@@ -912,6 +985,7 @@ export default function Home() {
             ))}
           </div>
         </section>
+        </div>
 
         {/* ─── DEUX PRODUITS ───────────────────────────────────────── */}
         <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-24">
