@@ -15,14 +15,14 @@ import {
   BellAlertIcon,
   DocumentTextIcon,
   ChartBarIcon,
-  DocumentPlusIcon,
-  UserPlusIcon,
-  HomeModernIcon,
-  ArrowPathIcon,
   ArrowUpTrayIcon,
   SparklesIcon,
   LinkIcon,
   ArchiveBoxIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ChatBubbleLeftRightIcon,
+  CheckBadgeIcon,
 } from "@heroicons/react/24/outline";
 
 // Même taux que celui déjà cité dans le texte de /gestion-locative-lmnp
@@ -68,6 +68,30 @@ type LokyDemo = {
 // (titre, cas d'usage, gain de rapidité), pas juste un mockup agrandi.
 const LOKY_DEMOS: LokyDemo[] = [
   {
+    id: "import",
+    tab: "Importer un document",
+    title: <>Un bail existant, <LokyTitleKeyword>numérisé</LokyTitleKeyword> en 2 minutes</>,
+    description: "Envoyez le PDF d'un bail déjà signé — Loky en extrait automatiquement le locataire, le loyer, les charges et les dates, puis propose de le rattacher au bon bien de votre compte.",
+    speedNote: "Fini la ressaisie manuelle d'un contrat de plusieurs pages : extraction et rattachement se font en un échange.",
+    capabilities: [
+      { icon: ArrowUpTrayIcon, text: "Importer un bail PDF déjà signé" },
+      { icon: SparklesIcon, text: "Extraire automatiquement les données" },
+      { icon: LinkIcon, text: "Rattacher au bon bien et au bon locataire" },
+      { icon: ArchiveBoxIcon, text: "Archiver dans le dossier du bail" },
+    ],
+    userMessage: "📎 bail_signe_dupond.pdf",
+    lokyIntro: "J'ai extrait les infos du bail.",
+    dataLines: [
+      "🏠 Appartement B · Mme Dupond",
+      "📅 Début 01/07/2026 · meublé, régime LMNP",
+      "💶 850 €/mois + 60 € de charges",
+      "🗓️ Paiement prélevé le 1er du mois",
+    ],
+    lokyFollowup: "Je le rattache à ce bien et à cette locataire, déjà dans votre compte ?",
+    userConfirm: "Oui, confirme",
+    resultBadge: "✓ Bail importé et rattaché — Appartement B",
+  },
+  {
     id: "relance",
     tab: "Confirmer un paiement",
     title: <>Vérifiez vos <LokyTitleKeyword>loyers</LokyTitleKeyword> en une question</>,
@@ -91,41 +115,27 @@ const LOKY_DEMOS: LokyDemo[] = [
     resultBadge: "✓ Relance envoyée à Dupond — email",
   },
   {
-    id: "bail",
-    tab: "Créer un bail",
-    title: <>Un <LokyTitleKeyword>bail</LokyTitleKeyword> créé en une phrase, pas un formulaire</>,
-    description: "Décrivez le bail en langage naturel — Loky retrouve le bien et le locataire déjà dans votre compte, prépare les champs et attend votre accord avant d'enregistrer quoi que ce soit.",
-    speedNote: "Aucun champ à remplir un par un : une phrase suffit, la validation finale reste entièrement entre vos mains.",
+    id: "candidature",
+    tab: "Choisir un locataire",
+    title: <>Le <LokyTitleKeyword>meilleur dossier</LokyTitleKeyword>, en un coup d'œil</>,
+    description: "Loky compare les candidatures reçues sur votre annonce — revenus, garant, pièces fournies — et vous indique le dossier le plus solide, sans ouvrir chaque PDF un par un.",
+    speedNote: "Ce qui demandait de rouvrir chaque dossier pour comparer devient une réponse immédiate, argumentée.",
     capabilities: [
-      { icon: DocumentPlusIcon, text: "Créer un bail (nu, meublé, mobilité, étudiant)" },
-      { icon: UserPlusIcon, text: "Créer ou rattacher un locataire" },
-      { icon: HomeModernIcon, text: "Créer une fiche bien" },
-      { icon: ArrowPathIcon, text: "Générer un congé ou un avenant" },
+      { icon: UserGroupIcon, text: "Comparer plusieurs dossiers reçus" },
+      { icon: ShieldCheckIcon, text: "Vérifier revenus et garant" },
+      { icon: ChatBubbleLeftRightIcon, text: "Relancer un candidat pour une pièce manquante" },
+      { icon: CheckBadgeIcon, text: "Sélectionner et prévenir le candidat retenu" },
     ],
-    userMessage: "Crée un bail meublé pour Julien Morel sur le studio Bellevue, 650 € à partir du 1er septembre",
-    lokyIntro: "Je crée le bail meublé pour Julien Morel.",
-    dataLines: ["🏠 Studio Bellevue · Julien Morel", "📅 Début 01/09/2026 · 650 €/mois · meublé"],
-    userConfirm: "Confirmer",
-    resultBadge: "✓ Bail créé — Studio Bellevue / Julien Morel",
-  },
-  {
-    id: "import",
-    tab: "Importer un document",
-    title: <>Un bail existant, <LokyTitleKeyword>numérisé</LokyTitleKeyword> en 2 minutes</>,
-    description: "Envoyez le PDF d'un bail déjà signé — Loky en extrait automatiquement le locataire, le loyer et les dates, puis propose de le rattacher au bon bien de votre compte.",
-    speedNote: "Fini la ressaisie manuelle d'un contrat de plusieurs pages : extraction et rattachement se font en un échange.",
-    capabilities: [
-      { icon: ArrowUpTrayIcon, text: "Importer un bail PDF déjà signé" },
-      { icon: SparklesIcon, text: "Extraire automatiquement les données" },
-      { icon: LinkIcon, text: "Rattacher au bon bien et au bon locataire" },
-      { icon: ArchiveBoxIcon, text: "Archiver dans le dossier du bail" },
+    userMessage: "Quel est le meilleur dossier pour le T2 Bellevue ?",
+    lokyIntro: "J'ai comparé les 3 candidatures reçues.",
+    dataLines: [
+      "🥇 Camille Roux · 2 850 €/mois · CDI, garant Visale",
+      "🥈 Karim Haddad · 2 100 €/mois · CDI, sans garant",
+      "⛔ Léa Dubreuil · 1 400 €/mois · dossier incomplet",
     ],
-    userMessage: "📎 bail_signe_dupond.pdf",
-    lokyIntro: "J'ai extrait les infos du bail.",
-    dataLines: ["🏠 Appartement B · Mme Dupond", "📅 01/07/2026 · 850 €/mois · nu"],
-    lokyFollowup: "Je le rattache à ce bien et à cette locataire, déjà dans votre compte ?",
-    userConfirm: "Oui, confirme",
-    resultBadge: "✓ Bail importé et rattaché — Appartement B",
+    lokyFollowup: "Camille Roux a le dossier le plus solide (revenus × 3,2 le loyer). Je la contacte ?",
+    userConfirm: "Oui, préviens-la",
+    resultBadge: "✓ Candidate retenue — Camille Roux contactée",
   },
 ];
 
@@ -874,11 +884,11 @@ export default function Home() {
                 <h1 className="anim-fadeUp d-1 mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.96] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   {isLoggedIn && displayName
                     ? `Bonjour ${displayName}. Votre gestion vous attend.`
-                    : "Gestion locative gratuite et simulateurs immobiliers."}
+                    : "Le seul outil qui gère toute la vie d'une location, piloté par IA."}
                 </h1>
 
                 <p className="anim-fadeUp d-2 mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
-                  lokt.fr aide les propriétaires à estimer un achat immobilier, suivre leurs loyers, produire les quittances et garder une gestion claire au même endroit.
+                  De la candidature à la sortie des lieux, lokt relie chaque étape de la location — et laisse Loky, l'assistant IA, exécuter les tâches répétitives sur votre confirmation.
                 </p>
 
                 <div className="anim-fadeUp d-3 mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap sm:items-center">
