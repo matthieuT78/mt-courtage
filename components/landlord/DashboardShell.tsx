@@ -1019,16 +1019,26 @@ export function DashboardShell(props: any) {
       {/* ── Modal contact (desktop + mobile) ─────────────────── */}
       <ContactChat open={contactOpen} onClose={() => setContactOpen(false)} />
 
-      {/* ── Loky — bouton flottant, visible sur toutes les sections ── */}
+      {/* ── Loky — bouton flottant, visible sur toutes les sections ──
+          Sur desktop (lg:), au survol : le bouton s'élargit vers la gauche
+          (padding + max-width du label animés), donnant l'impression que
+          l'icône — toujours ancrée à droite — glisse vers la gauche pour
+          laisser apparaître "Discutez avec Loky". Comportement inchangé sur
+          mobile (le label reste hidden, pas de vrai hover tactile fiable). */}
       {!assistantOpen && (
         <button
           type="button"
           onClick={() => setAssistantOpen(true)}
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-4 z-40 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 shadow-[0_18px_40px_rgba(79,70,229,0.35)] transition hover:opacity-95 lg:bottom-6 lg:right-6"
+          className="group fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] right-4 z-40 flex h-14 items-center overflow-hidden rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 shadow-[0_18px_40px_rgba(79,70,229,0.35)] transition-all duration-300 hover:opacity-95 lg:bottom-6 lg:right-6 lg:hover:pl-5"
           aria-label="Ouvrir Loky"
           title="Loky"
         >
-          <img src="/loky-avatar.png" alt="Loky" className="h-full w-full object-cover" />
+          <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold text-white opacity-0 transition-all duration-300 lg:inline-block lg:group-hover:mr-3 lg:group-hover:max-w-[11rem] lg:group-hover:opacity-100">
+            Discutez avec Loky
+          </span>
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <img src="/loky-avatar.png" alt="Loky" className="h-full w-full object-cover" />
+          </span>
         </button>
       )}
       <AssistantChat
