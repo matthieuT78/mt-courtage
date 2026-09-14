@@ -1,6 +1,6 @@
 // pages/index.tsx
 import Head from "next/head";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -19,6 +19,68 @@ const AGENCY_COMMISSION_RATE = 0.075;
 // lokt·one et lokt·plus seulement — le plan Pro/agence n'a pas encore de
 // prix ("Module en préparation"), donc pas de calcul d'économie possible.
 const SAVINGS_PLAN_CHOICES = PAID_BILLING_PLANS.filter((p) => p.id === "landlord_5" || p.id === "landlord_15");
+
+type LokyDemo = {
+  id: string;
+  tab: string;
+  title: string;
+  description: string;
+  speedNote: string;
+  userMessage: string;
+  lokyIntro: string;
+  dataLines: string[];
+  lokyFollowup?: string;
+  userConfirm: string;
+  resultBadge: string;
+};
+
+// Un seul mockup affiché à la fois (onglets), plutôt que 3 cartes statiques
+// côte à côte — chaque exemple a désormais du texte d'explication à côté
+// (titre, cas d'usage, gain de rapidité), pas juste un mockup agrandi.
+const LOKY_DEMOS: LokyDemo[] = [
+  {
+    id: "relance",
+    tab: "Confirmer un paiement",
+    title: "Vérifiez vos loyers en une question",
+    description: "Plus besoin d'ouvrir chaque bail un par un pour croiser les paiements reçus. Loky retrouve l'état de tous vos loyers du mois et propose la relance si besoin.",
+    speedNote: "Ce qui prenait 5 à 10 minutes de vérification manuelle tient en une phrase et une confirmation.",
+    userMessage: "Ai-je bien reçu tous mes loyers ce mois-ci ?",
+    lokyIntro: "Presque : 2 loyers sur 3 sont confirmés.",
+    dataLines: [
+      "✅ Studio Centre · Marie Petit · 650 € reçu",
+      "✅ T2 Bellevue · Ahmed Benali · 780 € reçu",
+      "⚠️ Appartement B · Dupond · 720 € en attente",
+    ],
+    lokyFollowup: "Souhaitez-vous que je relance M. Dupond ?",
+    userConfirm: "Oui, relance-le",
+    resultBadge: "✓ Relance envoyée à Dupond — email",
+  },
+  {
+    id: "bail",
+    tab: "Créer un bail",
+    title: "Un bail créé en une phrase, pas un formulaire",
+    description: "Décrivez le bail en langage naturel — Loky retrouve le bien et le locataire déjà dans votre compte, prépare les champs et attend votre accord avant d'enregistrer quoi que ce soit.",
+    speedNote: "Aucun champ à remplir un par un : une phrase suffit, la validation finale reste entièrement entre vos mains.",
+    userMessage: "Crée un bail meublé pour Julien Morel sur le studio Bellevue, 650 € à partir du 1er septembre",
+    lokyIntro: "Je crée le bail meublé pour Julien Morel.",
+    dataLines: ["🏠 Studio Bellevue · Julien Morel", "📅 Début 01/09/2026 · 650 €/mois · meublé"],
+    userConfirm: "Confirmer",
+    resultBadge: "✓ Bail créé — Studio Bellevue / Julien Morel",
+  },
+  {
+    id: "import",
+    tab: "Importer un document",
+    title: "Un bail existant, numérisé en 2 minutes",
+    description: "Envoyez le PDF d'un bail déjà signé — Loky en extrait automatiquement le locataire, le loyer et les dates, puis propose de le rattacher au bon bien de votre compte.",
+    speedNote: "Fini la ressaisie manuelle d'un contrat de plusieurs pages : extraction et rattachement se font en un échange.",
+    userMessage: "📎 bail_signe_dupond.pdf",
+    lokyIntro: "J'ai extrait les infos du bail.",
+    dataLines: ["🏠 Appartement B · Mme Dupond", "📅 01/07/2026 · 850 €/mois · nu"],
+    lokyFollowup: "Je le rattache à ce bien et à cette locataire, déjà dans votre compte ?",
+    userConfirm: "Oui, confirme",
+    resultBadge: "✓ Bail importé et rattaché — Appartement B",
+  },
+];
 
 type SimpleUser = {
   email?: string;
@@ -438,6 +500,29 @@ export default function Home() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingsRent, setSavingsRent] = useState(800);
   const [savingsPlanId, setSavingsPlanId] = useState(SAVINGS_PLAN_CHOICES[0].id);
+  const [activeLokyDemo, setActiveLokyDemo] = useState(0);
+  const [lokyDemoDirection, setLokyDemoDirection] = useState<"left" | "right">("right");
+  const lokyTabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [lokyIndicator, setLokyIndicator] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+
+  function selectLokyDemo(i: number) {
+    setLokyDemoDirection(i > activeLokyDemo ? "right" : "left");
+    setActiveLokyDemo(i);
+  }
+
+  useEffect(() => {
+    // offsetTop/offsetHeight (pas juste left/width) : les onglets passent en
+    // 2 lignes sur mobile (flex-wrap), l'indicateur doit suivre verticalement
+    // aussi, sinon il reste plaqué en haut sur la largeur du premier onglet.
+    function measure() {
+      const el = lokyTabRefs.current[activeLokyDemo];
+      if (el) setLokyIndicator({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [activeLokyDemo]);
+
   const savingsPlan = SAVINGS_PLAN_CHOICES.find((p) => p.id === savingsPlanId) ?? SAVINGS_PLAN_CHOICES[0];
   const savingsAmount = Math.max(
     0,
@@ -658,6 +743,31 @@ export default function Home() {
             will-change: transform, opacity;
           }
 
+          /* Panneau de démo Loky : glisse depuis la droite/gauche selon le
+             sens du changement d'onglet, plutôt qu'un simple fondu figé. */
+          @keyframes lokySlideFromRight {
+            0% { opacity: 0; transform: translate3d(28px, 0, 0); }
+            100% { opacity: 1; transform: translate3d(0, 0, 0); }
+          }
+          @keyframes lokySlideFromLeft {
+            0% { opacity: 0; transform: translate3d(-28px, 0, 0); }
+            100% { opacity: 1; transform: translate3d(0, 0, 0); }
+          }
+          .lokt-demo-slide-right {
+            animation: lokySlideFromRight 420ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          }
+          .lokt-demo-slide-left {
+            animation: lokySlideFromLeft 420ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .lokt-demo-slide-right,
+            .lokt-demo-slide-left {
+              animation: none !important;
+              opacity: 1 !important;
+              transform: none !important;
+            }
+          }
+
           .d-0 {
             animation-delay: 0ms;
           }
@@ -864,109 +974,108 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Mockups de conversation — trois exemples côte à côte */}
-          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 grid max-w-6xl gap-6 lg:grid-cols-3">
-            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Ai-je bien reçu tous mes loyers ce mois-ci ?
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>Presque : 2 loyers sur 3 sont confirmés.</p>
-                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>✅ Studio Centre · Marie Petit · 650 € reçu</p>
-                      <p>✅ T2 Bellevue · Ahmed Benali · 780 € reçu</p>
-                      <p>⚠️ Appartement B · Dupond · 720 € en attente</p>
-                    </div>
-                    <p className="text-white/80">Souhaitez-vous que je relance M. Dupond ?</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Oui, relance-le
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pl-[42px]">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Relance envoyée à Dupond — email
-                  </span>
-                </div>
-              </div>
+          {/* Onglets avec indicateur glissant (mesuré via refs) + effet de
+              zoom sur l'onglet actif. Le panneau change de contenu avec une
+              transition qui glisse depuis la gauche ou la droite selon le
+              sens du changement (pas un simple fondu). */}
+          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 max-w-5xl">
+            <div className="relative mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-1 rounded-[1.5rem] bg-white/5 p-1.5 ring-1 ring-white/10">
+              {lokyIndicator && (
+                <span
+                  aria-hidden
+                  className="absolute rounded-full bg-white shadow-lg shadow-black/20 transition-all duration-300 ease-out"
+                  style={{ left: lokyIndicator.left, top: lokyIndicator.top, width: lokyIndicator.width, height: lokyIndicator.height }}
+                />
+              )}
+              {LOKY_DEMOS.map((demo, i) => (
+                <button
+                  key={demo.id}
+                  ref={(el) => { lokyTabRefs.current[i] = el; }}
+                  type="button"
+                  onClick={() => selectLokyDemo(i)}
+                  className={
+                    "relative z-10 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-300 sm:text-sm " +
+                    (activeLokyDemo === i ? "scale-110 text-[#3f37c9]" : "scale-100 text-white/70 hover:text-white")
+                  }
+                >
+                  {demo.tab}
+                </button>
+              ))}
             </div>
 
-            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Crée un bail meublé pour Julien Morel sur le studio Bellevue, 650 € à partir du 1er septembre
+            {(() => {
+              const demo = LOKY_DEMOS[activeLokyDemo];
+              return (
+                <div
+                  key={demo.id}
+                  className={
+                    "mt-8 grid gap-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/50 backdrop-blur sm:p-9 lg:grid-cols-[0.95fr,1.05fr] lg:items-center " +
+                    (lokyDemoDirection === "right" ? "lokt-demo-slide-right" : "lokt-demo-slide-left")
+                  }
+                >
+                  {/* Explication du cas d'usage */}
+                  <div className="text-left">
+                    <h3 className="text-xl font-semibold text-white sm:text-2xl">{demo.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-white/70">{demo.description}</p>
+                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3">
+                      <span className="mt-0.5 text-cyan-300">⚡</span>
+                      <p className="text-xs leading-5 text-cyan-100">{demo.speedNote}</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-2.5">
-                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>Je crée le bail meublé pour Julien Morel.</p>
-                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>🏠 Studio Bellevue · Julien Morel</p>
-                      <p>📅 Début 01/09/2026 · 650 €/mois · meublé</p>
+                  {/* Mockup de conversation — cadré comme une vraie fenêtre
+                      d'app (barre de titre + pastilles), pour se détacher
+                      nettement du texte d'explication à gauche plutôt que de
+                      flotter sur le même fond que lui. */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b0718]/80 shadow-xl shadow-black/40">
+                    <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className="flex gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
+                      </div>
+                      <div className="ml-1.5 flex items-center gap-1.5 text-xs font-medium text-white/50">
+                        <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded object-cover" />
+                        Loky · Assistant IA lokt.fr
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 p-5 sm:p-6">
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                          {demo.userMessage}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2.5">
+                        <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
+                        <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3.5 text-sm text-white shadow-sm">
+                          <p>{demo.lokyIntro}</p>
+                          <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                            {demo.dataLines.map((line) => (
+                              <p key={line}>{line}</p>
+                            ))}
+                          </div>
+                          {demo.lokyFollowup && <p className="text-white/80">{demo.lokyFollowup}</p>}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                          {demo.userConfirm}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pl-[46px]">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                          {demo.resultBadge}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Confirmer
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pl-[42px]">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Bail créé — Studio Bellevue / Julien Morel
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    📎 bail_signe_dupond.pdf
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2.5">
-                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                    <p>J'ai extrait les infos du bail.</p>
-                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                      <p>🏠 Appartement B · Mme Dupond</p>
-                      <p>📅 01/07/2026 · 850 €/mois · nu</p>
-                    </div>
-                    <p className="text-white/80">Je le rattache à ce bien et à cette locataire, déjà dans votre compte ?</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                    Oui, confirme
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pl-[42px]">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                    ✓ Bail importé et rattaché — Appartement B
-                  </span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Capacités — chips */}
