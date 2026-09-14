@@ -923,6 +923,19 @@ export async function getStaticProps({ params }: { params: { slug: string } }) {
   const city = await getCityPriceData(inseeCode);
   if (!city || !city.priceM2) return { notFound: true };
 
+  // parseCitySlug n'extrait que les 5 derniers caractères du slug (le code
+  // INSEE) : n'importe quel préfixe devant "-<code INSEE>" est accepté sans
+  // vérification. Avec fallback:"blocking", chaque préfixe distinct déclenche
+  // une génération + écriture ISR séparée pour un contenu identique (même
+  // ville) — un bot générant des variantes de préfixe peut ainsi faire
+  // exploser le nombre d'écritures sans aucune limite (incident constaté :
+  // 699k écritures ISR pour ~35k communes réelles). On rejette ici tout slug
+  // qui ne correspond pas exactement au slug canonique plutôt que de
+  // rediriger, pour ne jamais mettre en cache une entrée ISR pour un préfixe
+  // arbitraire.
+  const canonicalSlug = citySlug(city.cityName, city.inseeCode);
+  if (params.slug !== canonicalSlug) return { notFound: true };
+
   const externalKpis = await getCityExternalKpis(inseeCode, city.priceM2);
 
   return { props: { city, externalKpis }, revalidate: 60 * 60 * 24 * 7 };
