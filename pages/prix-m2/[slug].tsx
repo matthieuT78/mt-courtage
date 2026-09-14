@@ -338,14 +338,25 @@ const PROPERTY_TYPE_LABELS: Record<"tous" | "maison" | "appartement", string> = 
 export default function PrixM2City({ city, externalKpis }: { city: CityPriceData; externalKpis: CityExternalKpis | null }) {
   const [propertyTypeView, setPropertyTypeView] = useState<"tous" | "maison" | "appartement">("tous");
   const pageUrl = `${SITE_URL}/prix-m2/${citySlug(city.cityName, city.inseeCode)}`;
-  const metaTitle = `Prix m² ${city.cityName} (${city.postalCode}) : évolution ${new Date().getFullYear()} | lokt.fr`;
-  const metaDesc = `Prix au m² à ${city.cityName} : ${formatEur(city.priceM2)}/m² en moyenne, évolution sur ${city.history.length} ans basée sur les transactions DVF officielles. Loyer estimé et rendement locatif.`;
 
   const latestNTransactions = city.history.length ? city.history[city.history.length - 1].nTransactions : null;
   const officialRentM2 = externalKpis?.loyerPreditAppartement ?? externalKpis?.loyerPreditMaison ?? null;
   const rentM2Display = officialRentM2 ?? city.rentM2;
   const rentIsOfficial = officialRentM2 != null;
   const yieldPct = city.priceM2 && rentM2Display ? ((rentM2Display * 12) / city.priceM2) * 100 : null;
+  // Une page dédiée /rendement-locatif/[ville] existe déjà pour ~40 villes
+  // curées (contenu éditorial plus riche) : pour celles-ci, on laisse le
+  // titre/H1 de cette page cibler uniquement "prix m²" pour ne pas créer deux
+  // pages lokt.fr en concurrence sur la requête "rendement locatif [ville]".
+  const curatedVille = getVilleBySlug(slugifyCityName(city.cityName));
+  const targetsRendementQuery = yieldPct != null && !curatedVille;
+
+  const metaTitle = targetsRendementQuery
+    ? `Prix m² et rendement locatif à ${city.cityName} (${city.postalCode}) — ${new Date().getFullYear()} | lokt.fr`
+    : `Prix m² ${city.cityName} (${city.postalCode}) : évolution ${new Date().getFullYear()} | lokt.fr`;
+  const metaDesc = targetsRendementQuery
+    ? `Prix au m² à ${city.cityName} : ${formatEur(city.priceM2)}/m² en moyenne, rendement locatif brut estimé à ${yieldPct!.toFixed(1)} %, basé sur les transactions DVF officielles et la carte des loyers.`
+    : `Prix au m² à ${city.cityName} : ${formatEur(city.priceM2)}/m² en moyenne, évolution sur ${city.history.length} ans basée sur les transactions DVF officielles. Loyer estimé et rendement locatif.`;
   const availableTypes = (["tous", "maison", "appartement"] as const).filter(
     (t) => t === "tous" || city.historyByType[t].some((h) => h.priceM2 != null)
   );
@@ -390,8 +401,6 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
       x: { grid: { display: false } },
     },
   };
-
-  const curatedVille = getVilleBySlug(slugifyCityName(city.cityName));
 
   const faq = [
     {
@@ -525,10 +534,12 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
               {city.postalCode}
             </p>
             <h1 className="mt-2 text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
-              Prix au m² à {city.cityName}
+              {targetsRendementQuery ? `Prix au m² et rendement locatif à ${city.cityName}` : `Prix au m² à ${city.cityName}`}
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
-              Prix médian, évolution sur {yearsWithPrice.length || "plusieurs"} ans et loyer estimé — calculés à partir des transactions DVF officielles.
+              {targetsRendementQuery
+                ? `Prix médian, rendement locatif brut estimé et loyer — calculés à partir des transactions DVF officielles et de la carte des loyers.`
+                : `Prix médian, évolution sur ${yearsWithPrice.length || "plusieurs"} ans et loyer estimé — calculés à partir des transactions DVF officielles.`}
             </p>
             {city.latestYear && (
               <p className="mt-1.5 text-xs text-slate-400">Dernière mise à jour : données DVF {city.latestYear}</p>
