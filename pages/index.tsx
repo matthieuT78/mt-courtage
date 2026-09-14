@@ -1221,13 +1221,12 @@ export default function Home() {
                     </div>
                   </div>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Dépôt de garantie au-delà du plafond légal, DPE classé G interdit à la location, durée de bail hors des bornes autorisées — lokt.fr contrôle ces règles au moment où vous créez ou modifiez un bail, pas après coup quand l'erreur est déjà commise.
+                    Dépôt de garantie au-delà du plafond légal, durée de bail étudiant ou mobilité hors des bornes autorisées — lokt.fr contrôle ces règles au moment où vous créez ou modifiez un bail depuis l'espace bailleur, pas après coup quand l'erreur est déjà commise.
                   </p>
                   <ul className="mt-4 space-y-1.5">
                     {[
                       "Plafond du dépôt de garantie selon le type de bail (1 ou 2 mois)",
-                      "Blocage DPE classe G — location interdite depuis 2025",
-                      "Durée légale du bail selon le type (nu, meublé, étudiant, mobilité)",
+                      "Durée légale des baux étudiant (9 mois) et mobilité (1 à 10 mois)",
                       "Révision IRL au bon indice, à la bonne date anniversaire",
                     ].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
@@ -1246,8 +1245,8 @@ export default function Home() {
                 <div className="space-y-2.5">
                   {[
                     { dot: "🔴", label: "Dépôt de garantie trop élevé", sub: "2,5 mois demandés · plafond légal 2 mois en meublé" },
-                    { dot: "🔴", label: "DPE classé G", sub: "Location interdite depuis 2025 sans travaux de rénovation" },
-                    { dot: "✅", label: "Durée du bail conforme", sub: "12 mois · meublé, résidence principale" },
+                    { dot: "🔴", label: "Bail mobilité hors délai", sub: "12 mois demandés · limite légale 10 mois" },
+                    { dot: "✅", label: "Bail étudiant conforme", sub: "9 mois · durée légale respectée" },
                     { dot: "✅", label: "Révision IRL appliquée", sub: "Indice T2 2026 · date anniversaire respectée" },
                   ].map(({ dot, label, sub }) => (
                     <div key={label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
