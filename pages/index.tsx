@@ -791,8 +791,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Mockups de conversation — deux exemples côte à côte */}
-          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-2">
+          {/* Mockups de conversation — trois exemples côte à côte */}
+          <div data-scroll-reveal data-reveal-delay="400" className="relative mx-auto mt-14 grid max-w-6xl gap-6 lg:grid-cols-3">
             <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
               <div className="space-y-4">
                 <div className="flex justify-end">
@@ -860,12 +860,47 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/50 backdrop-blur sm:p-8">
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    📎 bail_signe_dupond.pdf
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
+                  <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
+                    <p>J'ai extrait les infos du bail.</p>
+                    <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
+                      <p>🏠 Appartement B · Mme Dupond</p>
+                      <p>📅 01/07/2026 · 850 €/mois · nu</p>
+                    </div>
+                    <p className="text-white/80">Je le rattache à ce bien et à cette locataire, déjà dans votre compte ?</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
+                    Oui, confirme
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pl-[42px]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
+                    ✓ Bail importé et rattaché — Appartement B
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Capacités — chips */}
           <div data-scroll-reveal data-reveal-delay="500" className="relative mx-auto mt-10 flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
             {[
               "Créer un bail",
+              "Importer un bail PDF existant",
               "Confirmer un paiement",
               "Chercher un locataire",
               "Générer une quittance",
@@ -1091,6 +1126,64 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Conformité légale — tuile pleine largeur */}
+            <div data-scroll-reveal data-reveal-delay="0" className="mt-5 overflow-hidden rounded-[1.75rem] border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-amber-50 p-7 shadow-sm">
+              <div className="grid gap-8 lg:grid-cols-[1fr,1.1fr] lg:items-center">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-rose-700 stroke-[1.8]" aria-hidden>
+                        <path d="M12 2l8 4v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z" strokeLinejoin="round" />
+                        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <div>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-rose-700">Sécurité juridique</span>
+                      <h3 className="text-lg font-semibold text-slate-950">Conformité légale vérifiée automatiquement</h3>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    Dépôt de garantie au-delà du plafond légal, DPE classé G interdit à la location, durée de bail hors des bornes autorisées — lokt.fr contrôle ces règles au moment où vous créez ou modifiez un bail, pas après coup quand l'erreur est déjà commise.
+                  </p>
+                  <ul className="mt-4 space-y-1.5">
+                    {[
+                      "Plafond du dépôt de garantie selon le type de bail (1 ou 2 mois)",
+                      "Blocage DPE classe G — location interdite depuis 2025",
+                      "Durée légale du bail selon le type (nu, meublé, étudiant, mobilité)",
+                      "Révision IRL au bon indice, à la bonne date anniversaire",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className="text-rose-600">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5">
+                    <Link href="/espace-bailleur" className="inline-flex h-9 items-center justify-center rounded-full bg-rose-600 px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                      Gratuit, sur tous les plans →
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Exemples d'alertes en direct */}
+                <div className="space-y-2.5">
+                  {[
+                    { dot: "🔴", label: "Dépôt de garantie trop élevé", sub: "2,5 mois demandés · plafond légal 2 mois en meublé" },
+                    { dot: "🔴", label: "DPE classé G", sub: "Location interdite depuis 2025 sans travaux de rénovation" },
+                    { dot: "✅", label: "Durée du bail conforme", sub: "12 mois · meublé, résidence principale" },
+                    { dot: "✅", label: "Révision IRL appliquée", sub: "Indice T2 2026 · date anniversaire respectée" },
+                  ].map(({ dot, label, sub }) => (
+                    <div key={label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                      <span className="text-base">{dot}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-500">{sub}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
