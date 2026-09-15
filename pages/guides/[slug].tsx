@@ -322,20 +322,39 @@ export default function GuideArticlePage({ guide }: Props) {
             </div>
           )}
 
-          {/* CTA outil */}
+          {/* CTA outil — spécifique au guide si sa fonctionnalité payante
+              associée est claire (ex. candidatures/scoring), sinon repli
+              générique vers l'outil de gestion locative dans son ensemble. */}
           <div className="rounded-2xl bg-slate-950 p-5 text-white shadow-sm">
             <DocumentTextIcon className="h-5 w-5 text-indigo-300" />
-            <p className="mt-3 text-sm font-semibold">Du guide au dossier</p>
-            <p className="mt-1.5 text-xs leading-5 text-slate-400">
-              Créez le bien, rattachez le bail, suivez les loyers et conservez vos documents.
-            </p>
-            <Link
-              href="/outil-gestion-locative"
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-            >
-              Voir l'outil bailleur
-              <ArrowRightIcon className="h-3.5 w-3.5" />
-            </Link>
+            {guide.cta ? (
+              <>
+                <p className="mt-3 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-indigo-300">{guide.cta.eyebrow}</p>
+                <p className="mt-1 text-sm font-semibold">{guide.cta.title}</p>
+                <p className="mt-1.5 text-xs leading-5 text-slate-400">{guide.cta.desc}</p>
+                <Link
+                  href={guide.cta.href}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                >
+                  {guide.cta.label}
+                  <ArrowRightIcon className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-sm font-semibold">Du guide au dossier</p>
+                <p className="mt-1.5 text-xs leading-5 text-slate-400">
+                  Créez le bien, rattachez le bail, suivez les loyers et conservez vos documents.
+                </p>
+                <Link
+                  href="/outil-gestion-locative"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                >
+                  Voir l'outil bailleur
+                  <ArrowRightIcon className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            )}
           </div>
         </aside>
       </div>

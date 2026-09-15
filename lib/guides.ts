@@ -17,6 +17,11 @@ export type GuideArticle = {
   checklist?: string[];
   sources: Array<{ label: string; href: string }>;
   faq?: Array<{ q: string; a: string }>;
+  // CTA sidebar spécifique à ce guide, à la place du bloc générique "Voir
+  // l'outil bailleur" — utile quand le sujet du guide correspond à une
+  // fonctionnalité payante précise (ex. scoring candidatures) plutôt qu'à
+  // l'outil de gestion locative dans son ensemble.
+  cta?: { eyebrow: string; title: string; desc: string; href: string; label: string };
 };
 
 export const GUIDE_CATEGORIES: Array<{ key: GuideCategory; label: string; description: string }> = [
@@ -692,6 +697,13 @@ export const GUIDES: GuideArticle[] = [
       { label: "ANIL : cautionnement et garantie loyers impayés", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/cautions-et-garanties/" },
       { label: "Action Logement : Visale", href: "https://www.visale.fr" },
     ],
+    cta: {
+      eyebrow: "Candidatures lokt·one",
+      title: "Ce tri, fait automatiquement",
+      desc: "Vos candidats postulent en ligne et lokt calcule le score de chaque dossier — revenus, stabilité, garant — dès réception. Dès 6,90 €/mois.",
+      href: "/tarifs",
+      label: "Voir l'offre lokt·one",
+    },
   },
   {
     slug: "arrivee-locataire-remise-cles",
