@@ -23,6 +23,7 @@ import {
   ShieldCheckIcon,
   ChatBubbleLeftRightIcon,
   CheckBadgeIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 
 // Même taux que celui déjà cité dans le texte de /gestion-locative-lmnp
@@ -1429,20 +1430,20 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Exemples d'alertes en direct */}
-                <div className="space-y-2.5">
+                {/* Exemples d'alertes en direct — grille de statuts plutôt
+                    qu'une liste empilée, pour lire d'un coup d'œil le mélange
+                    de cas bloqués/conformes façon tableau de bord. */}
+                <div className="grid gap-2.5 sm:grid-cols-2">
                   {[
                     { dot: "🔴", label: "Dépôt de garantie trop élevé", sub: "2,5 mois demandés · plafond légal 2 mois en meublé" },
                     { dot: "🔴", label: "Bail mobilité hors délai", sub: "12 mois demandés · limite légale 10 mois" },
                     { dot: "✅", label: "Bail étudiant conforme", sub: "9 mois · durée légale respectée" },
                     { dot: "✅", label: "Révision IRL appliquée", sub: "Indice T2 2026 · date anniversaire respectée" },
                   ].map(({ dot, label, sub }) => (
-                    <div key={label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                    <div key={label} className="rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm">
                       <span className="text-base">{dot}</span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{label}</p>
-                        <p className="text-xs text-slate-500">{sub}</p>
-                      </div>
+                      <p className="mt-1.5 text-xs font-semibold leading-4 text-slate-900">{label}</p>
+                      <p className="mt-1 text-[0.68rem] leading-4 text-slate-500">{sub}</p>
                     </div>
                   ))}
                 </div>
@@ -1451,59 +1452,64 @@ export default function Home() {
 
             {/* Candidatures — tuile pleine largeur */}
             <div data-scroll-reveal data-reveal-delay="0" className="mt-5 overflow-hidden rounded-[1.75rem] border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 via-white to-[#00d4ff]/5 p-7 shadow-sm">
-              <div className="grid gap-8 lg:grid-cols-[1fr,1.1fr] lg:items-center">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round"/>
-                      </svg>
-                    </span>
-                    <div>
-                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Remplace une agence</span>
-                      <h3 className="text-lg font-semibold text-slate-950">Le travail d'une agence, sans les frais d'agence</h3>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Publier l'annonce, planifier les visites, trier les dossiers : c'est exactement ce que facture une agence. Avec lokt, vos candidats réservent leur créneau de visite en ligne — sans un seul appel — postulent sans créer de compte, et vous recevez des dossiers déjà scorés.
-                  </p>
-                  <ul className="mt-4 space-y-1.5">
-                    {[
-                      "Lien dédié par annonce — aucune saisie manuelle",
-                      "Agenda de visite intégré — le candidat réserve un créneau, sans appel ni échange de mails",
-                      "Scoring automatique : revenus, stabilité, garant",
-                      "Données des candidats non retenus supprimées (RGPD)",
-                      "Dossier retenu pré-remplit le bail automatiquement",
-                    ].map((item) => (
-                      <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
-                        <span className="text-[#635bff]">✓</span> {item}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 flex items-center gap-3">
-                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
-                      Disponible en lokt·one · 6,90 €/mois
-                    </Link>
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                  <div>
+                    <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Remplace une agence</span>
+                    <h3 className="text-lg font-semibold text-slate-950">Le travail d'une agence, sans les frais d'agence</h3>
                   </div>
                 </div>
-
-                {/* Flow visuel */}
-                <div className="space-y-2.5">
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  Publier l'annonce, planifier les visites, trier les dossiers : c'est exactement ce que facture une agence. Avec lokt, vos candidats réservent leur créneau de visite en ligne — sans un seul appel — postulent sans créer de compte, et vous recevez des dossiers déjà scorés.
+                </p>
+                <ul className="mt-4 space-y-1.5">
                   {[
-                    { step: "01", label: "Annonce publiée", sub: "Lien lokt.fr partagé sur SeLoger, LeBonCoin…", color: "bg-slate-100 text-slate-600" },
-                    { step: "02", label: "Visite réservée", sub: "Le candidat choisit son créneau, sans appel", color: "bg-sky-100 text-sky-700" },
-                    { step: "03", label: "Dossier complété", sub: "Rempli en ligne, sans créer de compte", color: "bg-cyan-100 text-cyan-700" },
-                    { step: "04", label: "Score calculé", sub: "Ratio loyer/revenu · CDI/CDD/TNS · Garant ✓", color: "bg-violet-100 text-violet-700" },
-                    { step: "05", label: "Vous choisissez", sub: "Profils comparés côte à côte · Bail pré-rempli", color: "bg-[#635bff]/10 text-[#635bff]" },
-                  ].map(({ step, label, sub, color }) => (
-                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
+                    "Lien dédié par annonce — aucune saisie manuelle",
+                    "Agenda de visite intégré — le candidat réserve un créneau, sans appel ni échange de mails",
+                    "Scoring automatique : revenus, stabilité, garant",
+                    "Données des candidats non retenus supprimées (RGPD)",
+                    "Dossier retenu pré-remplit le bail automatiquement",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                      <span className="text-[#635bff]">✓</span> {item}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5 flex items-center gap-3">
+                  <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                    Disponible en lokt·one · 6,90 €/mois
+                  </Link>
+                </div>
+              </div>
+
+              {/* Flow visuel — timeline horizontale avec une icône par étape
+                  (agenda pour la visite, scoring pour l'analyse du dossier),
+                  pleine largeur pour laisser respirer les 5 étapes. */}
+              <div className="relative mt-9">
+                <div aria-hidden className="absolute left-0 right-0 top-6 hidden h-px bg-gradient-to-r from-slate-200 via-[#635bff]/30 to-[#635bff]/40 sm:block" />
+                <div className="relative grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-5">
+                  {[
+                    { icon: LinkIcon, label: "Annonce publiée", sub: "Lien lokt.fr partagé sur SeLoger, LeBonCoin…", color: "bg-slate-100 text-slate-600" },
+                    { icon: CalendarDaysIcon, label: "Visite réservée", sub: "Le candidat choisit son créneau, sans appel", color: "bg-sky-100 text-sky-700" },
+                    { icon: DocumentTextIcon, label: "Dossier complété", sub: "Rempli en ligne, sans créer de compte", color: "bg-cyan-100 text-cyan-700" },
+                    { icon: ChartBarIcon, label: "Score calculé", sub: "Ratio loyer/revenu · CDI/CDD/TNS · Garant ✓", color: "bg-violet-100 text-violet-700" },
+                    { icon: CheckBadgeIcon, label: "Vous choisissez", sub: "Profils comparés côte à côte · Bail pré-rempli", color: "bg-[#635bff]/10 text-[#635bff]" },
+                  ].map(({ icon: Icon, label, sub, color }) => (
+                    <div key={label} className="flex flex-col items-center gap-2.5 text-center">
+                      <span className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-4 ring-white ${color}`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{label}</p>
-                        <p className="text-xs text-slate-500">{sub}</p>
+                        <p className="text-xs font-semibold text-slate-900">{label}</p>
+                        <p className="mt-0.5 text-[0.68rem] leading-4 text-slate-500">{sub}</p>
                       </div>
                     </div>
                   ))}
@@ -1516,15 +1522,15 @@ export default function Home() {
               <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
                 <div>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-100">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-cyan-700 stroke-[1.8]" aria-hidden>
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinejoin="round"/>
                         <polyline points="14,2 14,8 20,8" strokeLinejoin="round"/>
                         <path d="M9 12h6M9 16h4" strokeLinecap="round"/>
                       </svg>
                     </div>
                     <div>
-                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Intégré</span>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-cyan-700">Intégré</span>
                       <h3 className="text-lg font-semibold text-slate-950">Bail & état des lieux numériques</h3>
                     </div>
                   </div>
@@ -1539,31 +1545,51 @@ export default function Home() {
                       "PDF certifié archivé — audit trail et hash SHA-256",
                     ].map((item) => (
                       <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
-                        <span className="text-[#635bff]">✓</span> {item}
+                        <span className="text-cyan-700">✓</span> {item}
                       </li>
                     ))}
                   </ul>
                   <div className="mt-5">
-                    <Link href="/espace-bailleur" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                    <Link href="/espace-bailleur" className="inline-flex h-9 items-center justify-center rounded-full bg-cyan-700 px-5 text-xs font-semibold text-white hover:opacity-90 transition">
                       Gratuit, sur tous les plans →
                     </Link>
                   </div>
                 </div>
-                <div className="space-y-2.5">
-                  {[
-                    { step: "01", label: "PDF généré dans lokt.fr", sub: "Bail ou EDL selon le type de location", color: "bg-slate-100 text-slate-600" },
-                    { step: "02", label: "Liens envoyés par email", sub: "Un lien unique pour le bailleur, un pour le locataire", color: "bg-sky-100 text-sky-700" },
-                    { step: "03", label: "Chacun signe depuis son écran", sub: "Sans compte lokt.fr · Mobile ou ordinateur", color: "bg-violet-100 text-violet-700" },
-                    { step: "04", label: "PDF certifié archivé", sub: "Page de certificat · Hash SHA-256 · eIDAS Art. 3(10)", color: "bg-[#635bff]/10 text-[#635bff]" },
-                  ].map(({ step, label, sub, color }) => (
-                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
+
+                {/* Mockup d'un document signé — un seul visuel "certificat"
+                    plutôt qu'une liste d'étapes, pour trancher avec les deux
+                    autres tuiles de cette section. */}
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                  <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                    <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
+                    <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
+                    <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+                    <span className="ml-3 rounded-full bg-slate-200 px-3 py-0.5 text-[0.6rem] font-medium text-slate-500">bail_signe.pdf</span>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{label}</p>
-                        <p className="text-xs text-slate-500">{sub}</p>
+                        <p className="text-sm font-semibold text-slate-900">Bail meublé — Studio Bellevue</p>
+                        <p className="text-xs text-slate-500">Généré le 12/09/2026</p>
                       </div>
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[0.65rem] font-bold text-emerald-700">✓ Signé</span>
                     </div>
-                  ))}
+                    <div className="mt-4 space-y-2">
+                      {[
+                        { who: "Bailleur · Camille Roux", when: "12/09/2026 · 09:14" },
+                        { who: "Locataire · Julien Morel", when: "12/09/2026 · 18:37" },
+                      ].map((row) => (
+                        <div key={row.who} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                          <span className="text-xs font-medium text-slate-700">{row.who}</span>
+                          <span className="text-[0.65rem] text-emerald-700">✓ {row.when}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 rounded-xl border border-dashed border-cyan-200 bg-cyan-50/60 p-3">
+                      <p className="font-mono text-[0.62rem] leading-4 text-cyan-900">SHA-256 3f9a…c21e</p>
+                      <p className="mt-1 text-[0.65rem] text-cyan-800">Certificat conforme eIDAS Art. 3(10) · horodaté et archivé</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1578,14 +1604,22 @@ export default function Home() {
         </section>
 
         {/* ─── SCREENSHOTS ─────────────────────────────────────────── */}
-        <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-20">
-          <div className="mx-auto max-w-7xl">
+        <section className="relative overflow-hidden border-b border-white/10 bg-[#0b0718] px-4 py-16 sm:py-24">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(55% 50% at 12% 0%, rgba(99,91,255,0.32), transparent 70%), radial-gradient(50% 45% at 90% 100%, rgba(0,212,255,0.22), transparent 70%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-7xl">
             <div className="mb-10">
-              <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">L'outil en vrai</p>
-              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-indigo-300">L'outil en vrai</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                 Pas un tableur. Un cockpit.
               </h2>
-              <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+              <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-white/70">
                 Voici deux vues de l'espace bailleur — les loyers du mois et la finance — telles qu'elles apparaissent dans l'outil.
               </p>
             </div>
@@ -1597,11 +1631,11 @@ export default function Home() {
                     <svg viewBox="0 0 20 20" className="h-4 w-4 fill-emerald-700" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd"/></svg>
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">Loyers & quittances</p>
-                    <p className="text-[0.68rem] text-slate-500">Confirmation, PDF, envoi — tout en un clic</p>
+                    <p className="text-sm font-semibold text-white">Loyers & quittances</p>
+                    <p className="text-[0.68rem] text-white/60">Confirmation, PDF, envoi — tout en un clic</p>
                   </div>
                 </div>
-                <div className="overflow-hidden rounded-[1rem] border border-slate-200 shadow-xl shadow-slate-900/10 sm:rounded-[1.25rem]">
+                <div className="overflow-hidden rounded-[1rem] border border-white/10 shadow-2xl shadow-black/40 sm:rounded-[1.25rem]">
                   <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
                     <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
                     <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
@@ -1618,11 +1652,11 @@ export default function Home() {
                     <svg viewBox="0 0 20 20" className="h-4 w-4 fill-indigo-700" aria-hidden><path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2zM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6zM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10z"/></svg>
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">Finance & trésorerie</p>
-                    <p className="text-[0.68rem] text-slate-500">Cash-flow mensuel, dépenses classées, exports</p>
+                    <p className="text-sm font-semibold text-white">Finance & trésorerie</p>
+                    <p className="text-[0.68rem] text-white/60">Cash-flow mensuel, dépenses classées, exports</p>
                   </div>
                 </div>
-                <div className="overflow-hidden rounded-[1rem] border border-slate-200 shadow-xl shadow-slate-900/10 sm:rounded-[1.25rem]">
+                <div className="overflow-hidden rounded-[1rem] border border-white/10 shadow-2xl shadow-black/40 sm:rounded-[1.25rem]">
                   <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
                     <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
                     <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
@@ -1634,7 +1668,7 @@ export default function Home() {
               </div>
             </div>
             <div data-scroll-reveal className="mt-6 flex justify-center">
-              <Link href="/espace-bailleur" className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-semibold text-white hover:bg-slate-800">
+              <Link href="/espace-bailleur" className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 px-6 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 hover:opacity-90">
                 Ouvrir l'espace bailleur →
               </Link>
             </div>
