@@ -185,8 +185,8 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     how: "Contactez d'abord le locataire pour un rappel amiable. Si le retard persiste, passez à une relance formelle puis à une mise en demeure par lettre recommandée.",
   },
   receipt_to_finalize: {
-    why: "Le paiement est confirmé mais la quittance n'a pas été générée ni envoyée — le locataire n'a donc pas de preuve de paiement officielle.",
-    how: "Générez et envoyez la quittance depuis l'onglet Quittances.",
+    why: "Le paiement est confirmé mais la quittance ne lui a pas encore été envoyée — le locataire n'a donc pas de preuve de paiement officielle.",
+    how: "Générez (si besoin) et envoyez la quittance depuis l'onglet Quittances.",
   },
   rent_revision_due: {
     why: "Sans révision à la date anniversaire, le loyer reste figé alors que la clause de révision (indexée sur l'IRL) vous permet de suivre l'inflation — chaque année sautée est un manque à gagner qui ne se rattrape pas rétroactivement.",
@@ -201,8 +201,8 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     how: "Planifiez et réalisez l'état des lieux d'entrée avec le locataire, puis finalisez-le dans lokt.fr.",
   },
   owner_email_missing: {
-    why: "Sans email de notification, vous ne recevez plus les validations de paiement ni les alertes automatiques — vous perdez en visibilité sur vos baux.",
-    how: "Renseignez un email de notification dans les réglages du bail.",
+    why: "Sans cet email, vous ne recevez plus les emails de confirmation de paiement en un clic ni leurs relances automatiques. Les autres notifications (cette alerte incluse, et la copie des quittances) continuent d'arriver sur l'email de connexion de votre compte par défaut.",
+    how: "Renseignez un email de notification dans les réglages du bail — utile si vous voulez recevoir ces emails sur une autre adresse que celle du compte.",
   },
   deposit_not_collected: {
     why: "Le dépôt de garantie protège contre d'éventuelles dégradations ou impayés en fin de bail — sans lui, vous êtes exposé sans filet en cas de litige au départ.",
@@ -217,8 +217,8 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     how: "Clôturez le bail si le locataire est parti, ou corrigez la date de fin si elle est erronée.",
   },
   lease_end: {
-    why: "À l'approche de l'échéance, il faut choisir entre laisser reconduire tacitement, renouveler, ou donner congé — et un congé pour vente ou reprise doit respecter un délai de 6 mois (location vide) ou 3 mois (meublé) avant l'échéance.",
-    how: "Décidez si vous laissez reconduire, renouvelez, ou donnez congé — et si c'est un congé, envoyez-le suffisamment tôt pour respecter le délai légal.",
+    why: "À l'approche de l'échéance, il faut choisir entre laisser reconduire tacitement ou renouveler. Un congé pour vente ou reprise doit respecter un délai de 6 mois (location vide) ou 3 mois (meublé) avant l'échéance — cette alerte n'apparaît qu'à partir de 60 jours, donc ce délai est déjà dépassé pour donner congé sur cette échéance précise.",
+    how: "Si vous vouliez donner congé pour vente ou reprise, le délai légal est probablement déjà passé pour cette échéance : anticipez la prochaine dès maintenant. Sinon, décidez si vous laissez reconduire tacitement ou si vous proposez un avenant au locataire.",
   },
   exit_inventory_to_prepare: {
     why: "Sans état des lieux de sortie signé, impossible de justifier une retenue sur le dépôt de garantie en cas de dégradations, et le délai légal de restitution de la caution ne peut pas être respecté correctement.",
@@ -478,7 +478,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 preferenceKey: "receipt_to_finalize",
                 tone: "amber",
                 title: `Quittance à finaliser - ${labels.property}`,
-                detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance n'est pas encore générée et envoyée.`,
+                detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance ne lui a pas encore été envoyée.`,
                 href: "/espace-bailleur",
                 propertyId: lease.property_id,
               });
@@ -544,7 +544,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               preferenceKey: "owner_email_missing",
               tone: "slate",
               title: `Email bailleur manquant - ${labels.property}`,
-              detail: "Ajoutez un email de notification pour recevoir les validations de paiement et alertes automatiques.",
+              detail: "Ajoutez un email de notification pour recevoir les confirmations de paiement en un clic et leurs relances automatiques (les autres notifications continuent d'arriver sur l'email de votre compte).",
               href: "/espace-bailleur",
               propertyId: lease.property_id,
             });
