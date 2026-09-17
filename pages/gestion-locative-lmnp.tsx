@@ -10,6 +10,9 @@ import {
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import TrustpilotStars from "../components/TrustpilotStars";
+import ReviewsSection from "../components/ReviewsSection";
+import LokyDemoTabs, { type LokyDemo } from "../components/LokyDemoTabs";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
@@ -192,6 +195,46 @@ function LmnpStepCard({ step, title, text }: { step: string; title: string; text
   );
 }
 
+const LOKY_DEMOS: LokyDemo[] = [
+  {
+    id: "inventaire",
+    tab: "Vérifier l’inventaire",
+    title: "Un inventaire vérifié, en une question",
+    description: "Demandez l’état de conformité d’un logement meublé — Loky compare l’inventaire aux 11 équipements obligatoires et repère ce qui manque.",
+    speedNote: "Ce qui demandait de reprendre la checklist meuble par meuble tient en une question.",
+    capabilities: [
+      { icon: ArchiveBoxIcon, text: "Vérifier l’inventaire meublé" },
+      { icon: ClipboardDocumentCheckIcon, text: "Comparer à la liste légale des 11 équipements" },
+      { icon: ShieldCheckIcon, text: "Repérer les éléments manquants" },
+      { icon: DocumentTextIcon, text: "Ouvrir la fiche d’inventaire à compléter" },
+    ],
+    userMessage: "Mon inventaire LMNP est-il complet pour le studio Bellevue ?",
+    lokyIntro: "Studio Bellevue : 78 % de conformité meublé.",
+    dataLines: ["⚠️ Plaques de cuisson · manquant", "⚠️ Vaisselle en nombre suffisant · quantité insuffisante", "⚠️ Réfrigérateur · manquant"],
+    lokyFollowup: "Je vous ouvre l’inventaire pour compléter ça ?",
+    userConfirm: "Oui, ouvre-le",
+    resultBadge: "✓ Inventaire LMNP ouvert — Studio Bellevue",
+  },
+  {
+    id: "loyer",
+    tab: "Confirmer un loyer",
+    title: "Un loyer meublé confirmé, sans ressaisie",
+    description: "Signalez le paiement reçu pour un logement meublé — Loky confirme le loyer et génère la quittance, prête pour votre suivi LMNP.",
+    speedNote: "Ce qui prend d’habitude plusieurs minutes de vérification devient une phrase et une confirmation.",
+    capabilities: [
+      { icon: BanknotesIcon, text: "Confirmer un loyer meublé" },
+      { icon: DocumentTextIcon, text: "Générer la quittance PDF" },
+      { icon: ArchiveBoxIcon, text: "Archiver dans le dossier LMNP" },
+      { icon: ShieldCheckIcon, text: "Garder une preuve pour la déclaration" },
+    ],
+    userMessage: "Julien vient de payer son loyer de janvier pour le studio meublé, tu peux le confirmer ?",
+    lokyIntro: "Je confirme le loyer de janvier — la quittance PDF sera générée automatiquement.",
+    dataLines: ["🏠 Studio Bellevue · Julien Morel", "📄 Loyer janvier 2026 → quittance générée"],
+    userConfirm: "Confirmer",
+    resultBadge: "✓ Paiement confirmé — quittance de janvier générée pour Julien",
+  },
+];
+
 export default function GestionLocativeLmnpPage() {
   useScrollReveal();
   return (
@@ -258,15 +301,26 @@ export default function GestionLocativeLmnpPage() {
                     Voir la page produit générale →
                   </Link>
                 </div>
+
+                <a
+                  href="https://fr.trustpilot.com/review/lokt.fr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  <TrustpilotStars rating={4.3} size={15} />
+                  <span className="font-semibold text-slate-950">4,3</span>
+                  <span className="text-slate-500">sur Trustpilot</span>
+                </a>
               </div>
 
-              <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-[#635bff]/10 sm:rounded-[2rem] ring-1 ring-slate-200">
+              <div className="relative">
                 <img
-                  src="/cockpit-bailleur-lokt-v2.webp"
+                  src="/cockpit-bailleur-lokt-v3.webp"
                   alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
-                  width={1400}
-                  height={933}
-                  className="w-full h-auto block"
+                  width={1536}
+                  height={1024}
+                  className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(15,23,42,0.25)]"
                   loading="eager"
                 />
               </div>
@@ -329,77 +383,11 @@ export default function GestionLocativeLmnpPage() {
                 </p>
               </div>
 
-              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 grid gap-5 bg-slate-950 p-5 sm:p-8 lg:grid-cols-2">
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
-                  <div className="space-y-3.5">
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Mon inventaire LMNP est-il complet pour le studio Bellevue ?
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                        <p>Studio Bellevue : 78 % de conformité meublé.</p>
-                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                          <p>⚠️ Plaques de cuisson · manquant</p>
-                          <p>⚠️ Vaisselle en nombre suffisant · quantité insuffisante</p>
-                          <p>⚠️ Réfrigérateur · manquant</p>
-                        </div>
-                        <p className="text-white/80">Je vous ouvre l'inventaire pour compléter ça ?</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Oui, ouvre-le
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-[42px]">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                        ✓ Inventaire LMNP ouvert — Studio Bellevue
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
-                  <div className="space-y-3.5">
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Julien vient de payer son loyer de janvier pour le studio meublé, tu peux le confirmer ?
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                        <p>Je confirme le loyer de janvier — la quittance PDF sera générée automatiquement.</p>
-                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                          <p>🏠 Studio Bellevue · Julien Morel</p>
-                          <p>📄 Loyer janvier 2026 → quittance générée</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Confirmer
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-[42px]">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                        ✓ Paiement confirmé — quittance de janvier générée pour Julien
-                      </span>
-                    </div>
-                  </div>
-                </div>
+              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 px-5 sm:px-8">
+                <LokyDemoTabs demos={LOKY_DEMOS} />
               </div>
 
-              <div className="px-5 pb-5 pt-1 text-right sm:px-8 sm:pb-8">
+              <div className="px-5 pb-5 pt-4 text-right sm:px-8 sm:pb-8">
                 <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
                   Découvrir toutes les capacités de Loky →
                 </Link>
@@ -533,6 +521,81 @@ export default function GestionLocativeLmnpPage() {
               >
                 Créer mon espace bailleur gratuit →
               </Link>
+            </section>
+
+            {/* ── Tableau des offres ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Les 3 offres</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Gratuit pour gérer un premier meublé.</h2>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {[
+                  {
+                    name: "Gratuit",
+                    price: "0 €",
+                    cadence: "1 logement actif",
+                    desc: "Bail meublé, inventaire, quittances PDF, états des lieux, finance simple, 4 alertes.",
+                    features: ["1 logement actif", "Quittances manuelles", "Inventaire meublé", "États des lieux", "4 alertes essentielles"],
+                    cta: "Créer mon espace",
+                    href: "/mon-compte?mode=register&redirect=/espace-bailleur",
+                    card: "border-emerald-200 bg-white",
+                    badge: null as string | null,
+                    ctaClass: "bg-emerald-700 text-white hover:bg-emerald-600",
+                  },
+                  {
+                    name: "lokt·one",
+                    price: "6,90 €",
+                    cadence: "/ mois · 2 logements",
+                    desc: "Automatisation complète + portail locataire + partage de documents.",
+                    features: ["Quittances automatiques", "Candidatures en ligne & scoring", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
+                    cta: "Souscrire",
+                    href: "/tarifs",
+                    card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
+                    badge: "Recommandé" as string | null,
+                    ctaClass: "bg-gradient-to-r from-[#635bff] to-[#00d4ff] text-white hover:opacity-90",
+                  },
+                  {
+                    name: "lokt·plus",
+                    price: "11,90 €",
+                    cadence: "/ mois · 15 logements",
+                    desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, aide à la déclaration LMNP.",
+                    features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "15 logements actifs"],
+                    cta: "Souscrire",
+                    href: "/tarifs",
+                    card: "border-slate-200 bg-white",
+                    badge: null as string | null,
+                    ctaClass: "bg-slate-950 text-white hover:bg-slate-800",
+                  },
+                ].map((plan) => (
+                  <div key={plan.name} className={`relative flex flex-col rounded-[1.5rem] border p-6 shadow-sm ${plan.card}`}>
+                    {plan.badge ? (
+                      <span className="absolute right-5 top-5 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2.5 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
+                        {plan.badge}
+                      </span>
+                    ) : null}
+                    <p className="text-sm font-semibold text-slate-500">{plan.name}</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                      {plan.price} <span className="text-sm font-normal text-slate-400">{plan.cadence}</span>
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">{plan.desc}</p>
+                    <ul className="mt-4 flex-1 space-y-2">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-center gap-2 text-sm text-slate-700">
+                          <span className="font-bold text-[#635bff]">✓</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={plan.href} className={`mt-5 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold ${plan.ctaClass}`}>
+                      {plan.cta} →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-center text-xs text-slate-500">
+                Sans engagement · Résiliable à tout moment ·{" "}
+                <Link href="/tarifs" className="underline underline-offset-2 hover:text-slate-700">
+                  Voir le comparatif complet
+                </Link>
+              </p>
             </section>
 
             {/* ── Section éditoriale C : Obligations légales ── */}
@@ -704,6 +767,8 @@ export default function GestionLocativeLmnpPage() {
                 </div>
               </div>
             </section>
+
+            <ReviewsSection />
 
             <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 sm:rounded-[2rem] sm:p-8">
               <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>

@@ -15,6 +15,9 @@ import {
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import TrustpilotStars from "../components/TrustpilotStars";
+import ReviewsSection from "../components/ReviewsSection";
+import LokyDemoTabs, { type LokyDemo } from "../components/LokyDemoTabs";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 
 const siteUrl = "https://lokt.fr";
@@ -89,6 +92,46 @@ function IncludedLine({ icon: Icon, title, text }: Feature) {
     </div>
   );
 }
+
+const LOKY_DEMOS: LokyDemo[] = [
+  {
+    id: "bail",
+    tab: "Créer un bail",
+    title: "Un bail meublé, prêt en une phrase",
+    description: "Décrivez le locataire, le loyer et la date de début — Loky prépare le bail conforme et attend votre confirmation avant de l’enregistrer.",
+    speedNote: "Ce qui prend d’habitude plusieurs minutes de formulaire tient en une phrase et une confirmation.",
+    capabilities: [
+      { icon: KeyIcon, text: "Créer un bail meublé ou nu" },
+      { icon: DocumentTextIcon, text: "Générer le contrat conforme" },
+      { icon: ArchiveBoxIcon, text: "Rattacher l’inventaire du logement" },
+      { icon: BellAlertIcon, text: "Programmer les alertes de suivi" },
+    ],
+    userMessage: "Crée-moi un bail meublé pour Julien Morel, 650€/mois, à partir du 1er novembre",
+    lokyIntro: "Bail meublé préparé pour Julien Morel.",
+    dataLines: ["🏠 Studio Bellevue · 650€/mois", "📅 Début le 1er novembre 2026"],
+    lokyFollowup: "Je le crée ?",
+    userConfirm: "Confirmer",
+    resultBadge: "✓ Bail créé — Julien Morel, Studio Bellevue",
+  },
+  {
+    id: "paiement",
+    tab: "Confirmer un paiement",
+    title: "Un loyer confirmé, une quittance envoyée",
+    description: "Signalez le paiement reçu — Loky confirme le loyer, génère la quittance PDF et l’envoie au locataire, sans ressaisie.",
+    speedNote: "Ce qui demandait de rouvrir le dossier et générer un PDF à la main devient une phrase et une confirmation.",
+    capabilities: [
+      { icon: DocumentTextIcon, text: "Confirmer un paiement reçu" },
+      { icon: ArchiveBoxIcon, text: "Générer et archiver la quittance" },
+      { icon: EnvelopeIcon, text: "Envoyer la quittance au locataire" },
+      { icon: BellAlertIcon, text: "Relancer un loyer en retard" },
+    ],
+    userMessage: "Le locataire du T2 a payé son loyer de janvier, confirme et envoie la quittance",
+    lokyIntro: "Je confirme le loyer de janvier — la quittance PDF sera générée puis envoyée au locataire.",
+    dataLines: ["🏠 T2 · loyer janvier 2026", "📄 Quittance générée → envoi locataire"],
+    userConfirm: "Confirmer",
+    resultBadge: "✓ Paiement confirmé — quittance envoyée",
+  },
+];
 
 export default function OutilGestionLocativePage() {
   useScrollReveal();
@@ -278,29 +321,31 @@ export default function OutilGestionLocativePage() {
                     Voir le cas LMNP →
                   </Link>
                 </div>
+
+                <a
+                  href="https://fr.trustpilot.com/review/lokt.fr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  <TrustpilotStars rating={4.3} size={15} />
+                  <span className="font-semibold text-slate-950">4,3</span>
+                  <span className="text-slate-500">sur Trustpilot</span>
+                </a>
               </div>
 
               <div>
-                {/* Screenshot hero — browser frame SaaS */}
                 <div className="relative">
-                  <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 shadow-2xl shadow-slate-900/20 shadow-[#635bff]/10 sm:rounded-[1.75rem]">
-                    <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-                      <div className="ml-4 flex-1 max-w-[220px] rounded-full bg-slate-200 px-3 py-1 text-[0.62rem] font-medium text-slate-500">
-                        app.lokt.fr/espace-bailleur
-                      </div>
-                    </div>
-                    <img
-                      src="/blog/acceuil.png"
-                      alt="Tableau de bord espace bailleur lokt.fr — cockpit du mois"
-                      className="w-full h-auto block"
-                      loading="eager"
-                    />
-                  </div>
+                  <img
+                    src="/cockpit-bailleur-lokt-v3.webp"
+                    alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
+                    width={1536}
+                    height={1024}
+                    className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(15,23,42,0.25)]"
+                    loading="eager"
+                  />
                   {/* Badge flottant */}
-                  <div className="absolute -bottom-3 -right-3 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-lg sm:-bottom-4 sm:-right-4">
+                  <div className="absolute bottom-6 right-2 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-lg sm:bottom-8 sm:right-4">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100">
                       <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-emerald-700" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd"/></svg>
                     </span>
@@ -314,6 +359,29 @@ export default function OutilGestionLocativePage() {
 
         <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
+                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
+                  <span className="block text-2xl sm:text-3xl">Loky s’occupe des tâches.</span>
+                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Vous gardez la main.</span>
+                </h2>
+                <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Décrivez ce que vous voulez faire, en une phrase. Loky prépare l’action à partir des vraies données de votre compte — jamais une estimation générique — et attend votre confirmation avant d’écrire quoi que ce soit.
+                </p>
+              </div>
+
+              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 px-5 sm:px-8">
+                <LokyDemoTabs demos={LOKY_DEMOS} />
+              </div>
+
+              <div className="px-5 pb-5 pt-4 text-right sm:px-8 sm:pb-8">
+                <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
+                  Découvrir toutes les capacités de Loky →
+                </Link>
+              </div>
+            </section>
+
             <div className="max-w-3xl pb-3">
               <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tout relier</p>
               <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
@@ -440,94 +508,6 @@ export default function OutilGestionLocativePage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
-                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
-                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
-                  <span className="block text-2xl sm:text-3xl">Loky s’occupe des tâches.</span>
-                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Vous gardez la main.</span>
-                </h2>
-                <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Décrivez ce que vous voulez faire, en une phrase. Loky prépare l’action à partir des vraies données de votre compte — jamais une estimation générique — et attend votre confirmation avant d’écrire quoi que ce soit.
-                </p>
-              </div>
-
-              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 grid gap-5 bg-slate-950 p-5 sm:p-8 lg:grid-cols-2">
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
-                  <div className="space-y-3.5">
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Crée-moi un bail meublé pour Julien Morel, 650€/mois, à partir du 1er novembre
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                        <p>Bail meublé préparé pour Julien Morel.</p>
-                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                          <p>🏠 Studio Bellevue · 650€/mois</p>
-                          <p>📅 Début le 1er novembre 2026</p>
-                        </div>
-                        <p className="text-white/80">Je le crée ?</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Confirmer
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-[42px]">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                        ✓ Bail créé — Julien Morel, Studio Bellevue
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/40 backdrop-blur sm:p-6">
-                  <div className="space-y-3.5">
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Le locataire du T2 a payé son loyer de janvier, confirme et envoie la quittance
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm" />
-                      <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3 text-sm text-white shadow-sm">
-                        <p>Je confirme le loyer de janvier — la quittance PDF sera générée puis envoyée au locataire.</p>
-                        <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
-                          <p>🏠 T2 · loyer janvier 2026</p>
-                          <p>📄 Quittance générée → envoi locataire</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow-sm">
-                        Confirmer
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-[42px]">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-400/30">
-                        ✓ Paiement confirmé — quittance envoyée
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-5 pb-5 pt-1 text-right sm:px-8 sm:pb-8">
-                <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
-                  Découvrir toutes les capacités de Loky →
-                </Link>
-              </div>
-            </section>
-
             <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
@@ -645,6 +625,112 @@ export default function OutilGestionLocativePage() {
                 ))}
               </div>
             </section>
+
+            {/* ── Tarifs ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-[#f6f9fc] shadow-sm sm:rounded-[2rem]">
+              <div className="p-5 sm:p-8">
+                <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tarifs</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+                  Gratuit pour gérer. Payant quand lokt.fr automatise.
+                </h2>
+
+                <div data-scroll-reveal data-reveal-delay="200" className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+                  <div className="px-4 py-5 sm:px-6 sm:py-6">
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Pourquoi payer un abonnement plutôt qu’une agence ?</p>
+                    <h3 className="mt-1 text-xl font-semibold leading-tight text-slate-950">0 % de commission sur votre loyer.</h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                      Pour un loyer de 800 €/mois, une agence facture en moyenne 7 à 8 % de frais de gestion courante
+                      (encaissement, quittances, relances), souvent complétés par des frais de mise en location. lokt.fr
+                      ne prend jamais de commission sur votre loyer : vous payez un abonnement fixe, quel que soit le montant encaissé.
+                    </p>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agence (gestion courante)</p>
+                        <p className="mt-2 text-2xl font-semibold text-slate-900">~700 à 800 € / an</p>
+                        <p className="mt-1 text-xs text-slate-500">7 à 8 % du loyer annuel, en plus des frais de mise en location facturés à part.</p>
+                      </div>
+                      <div className="rounded-2xl border border-[#635bff]/30 bg-[#635bff]/5 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#4f46e5]">lokt·plus, engagement annuel</p>
+                        <p className="mt-2 text-2xl font-semibold text-slate-950">119 € / an</p>
+                        <p className="mt-1 text-xs text-slate-600">Soit 2 mois offerts vs 11,90 €/mois sans engagement. Toujours sans commission, quel que soit le loyer encaissé.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  {[
+                    {
+                      name: "Gratuit",
+                      price: "0 €",
+                      cadence: "1 logement actif",
+                      desc: "Biens, baux, quittances PDF, états des lieux, finance simple, 4 alertes.",
+                      features: ["1 logement actif", "Quittances manuelles", "États des lieux", "Finance simple", "4 alertes essentielles"],
+                      cta: "Créer mon espace",
+                      href: "/mon-compte?mode=register&redirect=/espace-bailleur",
+                      card: "border-emerald-200 bg-white",
+                      badge: null as string | null,
+                      ctaClass: "bg-emerald-700 text-white hover:bg-emerald-600",
+                    },
+                    {
+                      name: "lokt·one",
+                      price: "6,90 €",
+                      cadence: "/ mois · 2 logements",
+                      desc: "Automatisation complète + portail locataire + partage de documents.",
+                      features: ["Quittances automatiques", "Candidatures en ligne & scoring", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
+                      cta: "Souscrire",
+                      href: "/tarifs",
+                      card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
+                      badge: "Recommandé" as string | null,
+                      ctaClass: "bg-gradient-to-r from-[#635bff] to-[#00d4ff] text-white hover:opacity-90",
+                    },
+                    {
+                      name: "lokt·plus",
+                      price: "11,90 €",
+                      cadence: "/ mois · 15 logements",
+                      desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, déclaration.",
+                      features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "15 logements actifs"],
+                      cta: "Souscrire",
+                      href: "/tarifs",
+                      card: "border-slate-200 bg-white",
+                      badge: null as string | null,
+                      ctaClass: "bg-slate-950 text-white hover:bg-slate-800",
+                    },
+                  ].map((plan) => (
+                    <div key={plan.name} className={`relative flex flex-col rounded-[1.5rem] border p-6 shadow-sm ${plan.card}`}>
+                      {plan.badge ? (
+                        <span className="absolute right-5 top-5 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2.5 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
+                          {plan.badge}
+                        </span>
+                      ) : null}
+                      <p className="text-sm font-semibold text-slate-500">{plan.name}</p>
+                      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                        {plan.price} <span className="text-sm font-normal text-slate-400">{plan.cadence}</span>
+                      </p>
+                      <p className="mt-3 text-sm leading-6 text-slate-600">{plan.desc}</p>
+                      <ul className="mt-4 flex-1 space-y-2">
+                        {plan.features.map((f) => (
+                          <li key={f} className="flex items-center gap-2 text-sm text-slate-700">
+                            <span className="font-bold text-[#635bff]">✓</span> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <Link href={plan.href} className={`mt-5 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold ${plan.ctaClass}`}>
+                        {plan.cta} →
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-center text-xs text-slate-500">
+                  Sans engagement · Résiliable à tout moment ·{" "}
+                  <Link href="/tarifs" className="underline underline-offset-2 hover:text-slate-700">
+                    Voir le comparatif complet
+                  </Link>
+                </p>
+              </div>
+            </section>
+
+            <ReviewsSection />
 
             {/* ── FAQ étendue ── */}
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
