@@ -1852,15 +1852,17 @@ export const GUIDES: GuideArticle[] = [
       {
         title: "8. Ce que lokt.fr fait — et ne fait pas",
         paragraphs: [
-          "lokt.fr est un outil de gestion locative et d'aide à la préparation de la déclaration. Il permet de centraliser vos loyers, vos charges, vos quittances et vos documents, et de générer une synthèse de ce que vous devez déclarer selon votre régime fiscal. Il calcule des estimations de base imposable, de déficit et de réduction Pinel à titre indicatif — demandez simplement à Loky, l'assistant IA, d'ouvrir l'aide à la déclaration pour y accéder directement depuis vos vraies données.",
-          "lokt.fr n'est pas un logiciel de déclaration agréé par l'administration fiscale. Il ne transmet aucune donnée à l'administration. Les montants affichés sont des estimations basées sur les informations saisies par l'utilisateur. Les numéros de case indiqués sont fournis à titre indicatif et peuvent changer chaque année : vérifiez toujours sur impots.gouv.fr ou avec votre comptable avant de soumettre votre déclaration.",
-          "lokt.fr ne remplace pas un expert-comptable, un Centre de Gestion Agréé (CGA) ou un conseiller fiscal. Pour une situation impliquant un déficit LMNP élevé, un bien en indivision, une SCI, une transmission ou tout montage complexe, l'accompagnement d'un professionnel est indispensable. lokt.fr ne peut pas être tenu responsable des erreurs ou omissions de déclaration résultant de l'utilisation de ses outils.",
+          "lokt.fr n'est pas un bloc unique, mais plusieurs briques qui, mises bout à bout, évitent de tout reconstituer en mai. Dès le plan gratuit, le suivi des loyers et des quittances par logement donne un relevé annuel déjà prêt. La vue Finance classe chaque charge par catégorie (travaux, assurance, intérêts d'emprunt, copropriété) au fil de l'eau, pas en une soirée — de quoi retrouver en un clic ce qui est réellement déductible selon votre régime. Chaque document (bail, facture, quittance) reste archivé par logement, prêt à transmettre tel quel à un expert-comptable si besoin.",
+          "Sur le plan lokt·plus, une brique supplémentaire s'ajoute : l'aide à la déclaration, qui calcule une estimation de base imposable, de déficit et de réduction Pinel directement à partir de vos vraies données — pas d'un formulaire à remplir à part. Il suffit de demander à Loky, l'assistant IA, de l'ouvrir pour y accéder.",
+          "Ce que lokt.fr ne fait pas : ce n'est pas un logiciel de déclaration agréé par l'administration fiscale, il ne transmet aucune donnée à l'administration, et les montants affichés restent des estimations basées sur les informations saisies. Les numéros de case indiqués sont fournis à titre indicatif et peuvent changer chaque année : vérifiez toujours sur impots.gouv.fr ou avec votre comptable avant de soumettre votre déclaration.",
+          "lokt.fr ne remplace pas non plus un expert-comptable, un Centre de Gestion Agréé (CGA) ou un conseiller fiscal. Pour une situation impliquant un déficit LMNP élevé, un bien en indivision, une SCI, une transmission ou tout montage complexe, l'accompagnement d'un professionnel est indispensable. lokt.fr ne peut pas être tenu responsable des erreurs ou omissions de déclaration résultant de l'utilisation de ses outils.",
         ],
         bullets: [
-          "lokt.fr centralise vos données locatives pour vous aider à préparer votre déclaration.",
-          "Les calculs sont des estimations — non des résultats fiscaux certifiés.",
-          "lokt.fr ne dépose aucune déclaration officielle à votre place.",
-          "Les numéros de case sont indicatifs : vérifiez sur impots.gouv.fr chaque année.",
+          "Suivi des loyers et quittances par logement, dès le plan gratuit.",
+          "Finance : charges classées par catégorie au fil de l'eau, pas reconstituées en mai.",
+          "Documents et justificatifs archivés par logement, exportables pour l'expert-comptable.",
+          "Aide à la déclaration (lokt·plus) : estimation calculée sur vos vraies données, ouverte via Loky.",
+          "Les calculs restent des estimations — non des résultats fiscaux certifiés, aucun dépôt officiel effectué à votre place.",
           "Pour toute situation complexe, consultez un expert-comptable ou un CGA.",
         ],
       },
@@ -1888,6 +1890,323 @@ export const GUIDES: GuideArticle[] = [
       { label: "ANIL : fiscalité des revenus locatifs", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/fiscalite/" },
       { label: "Légifrance : article 1729 CGI (pénalités)", href: "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044981868" },
     ],
+    cta: {
+      eyebrow: "lokt·plus",
+      title: "Une aide à la déclaration branchée sur vos vraies données",
+      desc: "Loyers, charges et documents déjà classés toute l'année : l'estimation de votre base imposable se calcule sans ressaisie, directement depuis votre compte.",
+      href: "/tarifs",
+      label: "Voir les offres",
+    },
+  },
+  // ── FISCAL : Passage LMNP → LMP ──────────────────────────────────────────
+  {
+    slug: "passer-lmnp-lmp-demarches",
+    category: "fiscal",
+    title: "Passer de LMNP à LMP : les démarches à connaître",
+    shortTitle: "Passer en LMP",
+    description: "Seuils de bascule, immatriculation au RCS, cotisations sociales et impact réel sur votre fiscalité : ce qui change quand vous devenez loueur professionnel.",
+    updatedAt: "2026-09-18",
+    intro:
+      "Le passage de LMNP (loueur en meublé non professionnel) à LMP (loueur en meublé professionnel) n'est pas un choix : c'est une bascule automatique dès que deux seuils sont franchis simultanément. Beaucoup de bailleurs la découvrent au moment de leur déclaration, sans l'avoir anticipée — avec des conséquences sur les cotisations sociales et les obligations comptables qui méritent d'être comprises avant, pas après.",
+    sections: [
+      {
+        title: "Quand bascule-t-on réellement en LMP ?",
+        paragraphs: [
+          "Deux conditions doivent être réunies la même année pour basculer en LMP : les recettes locatives meublées annuelles doivent dépasser 23 000 €, ET ces recettes doivent représenter plus de 50 % des revenus professionnels globaux du foyer fiscal (salaires, autres BIC, pensions, etc.). Si une seule des deux conditions est remplie, vous restez en LMNP.",
+          "C'est un point souvent mal compris : un bailleur avec 30 000 € de recettes meublées mais qui gagne par ailleurs 80 000 € de salaire reste en LMNP, car ses recettes locatives ne dépassent pas 50 % de ses revenus. À l'inverse, un retraité avec une petite pension et 25 000 € de recettes meublées peut basculer en LMP dès la première année.",
+          "La bascule s'apprécie chaque année sur la base des revenus de l'année écoulée — il est donc possible d'aller et venir entre LMNP et LMP d'une année sur l'autre selon l'évolution de vos revenus, même si en pratique c'est rare une fois le seuil des 23 000 € dépassé durablement.",
+        ],
+        bullets: [
+          "Recettes locatives meublées > 23 000 € par an.",
+          "ET recettes meublées > 50 % des revenus professionnels du foyer fiscal.",
+          "Les deux conditions doivent être remplies la même année.",
+          "Appréciation annuelle : le statut peut changer d'une année sur l'autre.",
+          "Le franchissement n'est pas un choix : il s'impose dès que les seuils sont dépassés.",
+        ],
+      },
+      {
+        title: "S'immatriculer au Registre du Commerce et des Sociétés",
+        paragraphs: [
+          "Contrairement au LMNP, le statut LMP impose une immatriculation au Registre du Commerce et des Sociétés (RCS), en plus de la déclaration d'activité déjà effectuée via le guichet unique des formalités des entreprises. Cette immatriculation doit être réalisée dès que vous constatez le franchissement des seuils, généralement au moment de la déclaration de revenus qui le révèle.",
+          "L'absence d'immatriculation au RCS n'empêche pas l'administration fiscale de vous considérer comme LMP dès lors que les seuils sont dépassés — la jurisprudence a confirmé que le statut fiscal de LMP ne dépend pas de l'immatriculation elle-même, mais des seuils de recettes. Ne pas s'immatriculer expose néanmoins à des complications administratives et ne dispense d'aucune obligation, notamment sociale.",
+        ],
+        bullets: [
+          "Immatriculation au RCS via le guichet unique (formalites.entreprises.gouv.fr).",
+          "Démarche à effectuer dès la constatation du dépassement des seuils.",
+          "Le statut fiscal LMP s'applique même sans immatriculation, dès les seuils dépassés.",
+          "Numéro SIRET existant (obtenu en LMNP) conservé, l'activité change de qualification.",
+        ],
+      },
+      {
+        title: "Les cotisations sociales : le vrai changement",
+        paragraphs: [
+          "C'est la différence la plus concrète entre LMNP et LMP. En LMNP, seuls les prélèvements sociaux (17,2 %) s'appliquent sur le résultat imposable, sans affiliation sociale particulière. En LMP, vous êtes affilié à la Sécurité sociale des indépendants (SSI) en tant que travailleur non salarié, avec des cotisations sociales calculées sur le bénéfice réalisé — de l'ordre de 35 à 40 % du bénéfice selon les tranches, en plus de l'impôt sur le revenu.",
+          "Ces cotisations financent une couverture sociale (maladie, retraite) dont vous ne bénéficiez pas en LMNP, ce qui compense en partie leur coût pour certains profils — notamment ceux qui n'ont pas déjà une couverture retraite complète par ailleurs. Pour un bailleur déjà salarié à temps plein avec une couverture sociale complète, ces cotisations représentent en revanche un coût sec.",
+          "Une cotisation minimale s'applique généralement même en l'absence de bénéfice significatif — se renseigner précisément auprès de l'URSSAF avant de basculer, car ce montant plancher surprend souvent les bailleurs qui anticipaient une fiscalité nulle grâce à l'amortissement.",
+        ],
+        bullets: [
+          "Affiliation à la Sécurité sociale des indépendants (SSI), statut de travailleur non salarié.",
+          "Cotisations sociales : environ 35 à 40 % du bénéfice imposable, en plus de l'IR.",
+          "Cotisation minimale possible même sans bénéfice significatif.",
+          "Contrepartie : ouverture de droits sociaux (maladie, retraite) absents en LMNP.",
+        ],
+        note: "Simulez le coût réel des cotisations sociales auprès de l'URSSAF avant de considérer le passage en LMP comme acquis ou subi — le montant varie significativement selon le bénéfice réalisé et votre situation personnelle.",
+      },
+      {
+        title: "Ce qui devient plus avantageux en LMP",
+        paragraphs: [
+          "Le déficit LMP s'impute sur le revenu global du foyer fiscal sans limitation de montant, contrairement au déficit LMNP qui ne peut s'imputer que sur des revenus BIC meublés futurs pendant 10 ans. Pour un bailleur avec un déficit important (fort effet de l'amortissement les premières années), cet avantage peut réduire significativement l'impôt sur l'ensemble des revenus du foyer, pas seulement sur les loyers.",
+          "Sous conditions strictes (activité exercée depuis au moins 5 ans, recettes moyennes des deux dernières années inférieures à 90 000 € HT pour une exonération totale, dégressive jusqu'à 126 000 €), la plus-value réalisée à la revente d'un bien LMP peut être exonérée au titre des plus-values professionnelles — un régime nettement plus favorable que la plus-value des particuliers applicable en LMNP.",
+        ],
+        bullets: [
+          "Déficit imputable sur le revenu global du foyer, sans limitation de montant.",
+          "Exonération possible de plus-value professionnelle après 5 ans d'activité (sous conditions de recettes).",
+          "Sortie possible de l'assiette IFI pour le bien, si l'activité constitue la profession principale du foyer (condition stricte, rarement remplie pour un simple loueur).",
+        ],
+      },
+    ],
+    checklist: [
+      "Recettes locatives meublées de l'année vérifiées par rapport au seuil de 23 000 €",
+      "Part des recettes meublées dans les revenus professionnels du foyer calculée",
+      "Immatriculation au RCS effectuée si les deux seuils sont dépassés",
+      "Simulation du coût réel des cotisations sociales SSI demandée à l'URSSAF",
+      "Impact sur la couverture sociale personnelle évalué (retraite, maladie)",
+      "Expert-comptable consulté avant la première déclaration en LMP",
+      "Déficits antérieurs LMNP vérifiés (règles de report différentes une fois en LMP)",
+    ],
+    faq: [
+      { q: "Peut-on choisir de rester en LMNP volontairement si les seuils sont dépassés ?", a: "Non. Le passage en LMP n'est pas une option : dès que les deux conditions (recettes > 23 000 € ET > 50 % des revenus du foyer) sont réunies la même année, le statut LMP s'applique de plein droit, que le bailleur l'ait demandé ou non." },
+      { q: "Le passage en LMP est-il définitif ?", a: "Non, il est réapprécié chaque année. Si vos recettes locatives repassent sous l'un des deux seuils l'année suivante, vous repassez en LMNP. En pratique, une fois le seuil des 23 000 € dépassé durablement avec peu d'autres revenus professionnels, le statut LMP a tendance à se maintenir." },
+      { q: "Faut-il un expert-comptable pour passer en LMP ?", a: "Ce n'est pas une obligation légale, mais fortement recommandé. Le changement d'affiliation sociale, le calcul des cotisations SSI et l'articulation avec les amortissements déjà pratiqués en LMNP sont des points techniques où une erreur peut coûter cher — l'accompagnement d'un expert-comptable spécialisé LMNP/LMP est un bon investissement à ce stade." },
+    ],
+    sources: [
+      { label: "Service-Public : loueur en meublé professionnel (LMP)", href: "https://www.service-public.fr/particuliers/vosdroits/F32744" },
+      { label: "URSSAF : cotisations des loueurs en meublé professionnels", href: "https://www.urssaf.fr/" },
+      { label: "impots.gouv.fr : régime des plus-values professionnelles", href: "https://www.impots.gouv.fr/particulier/la-location-immobiliere" },
+    ],
+    cta: {
+      eyebrow: "Gestion LMNP",
+      title: "Centralisez votre gestion locative meublée",
+      desc: "Bail, inventaire, quittances et finance dans un seul espace, pour garder une vision claire pendant que vous évaluez votre situation LMNP/LMP.",
+      href: "/gestion-locative-lmnp",
+      label: "Voir l'outil LMNP",
+    },
+  },
+  // ── FISCAL : Déficit foncier ──────────────────────────────────────────────
+  {
+    slug: "deficit-foncier-calcul-declaration",
+    category: "fiscal",
+    title: "Déficit foncier : le calculer et le déclarer",
+    shortTitle: "Déficit foncier",
+    description: "Comment se forme un déficit foncier, le plafond de 10 700 €, le sort des intérêts d'emprunt et l'engagement de location à respecter.",
+    updatedAt: "2026-09-18",
+    intro:
+      "Le déficit foncier est l'un des mécanismes les plus efficaces pour réduire son impôt en location nue au régime réel — mais aussi l'un des plus mal compris. Entre le plafond de 10 700 €, le traitement à part des intérêts d'emprunt et l'engagement de location à respecter, une erreur d'imputation peut coûter un redressement. Ce guide couvre uniquement la location nue : en LMNP, le mécanisme du déficit BIC obéit à des règles différentes, détaillées en fin de guide.",
+    sections: [
+      {
+        title: "Comment se forme un déficit foncier",
+        paragraphs: [
+          "Un déficit foncier apparaît quand les charges déductibles d'un bien loué nu (régime réel) dépassent les loyers encaissés sur l'année. Il ne concerne que le régime réel foncier — le micro-foncier, avec son abattement forfaitaire de 30 %, ne permet jamais de générer de déficit, quelles que soient vos charges réelles.",
+          "Contrairement à une idée reçue, le déficit foncier n'est pas réservé aux gros travaux exceptionnels : il peut résulter simplement d'une année avec une taxe foncière élevée, des charges de copropriété importantes ou un turnover locatif ayant généré une vacance prolongée, combinés à des loyers modestes.",
+        ],
+        bullets: [
+          "Uniquement en location nue, régime réel foncier (jamais en micro-foncier).",
+          "Résulte de charges déductibles supérieures aux loyers encaissés sur l'année.",
+          "Peut provenir de travaux, mais aussi de charges courantes élevées une année donnée.",
+        ],
+      },
+      {
+        title: "Quelles charges génèrent un déficit imputable",
+        paragraphs: [
+          "Les travaux d'entretien, de réparation et d'amélioration sont déductibles et participent au déficit — mais pas les travaux de construction, reconstruction ou agrandissement, qui ne sont jamais déductibles des revenus fonciers (ils s'ajoutent au prix d'acquisition pour le calcul de la plus-value future). La distinction entre amélioration et agrandissement est parfois subtile : en cas de doute sur un chantier important, un avis professionnel évite un redressement.",
+          "S'ajoutent à ces travaux : la taxe foncière (hors taxe d'enlèvement des ordures ménagères, récupérable auprès du locataire), les primes d'assurance (PNO, loyers impayés), les frais de gestion et de procédure, les charges de copropriété non récupérables, et les intérêts d'emprunt — ces derniers avec un traitement particulier détaillé ci-dessous.",
+        ],
+        bullets: [
+          "Travaux d'entretien, réparation, amélioration : déductibles.",
+          "Travaux de construction, reconstruction, agrandissement : jamais déductibles des revenus fonciers.",
+          "Taxe foncière (hors part récupérable), primes d'assurance, frais de gestion : déductibles.",
+          "Charges de copropriété non récupérables : déductibles.",
+        ],
+      },
+      {
+        title: "Le plafond de 10 700 € et le piège des intérêts d'emprunt",
+        paragraphs: [
+          "Le déficit foncier (hors intérêts d'emprunt) est imputable sur le revenu global du foyer fiscal dans la limite de 10 700 € par an. Au-delà de ce plafond, l'excédent est reportable sur les revenus fonciers des 10 années suivantes.",
+          "Piège fréquent : les intérêts d'emprunt ne font jamais partie de ce plafond de 10 700 € imputable sur le revenu global. Ils ne peuvent s'imputer que sur les revenus fonciers eux-mêmes, jamais sur le revenu global du foyer. Si les intérêts créent à eux seuls un déficit foncier, cette part est uniquement reportable sur les revenus fonciers des 10 années suivantes, sans effet sur l'impôt global de l'année.",
+          "En pratique, il faut donc décomposer le déficit en deux masses distinctes avant de déclarer : la part hors intérêts (imputable sur le revenu global jusqu'à 10 700 €) et la part liée aux intérêts (imputable uniquement sur les revenus fonciers futurs).",
+        ],
+        bullets: [
+          "Déficit hors intérêts : imputable sur le revenu global, plafonné à 10 700 €/an.",
+          "Excédent au-delà de 10 700 € : reportable sur les revenus fonciers des 10 années suivantes.",
+          "Intérêts d'emprunt : jamais imputables sur le revenu global, seulement sur les revenus fonciers.",
+          "Bien distinguer les deux masses de charges avant de remplir la déclaration.",
+        ],
+        note: "Un crédit immobilier récent avec des intérêts encore élevés peut donc générer un déficit foncier important... dont la majeure partie n'a aucun effet sur votre impôt de l'année. Vérifiez la répartition avant de compter sur une économie d'impôt immédiate.",
+      },
+      {
+        title: "L'engagement de maintien en location pendant 3 ans",
+        paragraphs: [
+          "Pour bénéficier de l'imputation du déficit sur le revenu global, le bien doit rester loué nu à usage d'habitation jusqu'au 31 décembre de la 3e année suivant celle de l'imputation. Vendre le bien, le reprendre pour un usage personnel ou le mettre en location meublée avant ce terme entraîne la remise en cause de l'avantage fiscal obtenu.",
+          "En cas de rupture de cet engagement, le déficit imputé est réintégré au revenu global de l'année de la rupture — ce qui peut créer un rattrapage d'impôt significatif et inattendu. Ce point mérite d'être anticipé avant toute décision de vente ou de changement d'usage sur un bien ayant généré un déficit récent.",
+        ],
+        bullets: [
+          "Location nue à usage d'habitation maintenue jusqu'au 31/12 de la 3e année suivant l'imputation.",
+          "Vente, usage personnel ou passage en meublé avant ce terme : engagement rompu.",
+          "Sanction : réintégration du déficit imputé au revenu global de l'année de rupture.",
+        ],
+      },
+      {
+        title: "Comment le déclarer",
+        paragraphs: [
+          "Le déficit foncier se déclare sur le formulaire 2044 (ou 2044-SPE selon les dispositifs concernés), qui détaille les revenus fonciers, les charges et le calcul du déficit. Le résultat est ensuite reporté sur la déclaration principale 2042. Les numéros de case exacts peuvent évoluer d'une année sur l'autre : vérifiez-les systématiquement sur impots.gouv.fr avant de déclarer, ou faites-vous accompagner par un professionnel si le montant en jeu est significatif.",
+        ],
+        bullets: [
+          "Formulaire 2044 (revenus fonciers réels), reporté sur la déclaration 2042.",
+          "Numéros de case à vérifier chaque année sur impots.gouv.fr.",
+          "Conserver tous les justificatifs (factures, avis de taxe foncière, certificat d'intérêts) au moins 3 ans.",
+        ],
+      },
+      {
+        title: "Pourquoi ce mécanisme ne s'applique pas en LMNP",
+        paragraphs: [
+          "En location meublée (LMNP), le résultat relève des bénéfices industriels et commerciaux (BIC), pas des revenus fonciers — le déficit foncier et son plafond de 10 700 € ne s'appliquent donc pas. Un déficit BIC en LMNP n'est imputable que sur des revenus BIC de location meublée des 10 années suivantes, jamais sur le revenu global du foyer (sauf passage en LMP). C'est une différence structurelle entre les deux régimes, à ne pas confondre au moment de choisir entre location nue et meublée sur un même projet.",
+        ],
+        bullets: [
+          "LMNP : déficit BIC, pas de plafond de 10 700 €, pas d'imputation sur le revenu global.",
+          "Déficit BIC reportable uniquement sur les revenus BIC meublés des 10 années suivantes.",
+          "En LMP, le déficit redevient imputable sur le revenu global, sans limitation.",
+        ],
+      },
+    ],
+    checklist: [
+      "Charges de l'année classées : travaux déductibles vs non déductibles",
+      "Intérêts d'emprunt séparés du reste des charges pour l'imputation",
+      "Déficit hors intérêts calculé et comparé au plafond de 10 700 €",
+      "Excédent éventuel identifié pour report sur 10 ans",
+      "Engagement de maintien en location de 3 ans vérifié avant toute vente ou changement d'usage",
+      "Formulaire 2044 rempli avec les bons montants",
+      "Numéros de case vérifiés sur impots.gouv.fr avant déclaration",
+      "Justificatifs archivés (factures, taxe foncière, certificat d'intérêts)",
+    ],
+    faq: [
+      { q: "Les intérêts d'emprunt sont-ils déductibles du revenu global comme les autres charges ?", a: "Non, jamais. Les intérêts d'emprunt ne s'imputent que sur les revenus fonciers, jamais sur le revenu global du foyer. Si vos intérêts dépassent vos loyers, l'excédent est uniquement reportable sur vos revenus fonciers des 10 années suivantes, sans réduire votre impôt sur le revenu global cette année-là." },
+      { q: "Que se passe-t-il si je vends le bien avant la fin des 3 ans d'engagement ?", a: "Le déficit imputé sur votre revenu global est réintégré à votre revenu de l'année où l'engagement est rompu — vous perdez rétroactivement l'avantage fiscal obtenu. C'est un point à vérifier avant toute décision de vente sur un bien ayant généré un déficit récemment imputé." },
+      { q: "Peut-on cumuler déficit foncier et LMNP sur des biens différents ?", a: "Oui. Rien n'empêche de détenir un bien loué nu au réel (générant potentiellement un déficit foncier) et un autre loué meublé en LMNP (relevant du BIC) — chaque bien suit les règles de son propre régime, sans compensation possible entre les deux catégories de revenus." },
+    ],
+    sources: [
+      { label: "impots.gouv.fr : le déficit foncier", href: "https://www.impots.gouv.fr/particulier/la-location-immobiliere" },
+      { label: "Service-Public : revenus fonciers, régime réel", href: "https://www.service-public.fr/particuliers/vosdroits/F31228" },
+      { label: "Légifrance : article 156 du CGI (déficit foncier)", href: "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000042913906" },
+    ],
+    cta: {
+      eyebrow: "Finance",
+      title: "Vos charges classées automatiquement, pas reconstituées en mai",
+      desc: "Travaux, intérêts d'emprunt, copropriété : chaque charge enregistrée au fil de l'eau, prête à distinguer ce qui est imputable sur le revenu global.",
+      href: "/outil-gestion-locative",
+      label: "Voir l'outil bailleur",
+    },
+  },
+  // ── FISCAL : Checklist annuelle de déclaration ────────────────────────────
+  {
+    slug: "checklist-declaration-annuelle-bailleur",
+    category: "fiscal",
+    title: "Préparer sa déclaration : la checklist annuelle du bailleur",
+    shortTitle: "Checklist déclaration annuelle",
+    description: "Le calendrier fiscal, les documents à rassembler tout au long de l'année et les erreurs les plus coûteuses à éviter, quel que soit votre régime.",
+    updatedAt: "2026-09-18",
+    intro:
+      "Que vous soyez en location nue ou meublée, la déclaration se prépare mal en une soirée de mai. Les bailleurs qui rattrapent tout au dernier moment sont aussi ceux qui oublient une charge déductible, perdent un justificatif ou ratent un changement de régime. Ce guide ne traite pas du choix de régime (voir le guide dédié « Déclarer ses revenus locatifs ») mais de l'organisation concrète, mois après mois, pour arriver à la déclaration avec un dossier complet.",
+    sections: [
+      {
+        title: "Le calendrier fiscal du bailleur",
+        paragraphs: [
+          "La déclaration de revenus en ligne s'échelonne généralement fin mai selon votre département — les dates exactes sont fixées chaque année par l'administration et publiées sur impots.gouv.fr, à vérifier systématiquement plutôt que de se fier à une date mémorisée l'année précédente.",
+          "D'autres échéances rythment l'année du bailleur, indépendamment de la déclaration de revenus elle-même : la taxe foncière est généralement due mi-octobre, la CFE (pour les bailleurs LMNP/LMP redevables) fin de l'année civile, et pour le LMNP au régime réel, la liasse fiscale (formulaire 2031) doit être déposée au service des impôts des entreprises avant la déclaration personnelle, avec un calendrier propre à vérifier chaque année.",
+        ],
+        bullets: [
+          "Déclaration de revenus en ligne : généralement fin mai, dates à vérifier chaque année.",
+          "Taxe foncière : échéance généralement mi-octobre.",
+          "CFE (si redevable) : échéance en fin d'année civile.",
+          "Liasse 2031 (LMNP réel) : à déposer avant la déclaration personnelle, calendrier propre.",
+        ],
+      },
+      {
+        title: "Les documents à rassembler tout au long de l'année",
+        paragraphs: [
+          "Le principal facteur de stress en mai n'est pas la déclaration elle-même, mais la chasse aux documents. Un bailleur organisé archive chaque justificatif au fil de l'eau plutôt que de tout reconstituer en une fois : relevé des loyers encaissés mois par mois, quittances émises, décompte annuel de charges de copropriété, avis de taxe foncière, certificat annuel des intérêts d'emprunt (fourni par la banque en début d'année), factures de travaux et d'entretien, primes d'assurance PNO et GLI.",
+          "En LMNP, s'ajoutent les éléments propres au régime BIC : factures d'achat du mobilier et des équipements (pour le calcul des amortissements), tableau d'amortissement s'il est tenu par un expert-comptable, et l'inventaire à jour du logement meublé.",
+        ],
+        bullets: [
+          "Relevé des loyers encaissés et quittances émises, mois par mois.",
+          "Décompte annuel de charges de copropriété.",
+          "Avis de taxe foncière de l'année.",
+          "Certificat annuel des intérêts d'emprunt (fourni par la banque).",
+          "Factures de travaux, d'entretien et d'assurance (PNO, GLI).",
+          "En LMNP : factures de mobilier/équipements et tableau d'amortissement.",
+        ],
+      },
+      {
+        title: "Organiser un dossier par logement, pas un dossier par année",
+        paragraphs: [
+          "Classer les documents par logement plutôt que par année facilite deux choses : la déclaration annuelle (tout est déjà regroupé par bien) et la revente future (l'historique complet d'un bien est immédiatement disponible, utile pour justifier des travaux ou calculer une plus-value). Dupliquer certains documents transversaux (avis d'imposition global, par exemple) entre les dossiers n'est pas un problème — la redondance coûte moins cher qu'un document introuvable.",
+        ],
+        bullets: [
+          "Un dossier par logement, regroupant bail, charges, travaux et déclarations propres à ce bien.",
+          "Historique conservé même après la revente, pour justifier d'éventuels contrôles a posteriori.",
+          "Documents transversaux dupliqués entre dossiers plutôt que centralisés seuls.",
+        ],
+      },
+      {
+        title: "Les erreurs qui coûtent le plus cher",
+        paragraphs: [
+          "Le franchissement d'un seuil non déclaré est l'erreur la plus fréquente et la plus coûteuse : passage du micro-foncier au réel, du micro-BIC au réel, ou du LMNP au LMP sans en tirer les conséquences déclaratives. Ces dépassements se détectent a posteriori par l'administration, avec majoration de 10 % en cas de retard et intérêts de retard en sus.",
+          "Autres erreurs fréquentes : oublier de reporter un déficit foncier ou BIC des années précédentes encore reportable, omettre la déclaration d'activité LMNP (formulaire P0i) alors que des loyers meublés sont déclarés — ce qui crée une incohérence visible pour l'administration —, ou confondre les charges récupérables auprès du locataire avec les charges déductibles fiscalement, qui ne se recoupent que partiellement.",
+        ],
+        bullets: [
+          "Dépassement de seuil de régime non déclaré (micro vers réel, LMNP vers LMP).",
+          "Déficit reportable des années précédentes oublié.",
+          "Revenus meublés déclarés sans déclaration d'activité LMNP (SIRET manquant).",
+          "Confusion entre charges récupérables (locataire) et charges déductibles (fiscalité).",
+        ],
+      },
+      {
+        title: "Anticiper plutôt que rattraper",
+        paragraphs: [
+          "La meilleure protection contre ces erreurs reste une donnée à jour toute l'année plutôt qu'une reconstitution en mai. Sur lokt.fr, chaque loyer confirmé et chaque charge enregistrée alimentent directement la vue finance du logement — et l'aide à la déclaration (accessible en demandant simplement à Loky de l'ouvrir) s'appuie sur ces vraies données plutôt que sur une ressaisie de dernière minute.",
+        ],
+        bullets: [
+          "Données financières à jour toute l'année plutôt que reconstituées en mai.",
+          "Aide à la déclaration accessible directement, sur simple demande à Loky.",
+        ],
+      },
+    ],
+    checklist: [
+      "Dates limites de déclaration de l'année vérifiées sur impots.gouv.fr",
+      "Relevé des loyers et quittances de l'année complet",
+      "Décompte de charges de copropriété récupéré",
+      "Avis de taxe foncière archivé",
+      "Certificat annuel d'intérêts d'emprunt demandé à la banque",
+      "Factures de travaux, entretien et assurances rassemblées",
+      "Franchissement de seuil de régime vérifié (micro/réel, LMNP/LMP)",
+      "Déficits reportables des années précédentes retrouvés",
+      "Dossier transmis à l'expert-comptable si le régime l'exige (LMNP réel)",
+    ],
+    faq: [
+      { q: "À partir de quand faut-il commencer à préparer sa déclaration ?", a: "Idéalement, l'organisation se fait au fil de l'eau tout au long de l'année plutôt qu'à une date précise : archiver chaque quittance, charge et facture au moment où elle survient évite la reconstitution complète en mai. Une bonne pratique est de faire un point trimestriel rapide sur chaque logement." },
+      { q: "Que faire si je constate un dépassement de seuil après coup ?", a: "Régularisez dès que possible plutôt que d'attendre un contrôle : une régularisation spontanée est généralement mieux traitée par l'administration qu'un redressement constaté a posteriori, qui s'accompagne systématiquement d'une majoration de 10 % et d'intérêts de retard." },
+      { q: "Faut-il conserver les justificatifs même après la déclaration validée ?", a: "Oui, pendant au moins 3 ans (délai de prescription courant), voire plus longtemps pour les documents utiles au calcul d'une future plus-value (factures de travaux, notamment). L'administration peut demander ces justificatifs bien après la déclaration elle-même." },
+    ],
+    sources: [
+      { label: "impots.gouv.fr : calendrier de la déclaration de revenus", href: "https://www.impots.gouv.fr/particulier" },
+      { label: "Service-Public : déclarer ses revenus fonciers ou BIC", href: "https://www.service-public.fr/particuliers/vosdroits/F1991" },
+    ],
+    cta: {
+      eyebrow: "lokt·plus",
+      title: "L'aide à la déclaration, ouverte en une phrase à Loky",
+      desc: "Plus besoin de tout reconstituer en mai : demandez à Loky d'ouvrir l'aide à la déclaration, calculée sur vos vraies données déjà classées.",
+      href: "/tarifs",
+      label: "Voir les offres",
+    },
   },
 ];
 
