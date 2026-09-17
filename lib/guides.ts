@@ -128,6 +128,7 @@ export const GUIDES: GuideArticle[] = [
           "Le bail doit être rédigé conformément aux modèles types définis par décret (arrêté du 29 mai 2015 pour les baux vides et meublés). Certaines clauses sont réputées non écrites même si elles figurent dans le contrat : interdiction d'héberger des proches, pénalité automatique sans mise en demeure préalable, obligation de souscrire une assurance auprès d'un assureur désigné par le bailleur.",
           "Les annexes obligatoires varient selon le type de bail : notice d'information sur les droits et obligations, DDT complet, état des lieux d'entrée (à réaliser le jour de la remise des clés), extrait du règlement de copropriété si applicable, inventaire pour un meublé, acte de cautionnement si un garant est prévu.",
           "L'acte de cautionnement doit contenir une mention manuscrite du garant reprenant le montant du loyer et ses obligations. Depuis la loi Alur, la caution à durée indéterminée doit prévoir un délai de résiliation. Vérifiez que l'acte est conforme avant la signature du bail.",
+          "Si le bail a été rédigé par une agence ou un tiers, inutile de ressaisir chaque champ à la main : sur lokt.fr, l'IA peut lire le PDF du bail déjà signé et en extraire automatiquement le locataire, le loyer, les charges et les dates pour créer le dossier — vous n'avez plus qu'à vérifier et confirmer.",
         ],
         bullets: [
           "Bail conforme au modèle réglementaire applicable (vide ou meublé).",
@@ -145,6 +146,7 @@ export const GUIDES: GuideArticle[] = [
           "La mise en location est un point de départ, pas un événement isolé. Dès la signature, des actions récurrentes se mettent en place : encaisser le loyer, délivrer la quittance (obligatoire si le locataire la demande), suivre les charges, anticiper la révision IRL, gérer les signalements de travaux et préparer la régularisation annuelle des charges.",
           "Créez un dossier par logement regroupant le bail, les annexes, les diagnostics, les échanges significatifs avec le locataire, les factures de travaux et les quittances. Cette organisation vous fait gagner du temps lors d'un départ, d'un litige ou d'une vérification fiscale.",
           "Notez dès le départ les échéances clés : date anniversaire pour la révision IRL, date d'expiration de chaque diagnostic, date de régularisation des charges (généralement dans les 6 mois suivant la clôture de l'exercice de copropriété), date de renouvellement de l'assurance PNO.",
+          "Sur lokt.fr, ces échéances n'ont pas besoin d'être notées ailleurs : l'espace bailleur les suit automatiquement, et Loky, l'assistant IA, peut confirmer un paiement, envoyer la notification de révision IRL ou relancer un locataire directement depuis une simple phrase, le jour où l'échéance arrive.",
         ],
         bullets: [
           "Dossier par logement créé avec tous les documents signés.",
@@ -387,6 +389,18 @@ export const GUIDES: GuideArticle[] = [
           "Avis de taxe foncière.",
           "Factures de travaux et d'entretien.",
           "Primes d'assurance PNO et GLI.",
+        ],
+      },
+      {
+        title: "Comment lokt vous aide",
+        paragraphs: [
+          "Plutôt que de reprendre la liste des 11 catégories manuellement à chaque logement, lokt.fr vérifie l'état de conformité de l'inventaire meublé de chaque bien et signale précisément les équipements manquants ou en quantité insuffisante — sans avoir à ressortir la checklist papier.",
+          "Loky, l'assistant IA, peut répondre directement à la question « mon inventaire LMNP est-il complet pour ce logement ? » : il consulte le vrai inventaire enregistré, calcule le taux de conformité et liste les éléments à compléter avant la remise des clés.",
+        ],
+        bullets: [
+          "Vérification automatique de la conformité aux 11 catégories obligatoires, par logement.",
+          "Éléments manquants ou insuffisants signalés précisément (ex. : plaques de cuisson, vaisselle).",
+          "Réponse directe de Loky sur l'état de l'inventaire, sur simple question en chat.",
         ],
       },
     ],
@@ -781,7 +795,7 @@ export const GUIDES: GuideArticle[] = [
         paragraphs: [
           "Le bailleur est obligé de délivrer une quittance au locataire qui en fait la demande. Vous pouvez la transmettre par email sous format PDF. La quittance doit mentionner le montant du loyer, les provisions sur charges, la période couverte et la mention que le locataire est à jour de ses paiements.",
           "Si le locataire entre en cours de mois, le premier loyer est proratisé au nombre de jours restants dans le mois. Par exemple, pour une entrée le 15 juin dans un logement à 900 €/mois : 900 € × (16 jours / 30 jours) = 480 €. Précisez le calcul dans le bail ou sur la première quittance pour éviter toute ambiguïté.",
-          "Préparez un modèle de quittance mensuelle dès la signature du bail. Des outils de gestion locative en ligne génèrent automatiquement les quittances — même les plus simples suffisent si vous n'avez qu'un ou deux biens.",
+          "Préparez un modèle de quittance mensuelle dès la signature du bail. Des outils de gestion locative en ligne génèrent automatiquement les quittances — même les plus simples suffisent si vous n'avez qu'un ou deux biens. Sur lokt.fr, il suffit de confirmer le paiement (ou de le dire à Loky, l'assistant IA) pour que la quittance PDF conforme soit générée et prête à envoyer.",
         ],
         bullets: [
           "Quittance obligatoire à la demande du locataire (sans frais).",
@@ -1033,6 +1047,18 @@ export const GUIDES: GuideArticle[] = [
           "Travaux de remise en état planifiés et réalisés avant la nouvelle mise en location.",
         ],
       },
+      {
+        title: "Comment lokt vous aide",
+        paragraphs: [
+          "L'état des lieux de sortie réalisé dans lokt.fr reste rattaché au bail et reprend l'état des lieux d'entrée pour la comparaison pièce par pièce — pas besoin de ressortir un document papier archivé ailleurs. Le rapport final se télécharge en PDF en un lien.",
+          "Quand le bail se termine, il suffit de le signaler dans lokt.fr (ou de le dire à Loky) pour qu'il soit clôturé proprement : les relances et quittances automatiques s'arrêtent, et le dossier du locataire est archivé plutôt que supprimé, pour rester consultable en cas de contestation ultérieure sur le dépôt de garantie.",
+        ],
+        bullets: [
+          "État des lieux de sortie comparé automatiquement à celui d'entrée, dans le même dossier.",
+          "Rapport d'état des lieux téléchargeable en PDF via un lien direct.",
+          "Clôture du bail : arrêt des relances/quittances automatiques et archivage du dossier locataire.",
+        ],
+      },
     ],
     checklist: [
       "Congé archivé avec date de réception",
@@ -1158,6 +1184,18 @@ export const GUIDES: GuideArticle[] = [
         ],
         note: "En cas de désaccord, la Commission Départementale de Conciliation (CDC) offre une médiation gratuite avant tout recours judiciaire. La saisine suspend le délai de prescription.",
       },
+      {
+        title: "Comment lokt vous aide",
+        paragraphs: [
+          "lokt.fr suit le dépôt de garantie de chaque bail comme une opération à part : encaissement à la signature, puis restitution totale, partielle ou annulation en cas d'erreur, avec le motif et le montant de chaque retenue enregistrés dans le dossier du bail.",
+          "Demandez à Loky de restituer le dépôt d'un locataire sorti : il enregistre l'opération avec le montant retenu et le motif que vous indiquez, sans ressaisie dans un tableur à part — utile le jour où il faut ressortir le justificatif en cas de contestation.",
+        ],
+        bullets: [
+          "Encaissement, restitution partielle ou totale, et annulation du dépôt suivis par bail.",
+          "Montant retenu et motif enregistrés dans le dossier, pour retrouver l'historique en cas de litige.",
+          "Opération déclenchable directement en demandant à Loky, sans écran dédié à ouvrir.",
+        ],
+      },
     ],
     checklist: [
       "Montant du dépôt conforme au type de bail (1 mois vide / 2 mois meublé)",
@@ -1259,8 +1297,8 @@ export const GUIDES: GuideArticle[] = [
       {
         title: "5. Comment lokt vous aide",
         paragraphs: [
-          "lokt génère automatiquement les quittances PDF chaque mois pour chaque logement, avec toutes les mentions légales pré-remplies. Il vous suffit de confirmer le paiement — la quittance est prête à envoyer au locataire en un clic, sans ressaisie.",
-          "L'espace bailleur lokt intègre un rappel de révision IRL à la date anniversaire de chaque bail. Vous recevez une alerte avec le calcul du nouveau loyer pré-calculé, le trimestre IRL applicable et le montant arrondi. Il n'y a plus d'IRL à chercher ni de formule à appliquer manuellement.",
+          "lokt génère automatiquement les quittances PDF chaque mois pour chaque logement, avec toutes les mentions légales pré-remplies. Il vous suffit de confirmer le paiement — la quittance est prête à envoyer au locataire en un clic, sans ressaisie. Avec Loky, l'assistant IA, cette confirmation peut se faire en une phrase (« Julien a payé son loyer de mars ») : il retrouve le bon bail, confirme le paiement et génère la quittance dans la foulée.",
+          "L'espace bailleur lokt intègre un rappel de révision IRL à la date anniversaire de chaque bail. Vous recevez une alerte avec le calcul du nouveau loyer pré-calculé, le trimestre IRL applicable et le montant arrondi. Il n'y a plus d'IRL à chercher ni de formule à appliquer manuellement — et vous pouvez demander directement à Loky d'envoyer la notification de révision au locataire : il résout lui-même le trimestre de référence et le dernier IRL publié.",
           "L'historique des paiements est centralisé dans lokt : date d'encaissement, quittances émises, mois en retard signalés en rouge. En cas de litige, vous exportez l'historique complet en PDF en quelques secondes.",
         ],
         bullets: [
@@ -1269,6 +1307,7 @@ export const GUIDES: GuideArticle[] = [
           "Historique des paiements centralisé et exportable.",
           "Alertes de retard de paiement dès J+1 après la date d'échéance.",
           "Accès depuis mobile : confirmer un paiement et envoyer la quittance en 30 secondes.",
+          "Loky confirme un paiement et envoie une notification de révision IRL sur simple demande, en chat.",
         ],
       },
     ],
@@ -1529,6 +1568,7 @@ export const GUIDES: GuideArticle[] = [
           "lokt signale automatiquement tout loyer non encaissé dès le lendemain de la date d'échéance. Vous recevez une alerte sur votre espace bailleur (et par email si configuré), sans avoir à vérifier manuellement chaque mois que le virement est arrivé.",
           "L'historique des paiements de chaque locataire est centralisé dans lokt : vous voyez d'un coup d'œil les mois payés, les retards et les impayés. En cas de procédure, vous exportez l'état complet des loyers (montants, dates, manquants) en PDF en quelques secondes — le document type attendu par les assureurs GLI et les commissaires de justice.",
           "Pour les bailleurs avec plusieurs logements, lokt consolide les alertes impayés dans un tableau de bord unique. Plus besoin de surveiller plusieurs comptes bancaires ou tableaux Excel : un seul écran suffit pour voir l'état de chaque logement.",
+          "Loky, l'assistant IA de lokt.fr, va plus loin que l'alerte : demandez-lui de relancer un locataire en retard et il rédige et envoie la relance amiable à partir des vraies données du bail (montant dû, mois concerné). Si le retard persiste, il peut générer la mise en demeure de payer en PDF en calculant lui-même les mois réellement impayés — vous gardez la main sur l'envoi, mais plus besoin de rédiger le courrier ou de recompter les montants.",
         ],
         bullets: [
           "Alerte automatique de loyer non encaissé dès J+1 après l'échéance.",
@@ -1536,6 +1576,7 @@ export const GUIDES: GuideArticle[] = [
           "Tableau de bord consolidé : état des paiements de tous les logements en un seul écran.",
           "Archivage des échanges et mises en demeure dans le dossier locataire.",
           "Rappel de trêve hivernale : alerte en octobre pour anticiper les procédures.",
+          "Loky rédige la relance amiable et génère la mise en demeure PDF sur simple demande, montants calculés automatiquement.",
         ],
       },
     ],
@@ -1811,7 +1852,7 @@ export const GUIDES: GuideArticle[] = [
       {
         title: "8. Ce que lokt.fr fait — et ne fait pas",
         paragraphs: [
-          "lokt.fr est un outil de gestion locative et d'aide à la préparation de la déclaration. Il permet de centraliser vos loyers, vos charges, vos quittances et vos documents, et de générer une synthèse de ce que vous devez déclarer selon votre régime fiscal. Il calcule des estimations de base imposable, de déficit et de réduction Pinel à titre indicatif.",
+          "lokt.fr est un outil de gestion locative et d'aide à la préparation de la déclaration. Il permet de centraliser vos loyers, vos charges, vos quittances et vos documents, et de générer une synthèse de ce que vous devez déclarer selon votre régime fiscal. Il calcule des estimations de base imposable, de déficit et de réduction Pinel à titre indicatif — demandez simplement à Loky, l'assistant IA, d'ouvrir l'aide à la déclaration pour y accéder directement depuis vos vraies données.",
           "lokt.fr n'est pas un logiciel de déclaration agréé par l'administration fiscale. Il ne transmet aucune donnée à l'administration. Les montants affichés sont des estimations basées sur les informations saisies par l'utilisateur. Les numéros de case indiqués sont fournis à titre indicatif et peuvent changer chaque année : vérifiez toujours sur impots.gouv.fr ou avec votre comptable avant de soumettre votre déclaration.",
           "lokt.fr ne remplace pas un expert-comptable, un Centre de Gestion Agréé (CGA) ou un conseiller fiscal. Pour une situation impliquant un déficit LMNP élevé, un bien en indivision, une SCI, une transmission ou tout montage complexe, l'accompagnement d'un professionnel est indispensable. lokt.fr ne peut pas être tenu responsable des erreurs ou omissions de déclaration résultant de l'utilisation de ses outils.",
         ],
