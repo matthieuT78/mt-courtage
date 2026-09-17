@@ -92,6 +92,7 @@ export default function BlogIndex({ posts }: any) {
 
   return (
     <>
+      <div style={{ display: "none" }} dangerouslySetInnerHTML={{ __html: "<!-- 0c78898466d1b7b02d155bf03d0edb87 -->" }} />
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
