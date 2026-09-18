@@ -125,6 +125,10 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
       const next = { ...current, [key]: value };
       return key.startsWith("property_") ? { ...next, property_address: propertyAddress(next) } : next;
     });
+    // La validation (format email, co-locataire à moitié rempli) ne se
+    // déclenche qu'au clic sur "Générer le PDF" — pas à chaque frappe, sinon
+    // remplir le nom du co-locataire avant son email l'affiche en rouge alors
+    // qu'on n'a simplement pas encore eu le temps de le renseigner.
     if (invalidFields.has(key)) {
       setInvalidFields((current) => {
         const next = new Set(current);
@@ -290,11 +294,24 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
     try {
       setLoading(true); setErr(null);
       const missing = missingRequiredFields(kind, form);
-      if (missing.length) {
-        setInvalidFields(new Set(missing));
-        setErr("Complétez les champs surlignés en rouge ci-dessous.");
+      // Les emails ne sont pas des champs "obligatoires" légalement (cf. décret
+      // contrat-type), mais un format invalide ou un co-locataire à moitié
+      // renseigné doit bloquer la génération — sinon ça ne se voit qu'au moment
+      // d'envoyer la signature, bien plus tard dans le parcours.
+      const badFormat: string[] = [];
+      if (form.tenant_email && !isEmailLike(form.tenant_email)) badFormat.push("tenant_email");
+      if (!!form.co_tenant_name !== !!form.co_tenant_email) badFormat.push(form.co_tenant_name ? "co_tenant_email" : "co_tenant_name");
+      else if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) badFormat.push("co_tenant_email");
+      const allInvalid = [...missing, ...badFormat];
+      if (allInvalid.length) {
+        setInvalidFields(new Set(allInvalid));
+        setErr(
+          missing.length
+            ? "Complétez les champs surlignés en rouge ci-dessous."
+            : "Corrige les champs surlignés en rouge ci-dessous (email invalide ou co-locataire incomplet)."
+        );
         setTimeout(() => {
-          window.document.getElementById(missing[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+          window.document.getElementById(allInvalid[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
         }, 50);
         return;
       }
@@ -527,11 +544,11 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
 
             <SectionBlock title="Parties" index={2}>
               {form.landlord_name && form.landlord_address && form.tenant_name && !editingParties ? (
-                <PrefilledSummary
-                  lines={[
-                    `Bailleur : ${form.landlord_name}, ${form.landlord_address}`,
-                    `Locataire : ${form.tenant_name}${form.tenant_email ? " · " + form.tenant_email : ""}`,
-                  ]}
+                <PrefilledParties
+                  landlordName={form.landlord_name}
+                  landlordAddress={form.landlord_address}
+                  tenantName={form.tenant_name}
+                  tenantEmail={form.tenant_email}
                   onEdit={() => setEditingParties(true)}
                 />
               ) : (
@@ -560,6 +577,7 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                       invalid={invalidFields}
                       columns={1}
                       names={[["tenant_name", "Nom du locataire (ou 1er locataire)"], ["tenant_email", "E-mail du locataire"]]}
+                      fieldErrors={{ tenant_email: "Format d'email invalide (ex : nom@domaine.fr)." }}
                     />
                   </div>
                 </div>
@@ -573,7 +591,18 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                 </div>
               ) : null}
               <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
-                <Fields form={form} set={set} names={[["co_tenant_name", "Co-locataire (si applicable)"], ["co_tenant_email", "E-mail du co-locataire (pour la signature électronique)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
+                <Fields
+                  form={form}
+                  set={set}
+                  invalid={invalidFields}
+                  fieldErrors={{
+                    co_tenant_name: "Ajoutez aussi son email, sinon il ne sera pas invité à signer.",
+                    co_tenant_email: !form.co_tenant_name
+                      ? "Ajoutez aussi son nom, sinon il ne sera pas invité à signer."
+                      : "Format d'email invalide (ex : nom@domaine.fr).",
+                  }}
+                  names={[["co_tenant_name", "Co-locataire (si applicable)"], ["co_tenant_email", "E-mail du co-locataire (pour la signature électronique)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]}
+                />
               </CollapsibleExtra>
               <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
                 <Fields form={form} set={set} names={[["garant_name", "Nom du garant"], ["garant_address", "Adresse du garant"]]} />
@@ -826,13 +855,19 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-function Fields({ form, set, names, required = [], invalid, columns = 2 }: any) {
+function Fields({ form, set, names, required = [], invalid, columns = 2, fieldErrors }: any) {
   const invalidSet: Set<string> = invalid || new Set();
+  const errors: Record<string, string> = fieldErrors || {};
   return (
     <div className={`grid gap-3 ${columns === 1 ? "" : "sm:grid-cols-2"} ${columns === 1 ? "" : "mb-4"}`}>
       {names.map(([key, title, type = "text", options = [], hint]: any[]) => {
         const isInvalid = invalidSet.has(key);
-        const fieldClass = isInvalid ? `${input.replace("border-slate-300", "border-red-400")} ring-1 ring-red-300` : input;
+        // Le halo de focus natif du navigateur (bleu) écrase visuellement une
+        // bordure rouge classique dès qu'on clique dans le champ pour le
+        // corriger — on force donc le focus lui-même à rester rouge.
+        const fieldClass = isInvalid
+          ? `${input.replace("border-slate-300", "border-red-400")} ring-1 ring-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-300`
+          : input;
         return (
           <label key={key} id={key} className={labelClass}>
             {title}
@@ -857,6 +892,7 @@ function Fields({ form, set, names, required = [], invalid, columns = 2 }: any) 
             ) : (
               <input type={type} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} className={fieldClass} />
             )}
+            {isInvalid && errors[key] ? <span className="block text-[0.7rem] font-normal normal-case tracking-normal text-red-600">{errors[key]}</span> : null}
           </label>
         );
       })}
@@ -938,6 +974,45 @@ function PrefilledSummary({ lines, onEdit }: { lines: string[]; onEdit: () => vo
   );
 }
 
+// Variante colorée de PrefilledSummary spécifique à Bailleur/Locataire — garde
+// le même code couleur (indigo/cyan) que la vue d'édition juste à côté, pour
+// que passer de l'un à l'autre reste lisible d'un coup d'œil.
+function PrefilledParties({
+  landlordName,
+  landlordAddress,
+  tenantName,
+  tenantEmail,
+  onEdit,
+}: {
+  landlordName: string;
+  landlordAddress: string;
+  tenantName: string;
+  tenantEmail?: string;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-800">
+          <HomeModernIcon className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+          <span className="truncate"><span className="font-semibold text-indigo-700">Bailleur</span> — {landlordName}, {landlordAddress}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-800">
+          <UserIcon className="h-4 w-4 shrink-0 text-cyan-600" aria-hidden="true" />
+          <span className="truncate"><span className="font-semibold text-cyan-700">Locataire</span> — {tenantName}{tenantEmail ? ` · ${tenantEmail}` : ""}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="shrink-0 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+      >
+        Modifier
+      </button>
+    </div>
+  );
+}
+
 function CollapsibleExtra({ label, children }: any) {
   const [open, setOpen] = useState(false);
   if (!open) {
@@ -945,7 +1020,7 @@ function CollapsibleExtra({ label, children }: any) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-4 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+        className="mb-2 block text-left text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
       >
         + {label}
       </button>

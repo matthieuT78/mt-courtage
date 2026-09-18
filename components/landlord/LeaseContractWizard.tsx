@@ -59,6 +59,17 @@ function defaultEndDate(startDate?: string): string {
   return end.toISOString().slice(0, 10);
 }
 
+// Pré-remplissage indicatif : le trimestre en cours à la date de début du
+// bail — l'utilisateur doit vérifier la valeur exacte de l'indice sur
+// insee.fr avant signature (voir l'info-bulle du champ).
+function defaultIrlQuarter(startDate?: string): string {
+  const d = startDate ? new Date(startDate) : new Date();
+  if (Number.isNaN(d.getTime())) return "";
+  const labels = ["1er", "2e", "3e", "4e"];
+  const quarter = Math.floor(d.getMonth() / 3);
+  return `${labels[quarter]} trimestre ${d.getFullYear()}`;
+}
+
 async function headers() {
   const { data } = await supabase!.auth.getSession();
   const token = data.session?.access_token;
@@ -98,6 +109,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       const next = { ...current, [key]: value };
       return key.startsWith("property_") ? { ...next, property_address: propertyAddress(next) } : next;
     });
+    // La validation (format email, co-locataire à moitié rempli) ne se
+    // déclenche qu'au clic sur "Suivant" — pas à chaque frappe, sinon remplir
+    // le nom du co-locataire avant son email l'affiche en rouge alors qu'on
+    // n'a simplement pas encore eu le temps de le renseigner.
     if (invalidFields.has(key)) {
       setInvalidFields((current) => {
         const next = new Set(current);
@@ -185,7 +200,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           payment_method: normalizePaymentMethod(lease.payment_method),
           payment_day: lease.payment_day || 1,
           rent_revision_enabled: true,
-          irl_reference: "",
+          irl_reference: defaultIrlQuarter(lease.start_date),
           charges_type: "",
           rent_controlled_area: false,
           reference_rent: "",
@@ -257,15 +272,30 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   };
   const validateStep = (targetStep: number) => {
     const missing = missingRequiredFields(targetStep, kind, form);
-    if (!missing.length) {
+    // Les emails (locataire, co-locataire) ne sont pas des champs "obligatoires"
+    // légalement (cf. décret contrat-type), mais un format invalide ou un
+    // co-locataire à moitié renseigné doit bloquer l'avancée — sinon ça ne se
+    // voit qu'au moment d'envoyer la signature, bien plus tard dans le parcours.
+    const badFormat: string[] = [];
+    if (targetStep === 1) {
+      if (form.tenant_email && !isEmailLike(form.tenant_email)) badFormat.push("tenant_email");
+      if (!!form.co_tenant_name !== !!form.co_tenant_email) badFormat.push(form.co_tenant_name ? "co_tenant_email" : "co_tenant_name");
+      else if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) badFormat.push("co_tenant_email");
+    }
+    const allInvalid = [...missing, ...badFormat];
+    if (!allInvalid.length) {
       setInvalidFields(new Set());
       return true;
     }
     setStep(targetStep);
-    setInvalidFields(new Set(missing));
-    setErr("Complétez les champs surlignés en rouge ci-dessous.");
+    setInvalidFields(new Set(allInvalid));
+    setErr(
+      missing.length
+        ? "Complétez les champs surlignés en rouge ci-dessous."
+        : "Corrige les champs surlignés en rouge ci-dessous (email invalide ou co-locataire incomplet)."
+    );
     setTimeout(() => {
-      window.document.getElementById(missing[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
+      window.document.getElementById(allInvalid[0])?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 50);
     return false;
   };
@@ -575,11 +605,11 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         {step === 1 ? (
           <>
             {form.landlord_name && form.landlord_address && form.tenant_name && !editingParties ? (
-              <PrefilledSummary
-                lines={[
-                  `Bailleur : ${form.landlord_name}, ${form.landlord_address}`,
-                  `Locataire : ${form.tenant_name}${form.tenant_email ? " · " + form.tenant_email : ""}`,
-                ]}
+              <PrefilledParties
+                landlordName={form.landlord_name}
+                landlordAddress={form.landlord_address}
+                tenantName={form.tenant_name}
+                tenantEmail={form.tenant_email}
                 onEdit={() => setEditingParties(true)}
               />
             ) : (
@@ -608,6 +638,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                     invalid={invalidFields}
                     columns={1}
                     names={[["tenant_name","Nom du locataire (ou 1er locataire)"],["tenant_email","E-mail du locataire"]]}
+                    fieldErrors={{ tenant_email: "Format d'email invalide (ex : nom@domaine.fr)." }}
                   />
                 </div>
               </div>
@@ -621,7 +652,18 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               </div>
             ) : null}
             <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
-              <Fields form={form} set={set} names={[["co_tenant_name","Co-locataire (si applicable)"],["co_tenant_email","E-mail du co-locataire (pour la signature électronique)"],["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]} />
+              <Fields
+                form={form}
+                set={set}
+                invalid={invalidFields}
+                fieldErrors={{
+                  co_tenant_name: "Ajoute aussi son email, sinon il ne sera pas invité à signer.",
+                  co_tenant_email: !form.co_tenant_name
+                    ? "Ajoute aussi son nom, sinon il ne sera pas invité à signer."
+                    : "Format d'email invalide (ex : nom@domaine.fr).",
+                }}
+                names={[["co_tenant_name","Co-locataire (si applicable)"],["co_tenant_email","E-mail du co-locataire (pour la signature électronique)"],["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]}
+              />
             </CollapsibleExtra>
             <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
               <Fields form={form} set={set} names={[["garant_name","Nom du garant"],["garant_address","Adresse du garant"]]} />
@@ -653,7 +695,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               set={set}
               required={requiredFieldsForStep(step, kind, form)}
               invalid={invalidFields}
-              names={[["housing_nature","Nature du logement","select",["Appartement","Studio","F1","F2","F3","F4","F5 ou plus","Maison","Pavillon","Villa","Autre"]],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["floor","Étage (ex : RDC, 2e…)"],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"]],["lot_number","Numéro de lot (copropriété)"],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"]],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation","Usage exclusivement professionnel"]]]}
+              names={[["housing_nature","Nature du logement","select",["Appartement","Studio","F1","F2","F3","F4","F5 ou plus","Maison","Pavillon","Villa","Autre"]],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["floor","Étage (ex : RDC, 2e…)"],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"],"Copropriété : plusieurs propriétaires se partagent l'immeuble avec un règlement commun. Monopropriété : un seul propriétaire possède tout l'immeuble."],["lot_number","Numéro de lot (copropriété)"],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"],"Indiquée sur le diagnostic de performance énergétique (DPE) ou l'acte de propriété."],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation","Usage exclusivement professionnel"],"Choisissez \"usage mixte\" si le logement sert aussi à une activité professionnelle du locataire, ou \"exclusivement professionnel\" pour un bail professionnel."]]}
             />
             <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Confort &amp; équipements</p>
             <Fields
@@ -661,7 +703,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               set={set}
               required={requiredFieldsForStep(step, kind, form)}
               invalid={invalidFields}
-              names={[["heating_method","Mode de chauffage","select",["Individuel électrique","Individuel gaz","Individuel autre","Collectif"]],["hot_water_method","Production d’eau chaude sanitaire","select",["Individuelle électrique","Individuelle gaz","Individuelle autre","Collective"]],["ict_equipment","Accès internet, TV et communications"],["other_parts","Autres parties du logement"],["private_equipment","Équipements privatifs"],["common_equipment","Équipements communs"],["furniture_inventory","Mobilier principal"]]}
+              names={[["heating_method","Mode de chauffage","select",["Individuel électrique","Individuel gaz","Individuel autre","Collectif"]],["hot_water_method","Production d’eau chaude sanitaire","select",["Individuelle électrique","Individuelle gaz","Individuelle autre","Collective"]],["ict_equipment","Accès internet, TV et communications","text",[],"Précisez ce qui est déjà raccordé : fibre, ADSL, prise TV, interphone/visiophone... Laissez vide si rien n'est prévu."],["other_parts","Autres parties du logement"],["private_equipment","Équipements privatifs"],["common_equipment","Équipements communs"],["furniture_inventory","Mobilier principal"]]}
             />
             <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Diagnostics &amp; fiscalité</p>
             <Fields
@@ -669,12 +711,24 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               set={set}
               required={requiredFieldsForStep(step, kind, form)}
               invalid={invalidFields}
-              names={[["fiscal_property_id","Identifiant fiscal du logement"],["dpe_class","Classe DPE (étiquette énergie)","select",["A","B","C","D","E","F","G","Vierge / non soumis"]],["energy_kwh_sqm","Consommation énergétique (kWh/m²/an)"],["ges_class","Classe GES (émissions CO₂)","select",["A","B","C","D","E","F","G","Non soumis"]],["ges_kgco2_sqm","Émissions GES (kg CO₂/m²/an)"]]}
+              names={[["fiscal_property_id","Identifiant fiscal du logement","text",[],"Numéro à 15 caractères attribué par l'administration fiscale — disponible sur votre avis de taxe foncière ou sur impots.gouv.fr."],["dpe_class","Classe DPE (étiquette énergie)","select",["A","B","C","D","E","F","G","Vierge / non soumis"],"Étiquette énergie du logement (de A, très performant, à G, passoire thermique), indiquée sur le diagnostic de performance énergétique."],["energy_kwh_sqm","Consommation énergétique (kWh/m²/an)"],["ges_class","Classe GES (émissions CO₂)","select",["A","B","C","D","E","F","G","Non soumis"],"Étiquette climat du logement selon ses émissions de gaz à effet de serre, indiquée sur le même diagnostic que le DPE."],["ges_kgco2_sqm","Émissions GES (kg CO₂/m²/an)"]]}
             />
             <p className="mt-3 text-xs leading-5 text-slate-500">Le DPE et la classe GES sont obligatoires depuis la loi Climat du 22 août 2021. L’identifiant fiscal du logement est requis depuis le 1er janvier 2025, sauf DOM.</p>
           </>
         ) : null}
-        {step === 3 ? <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["start_date","Date de prise d’effet","date"],["end_date","Date de fin","date"],["mobility_reason","Motif d’éligibilité au bail mobilité"]]} /> : null}
+        {step === 3 ? (
+          <Fields
+            form={form}
+            set={set}
+            required={requiredFieldsForStep(step, kind, form)}
+            invalid={invalidFields}
+            names={[
+              ["start_date","Date de prise d’effet","date"],
+              ["end_date","Date de fin","date",[],"Pré-rempli à 1 an après la prise d'effet — modifiable selon la durée réellement convenue avec le locataire."],
+              ["mobility_reason","Motif d’éligibilité au bail mobilité","text",[],"Motif obligatoire pour ce type de bail : formation professionnelle, études, stage, apprentissage, mission temporaire, mutation ou service civique."],
+            ]}
+          />
+        ) : null}
         {step === 4 ? (() => {
           const rentNum = Number(form.rent_amount) || 0;
           const depositCap = depositCapForKind(kind, rentNum);
@@ -687,7 +741,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 set={set}
                 required={requiredFieldsForStep(step, kind, form)}
                 invalid={invalidFields}
-                names={[["rent_amount","Loyer mensuel hors charges","number"],["charges_amount","Charges mensuelles","number"]]}
+                names={[["rent_amount","Loyer mensuel hors charges","number",[],"Montant du loyer seul, sans les charges, tel que convenu avec le locataire."],["charges_amount","Charges mensuelles","number",[],"Provision mensuelle en plus du loyer pour couvrir les charges (eau, entretien commun...), régularisée chaque année sur justificatifs."]]}
               />
 
               <div
@@ -739,7 +793,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 set={set}
                 required={requiredFieldsForStep(step, kind, form)}
                 invalid={invalidFields}
-                names={[["payment_day","Jour de paiement (1 à 31)","number"]]}
+                names={[["payment_day","Jour de paiement (1 à 31)","number",[],"Jour du mois où le locataire doit vous régler le loyer, par exemple le 5 de chaque mois."]]}
               />
 
               {kind === "mobility" ? (
@@ -787,7 +841,21 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 value={form.rent_revision_enabled}
                 onChange={(v: boolean) => set("rent_revision_enabled", v)}
               >
-                <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["irl_reference", kind === "professional" ? "Référence ILAT" : "Trimestre de référence IRL"]]} />
+                <Fields
+                  form={form}
+                  set={set}
+                  required={requiredFieldsForStep(step, kind, form)}
+                  invalid={invalidFields}
+                  names={[[
+                    "irl_reference",
+                    kind === "professional" ? "Référence ILAT" : "Trimestre de référence IRL",
+                    "text",
+                    [],
+                    kind === "professional"
+                      ? "Valeur de l'indice ILAT en vigueur à la date de signature — publié chaque trimestre par l'INSEE."
+                      : "Pré-rempli à titre indicatif avec le trimestre en cours à la date de début du bail. L'INSEE publie l'indice avec un peu de retard : vérifiez la valeur exacte en vigueur à la signature sur insee.fr avant de valider.",
+                  ]]}
+                />
               </InfoToggle>
 
               {kind !== "professional" ? (
@@ -802,7 +870,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                     set={set}
                     required={requiredFieldsForStep(step, kind, form)}
                     invalid={invalidFields}
-                    names={[["reference_rent","Loyer de référence","number"],["reference_rent_increased","Loyer de référence majoré","number"]]}
+                    names={[["reference_rent","Loyer de référence","number",[],"Loyer de référence fixé par arrêté préfectoral pour la zone — disponible sur le site de la mairie ou de la préfecture."],["reference_rent_increased","Loyer de référence majoré","number",[],"Plafond légal du loyer pour la zone : le loyer réel ne peut pas le dépasser (hors complément de loyer justifié)."]]}
                   />
                 </InfoToggle>
               ) : null}
@@ -841,17 +909,41 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
 }
 
 function Modal({ children, onClose }: any) { return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"><div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-xl"><button type="button" onClick={onClose} title="Fermer" aria-label="Fermer" className="absolute right-3 top-3 z-10 rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-50"><XMarkIcon className="h-5 w-5"/></button>{children}</div></div>; }
-function Fields({ form, set, names, required = [], invalid, columns = 2 }: any) {
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group/tip relative inline-block align-middle">
+      <button
+        type="button"
+        className="ml-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-300 text-[0.62rem] font-bold leading-none text-slate-500 hover:border-slate-400 hover:text-slate-700"
+        aria-label="Aide"
+      >
+        i
+      </button>
+      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 w-56 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2.5 text-[0.7rem] font-normal normal-case leading-4 text-slate-600 opacity-0 shadow-lg transition-opacity duration-100 group-hover/tip:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
+function Fields({ form, set, names, required = [], invalid, columns = 2, fieldErrors }: any) {
   const invalidSet: Set<string> = invalid || new Set();
+  const errors: Record<string, string> = fieldErrors || {};
   return (
     <div className={`grid gap-3 ${columns === 1 ? "" : "sm:grid-cols-2"}`}>
-      {names.map(([key, title, type = "text", options = []]: any[]) => {
+      {names.map(([key, title, type = "text", options = [], hint]: any[]) => {
         const isInvalid = invalidSet.has(key);
-        const fieldClass = isInvalid ? `${input.replace("border-slate-300", "border-red-400")} ring-1 ring-red-300` : input;
+        // Le halo de focus natif du navigateur (bleu) écrase visuellement une
+        // bordure rouge classique dès qu'on clique dans le champ pour le
+        // corriger — exactement le moment où on veut le plus que ça reste
+        // visible. On force donc le focus lui-même à rester rouge.
+        const fieldClass = isInvalid
+          ? `${input.replace("border-slate-300", "border-red-400")} ring-1 ring-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-300`
+          : input;
         return (
           <label key={key} id={key} className={label}>
             {title}
             {required.includes(key) ? <span className="ml-1 font-bold text-red-600">*</span> : null}
+            {hint ? <InfoTip text={hint} /> : null}
             {type === "select" ? (
               <select value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} className={fieldClass}>
                 <option value="">Sélectionner</option>
@@ -864,6 +956,7 @@ function Fields({ form, set, names, required = [], invalid, columns = 2 }: any) 
             ) : (
               <input type={type} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} className={fieldClass} />
             )}
+            {isInvalid && errors[key] ? <span className="block text-[0.7rem] font-normal normal-case tracking-normal text-red-600">{errors[key]}</span> : null}
           </label>
         );
       })}
@@ -941,6 +1034,44 @@ function PrefilledSummary({ lines, onEdit }: { lines: string[]; onEdit: () => vo
     </div>
   );
 }
+// Variante colorée de PrefilledSummary spécifique à Bailleur/Locataire — garde
+// le même code couleur (indigo/cyan) que la vue d'édition juste à côté, pour
+// que passer de l'un à l'autre reste lisible d'un coup d'œil.
+function PrefilledParties({
+  landlordName,
+  landlordAddress,
+  tenantName,
+  tenantEmail,
+  onEdit,
+}: {
+  landlordName: string;
+  landlordAddress: string;
+  tenantName: string;
+  tenantEmail?: string;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-800">
+          <HomeModernIcon className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+          <span className="truncate"><span className="font-semibold text-indigo-700">Bailleur</span> — {landlordName}, {landlordAddress}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-800">
+          <UserIcon className="h-4 w-4 shrink-0 text-cyan-600" aria-hidden="true" />
+          <span className="truncate"><span className="font-semibold text-cyan-700">Locataire</span> — {tenantName}{tenantEmail ? ` · ${tenantEmail}` : ""}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="shrink-0 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+      >
+        Modifier
+      </button>
+    </div>
+  );
+}
 function CollapsibleExtra({ label, children }: any) {
   const [open, setOpen] = useState(false);
   if (!open) {
@@ -948,7 +1079,7 @@ function CollapsibleExtra({ label, children }: any) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-4 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+        className="mb-2 block text-left text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
       >
         + {label}
       </button>
