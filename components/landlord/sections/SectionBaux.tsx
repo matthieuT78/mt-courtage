@@ -859,9 +859,19 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   // hors écran quand on édite une location plus bas dans la liste — sans ce
   // scroll, sauvegarder semble "ne rien faire" alors qu'une erreur de
   // validation (ex: dépôt de garantie plafonné) vient d'apparaître, invisible.
+  // scrollIntoView seul ne suffit pas : le <header> global (AppHeader) est
+  // sticky en position:sticky top-0 par-dessus le contenu, donc aligner le
+  // bandeau sur le tout haut de la fenêtre le fait atterrir caché derrière —
+  // on calcule donc la position à la main en retranchant la hauteur réelle
+  // du header (mesurée, pas codée en dur, pour rester correct sur mobile).
   const errBannerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (err) errBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!err) return;
+    const el = errBannerRef.current;
+    if (!el) return;
+    const headerHeight = document.querySelector("header")?.getBoundingClientRect().height || 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 16;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   }, [err]);
   const [autoWorkflowError, setAutoWorkflowError] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
