@@ -78,9 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (lotError) return res.status(500).json({ error: lotError.message });
       if (!lot) return res.status(403).json({ error: "Lot introuvable ou non autorisé." });
 
-      // Un lot ne peut avoir qu'un seul bail actif à la fois — contrairement au bien
-      // simple (aucune contrainte équivalente aujourd'hui, volontairement inchangé
-      // pour ne rien casser sur l'existant).
+      // Un lot ne peut avoir qu'un seul bail actif à la fois.
       const { data: lotLeases, error: lotLeasesError } = await supabaseAdmin
         .from("leases")
         .select("id,status")
@@ -89,6 +87,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const lotHasActiveLease = (lotLeases || []).some((l) => String(l.status || "").toLowerCase() === "active");
       if (lotHasActiveLease) {
         return res.status(409).json({ error: "Ce lot a déjà un bail actif. Terminez-le avant d’en créer un nouveau." });
+      }
+    } else {
+      // Même règle pour un bien simple (pas d'immeuble à lots) : un bien ne peut
+      // avoir qu'un seul bail actif à la fois. Comble un trou réel — un appel
+      // répété (ex. remount du wizard d'onboarding avant que `createdLeaseId` ne
+      // soit posé côté client) pouvait jusqu'ici créer un second bail actif sur
+      // le même bien sans qu'aucun garde-fou serveur ne l'empêche.
+      const { data: propertyLeases, error: propertyLeasesError } = await supabaseAdmin
+        .from("leases")
+        .select("id,status")
+        .eq("property_id", leasePayload.property_id)
+        .is("lot_id", null);
+      if (propertyLeasesError) return res.status(500).json({ error: propertyLeasesError.message });
+      const propertyHasActiveLease = (propertyLeases || []).some((l) => String(l.status || "").toLowerCase() === "active");
+      if (propertyHasActiveLease) {
+        return res.status(409).json({ error: "Ce bien a déjà un bail actif. Terminez-le avant d’en créer un nouveau." });
       }
     }
 

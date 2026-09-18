@@ -490,6 +490,48 @@ export function OnboardingWizard({
     }
   }, [targetPropertyIsBuilding, createdLots, selectedLeaseLotId]);
 
+  // Récupère un bien déjà créé si le wizard redémarre à zéro (rechargement de
+  // page, onglet remis au premier plan après mise en veille mobile...) : sans
+  // ça, `createdPropertyId` repart à null, le formulaire "Bien" réapparaît
+  // vide, et revalider crée un second bien au lieu de corriger le premier.
+  // Ambigu si plusieurs biens existent déjà : on ne devine pas lequel reprendre.
+  useEffect(() => {
+    if (createdPropertyId) return;
+    if (properties.length !== 1) return;
+    const p = properties[0] as any;
+    if (p.type === "building") return; // lots réels non chargés ici, on ne pré-remplit pas un état partiel/faux
+    setCreatedPropertyId(p.id);
+    setPropertyLabel(p.label || "");
+    setPropertyType(p.type || "apartment");
+    setPropertyAddress(p.address_line1 || "");
+    setPropertyPostalCode(p.postal_code || "");
+    setPropertyCity(p.city || "");
+    setPropertyInseeCode(p.insee_code || "");
+    setPropertySurface(p.surface_m2 != null ? String(p.surface_m2) : "");
+    setPropertyRooms(p.rooms != null ? String(p.rooms) : "");
+    setDelegatedServices(p.delegated_services || []);
+    setDelegationAgencyName(p.delegation_agency_name || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [properties]);
+
+  // Même filet que pour "Bien" : récupère un locataire déjà créé si le wizard
+  // redémarre à zéro, pour ne pas en créer un second par-dessus.
+  useEffect(() => {
+    if (createdTenantId) return;
+    if (tenants.length !== 1) return;
+    const t = tenants[0] as any;
+    setCreatedTenantId(t.id);
+    setTenantIsCompany(!!t.is_company);
+    setTenantCompanyName(t.company_name || "");
+    setTenantSiret(t.siret || "");
+    setTenantLegalRepName(t.legal_representative_name || "");
+    setTenantFirstName(t.first_name || "");
+    setTenantLastName(t.last_name || "");
+    setTenantEmail(t.email || "");
+    setTenantPhone(t.phone || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenants]);
+
   const goToStep = (index: number) => {
     if (index < 0 || index >= STEP_DEFS.length) return;
     // On ne permet pas de sauter en avant au-delà de la 1ère étape incomplète.
@@ -555,12 +597,18 @@ export function OnboardingWizard({
         status: "active",
       };
 
-      let propertyId = createdPropertyId;
-      if (createdPropertyId) {
+      // Filet de sécurité en plus du pré-remplissage : si `createdPropertyId` n'a
+      // pas encore été posé (effet pas encore passé) mais qu'un seul bien existe
+      // déjà en base pour ce compte, on met à jour ce bien plutôt que d'en créer
+      // un second. Ambigu si plusieurs biens existent : on ne devine pas lequel.
+      const existingPropertyId = createdPropertyId || (properties.length === 1 ? properties[0]?.id ?? null : null);
+      let propertyId = existingPropertyId;
+      if (existingPropertyId) {
         // Retour en arrière depuis une étape suivante : on met à jour le bien déjà
         // créé plutôt que d'en insérer un second à chaque nouveau passage sur cette étape.
-        const { error } = await supabase.from("properties").update(payload).eq("id", createdPropertyId).eq("user_id", userId);
+        const { error } = await supabase.from("properties").update(payload).eq("id", existingPropertyId).eq("user_id", userId);
         if (error) throw error;
+        if (!createdPropertyId) setCreatedPropertyId(existingPropertyId);
       } else {
         const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
         if (error) throw error;
@@ -652,11 +700,16 @@ export function OnboardingWizard({
         legal_representative_name: tenantIsCompany ? tenantLegalRepName.trim() || null : null,
       };
 
-      if (createdTenantId) {
+      // Même filet que pour "Bien" : si `createdTenantId` n'a pas encore été posé
+      // mais qu'un seul locataire existe déjà en base, on le met à jour plutôt
+      // que d'en créer un second. Ambigu si plusieurs locataires : on ne devine pas.
+      const existingTenantId = createdTenantId || (tenants.length === 1 ? tenants[0]?.id ?? null : null);
+      if (existingTenantId) {
         // Retour en arrière depuis une étape suivante : on met à jour le locataire déjà
         // créé plutôt que d'en insérer un second à chaque nouveau passage sur cette étape.
-        const { error } = await supabase.from("tenants").update(payload).eq("id", createdTenantId).eq("user_id", userId);
+        const { error } = await supabase.from("tenants").update(payload).eq("id", existingTenantId).eq("user_id", userId);
         if (error) throw error;
+        if (!createdTenantId) setCreatedTenantId(existingTenantId);
       } else {
         const { data, error } = await supabase.from("tenants").insert(payload).select("id").single();
         if (error) throw error;
