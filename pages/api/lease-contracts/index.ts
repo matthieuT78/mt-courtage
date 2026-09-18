@@ -48,8 +48,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!leaseId) return res.status(400).json({ error: "leaseId requis." });
     const context = await loadContext(String(userId), String(leaseId));
     if (action === "load") return res.status(200).json(context);
-    const isLocked = context.document?.status === "signed" || context.document?.status === "archived";
-    if (isLocked) {
+    if (context.document?.status === "archived") {
+      return res.status(409).json({ error: "Ce bail est archivé et ne peut plus être modifié." });
+    }
+    // Un bail signé peut être modifié puis régénéré (voir generate.ts, qui
+    // archive alors l'ancienne version signée) — "save" (persister les
+    // champs édités avant régénération) doit donc rester autorisé. Les
+    // actions liées à l'import d'un bail externe restent bloquées : ce
+    // chemin ne passe jamais par cette étape d'édition/régénération.
+    const isSignedLockedAction = context.document?.status === "signed" && action !== "save";
+    if (isSignedLockedAction) {
       return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être modifié." });
     }
     if (action === "confirmExternal") {
