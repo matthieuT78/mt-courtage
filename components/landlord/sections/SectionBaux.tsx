@@ -904,9 +904,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const [autoWorkflowError, setAutoWorkflowError] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   // Versions signées archivées (bail modifié puis re-signé après une première
-  // signature) — affichées dans l'historique de chaque location.
+  // signature) — affichées dans l'historique de chaque location, et utilisées
+  // pour avertir avant de retirer un colocataire qui a déjà signé une version
+  // du bail (actuelle ou archivée).
   const [contractDocByLease, setContractDocByLease] = useState<
-    Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }> }>
+    Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }>; hasSignedHistory: boolean }>
   >(new Map());
   useEffect(() => {
     if (!supabase || !userId) return;
@@ -914,13 +916,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     (async () => {
       const { data } = await supabase
         .from("lease_contract_documents")
-        .select("id, lease_id, previous_signed_versions")
+        .select("id, lease_id, status, previous_signed_versions")
         .eq("user_id", userId);
       if (cancelled || !data) return;
-      const map = new Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }> }>();
+      const map = new Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }>; hasSignedHistory: boolean }>();
       for (const row of data as any[]) {
-        if (Array.isArray(row.previous_signed_versions) && row.previous_signed_versions.length > 0) {
-          map.set(row.lease_id, { documentId: row.id, previous_signed_versions: row.previous_signed_versions });
+        const previousVersions = Array.isArray(row.previous_signed_versions) ? row.previous_signed_versions : [];
+        const hasSignedHistory = row.status === "signed" || previousVersions.length > 0;
+        if (previousVersions.length > 0 || hasSignedHistory) {
+          map.set(row.lease_id, { documentId: row.id, previous_signed_versions: previousVersions, hasSignedHistory });
         }
       }
       setContractDocByLease(map);
@@ -1382,6 +1386,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     co_tenant_name: "",
     co_tenant_email: "",
   });
+  // Un seul formulaire de bail ouvert à la fois (création ou édition) — état
+  // global suffisant pour piloter le dépli du bloc co-locataire, remis à
+  // zéro à chaque ouverture (openCreate/openEdit/resetForm).
+  const [coTenantFieldsOpen, setCoTenantFieldsOpen] = useState(false);
+  // Confirmation explicite requise avant de retirer un colocataire qui a déjà
+  // signé une version du bail — voir needsCoTenantRemovalConfirm plus bas.
+  const [confirmedCoTenantRemoval, setConfirmedCoTenantRemoval] = useState(false);
 
   const selectableProps = useMemo(
     () => includeSelected(activeProps, safeProps, form.property_id),
@@ -1434,6 +1445,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
 
   const resetForm = () => {
     setForm(defaultFormValues());
+    setCoTenantFieldsOpen(false);
+    setConfirmedCoTenantRemoval(false);
   };
 
   const openCreate = () => {
@@ -1466,6 +1479,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       tenant_id: prefillTenantId,
       ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true } : {}),
     });
+    setCoTenantFieldsOpen(false);
+    setConfirmedCoTenantRemoval(false);
     // Si le locataire vient d'être créé et n'est pas encore dans la liste, on rafraîchit
     if (prefillTenantId && !tenants?.some((t) => t.id === prefillTenantId)) {
       onRefresh();
@@ -1510,6 +1525,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       co_tenant_name: lease.co_tenant_name || "",
       co_tenant_email: lease.co_tenant_email || "",
     });
+    setCoTenantFieldsOpen(!!(lease.co_tenant_name || lease.co_tenant_email));
+    setConfirmedCoTenantRemoval(false);
   };
 
   const cancelEdit = () => {
@@ -2486,6 +2503,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   };
 
   const renderLeaseForm = () => {
+    // Retirer un colocataire qui a déjà signé une version du bail (actuelle
+    // ou archivée) n'efface rien légalement — cette version reste valable et
+    // consultable. Si on régénère ensuite le bail (ex: corriger le loyer), la
+    // nouvelle version ne le mentionnerait plus, comme s'il n'avait jamais
+    // existé : on demande donc une confirmation explicite avant.
+    const editingOriginalLease = mode === "edit" && editingId ? safeLeases.find((l) => l.id === editingId) : null;
+    const hadCoTenant = !!(editingOriginalLease?.co_tenant_name || editingOriginalLease?.co_tenant_email);
+    const removingCoTenant = hadCoTenant && !form.co_tenant_name && !form.co_tenant_email;
+    const coTenantHasSignedHistory = editingId ? !!contractDocByLease.get(editingId)?.hasSignedHistory : false;
+    const needsCoTenantRemovalConfirm = removingCoTenant && coTenantHasSignedHistory && !confirmedCoTenantRemoval;
+
     const isGestionDelegated = (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante");
     const selectedTenant = tenantById.get(form.tenant_id) || null;
     const receiptEmail = form.tenant_receipt_email || getTenantEmail(selectedTenant);
@@ -2605,31 +2633,42 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               }))}
             />
             {activeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire actif.</p> : null}
+            {!coTenantFieldsOpen ? (
+              <button
+                type="button"
+                onClick={() => setCoTenantFieldsOpen(true)}
+                className="mt-1 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+              >
+                + Ajouter un co-locataire
+              </button>
+            ) : null}
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Co-locataire (si applicable)</label>
-            <input
-              type="text"
-              value={form.co_tenant_name}
-              onChange={(e) => setForm((s) => ({ ...s, co_tenant_name: e.target.value }))}
-              placeholder="Nom du co-locataire"
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
+        {coTenantFieldsOpen ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Co-locataire</label>
+              <input
+                type="text"
+                value={form.co_tenant_name}
+                onChange={(e) => setForm((s) => ({ ...s, co_tenant_name: e.target.value }))}
+                placeholder="Nom du co-locataire"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Email du co-locataire</label>
+              <input
+                type="email"
+                value={form.co_tenant_email}
+                onChange={(e) => setForm((s) => ({ ...s, co_tenant_email: e.target.value }))}
+                placeholder="Pour la signature électronique du bail"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Email du co-locataire</label>
-            <input
-              type="email"
-              value={form.co_tenant_email}
-              onChange={(e) => setForm((s) => ({ ...s, co_tenant_email: e.target.value }))}
-              placeholder="Pour la signature électronique du bail"
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
@@ -3069,6 +3108,23 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           </div>
         </details>
 
+        {needsCoTenantRemovalConfirm ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            <p>
+              <strong>{editingOriginalLease?.co_tenant_name || "Ce colocataire"}</strong> a déjà signé une version de ce bail (toujours
+              consultable dans l'historique). Le retirer ici n'annule pas cette signature — si le colocataire quitte réellement le
+              logement, formalisez son départ par un avenant signé plutôt que de simplement supprimer cette information.
+            </p>
+            <button
+              type="button"
+              onClick={() => setConfirmedCoTenantRemoval(true)}
+              className="mt-2 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-950"
+            >
+              Je confirme vouloir retirer le colocataire
+            </button>
+          </div>
+        ) : null}
+
         {/* Sur mobile, la nav du bas est fixed et z-50 : un simple "bottom-3" plaçait
             ce bandeau (donc le bouton "Créer") littéralement dessous, invisible et
             inatteignable. On lui laisse la même marge que le panneau "Plus" du shell. */}
@@ -3115,7 +3171,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               <ActionButton
                 icon={CheckCircleIcon}
                 tone="success"
-                disabled={loading}
+                disabled={loading || needsCoTenantRemovalConfirm}
                 onClick={(e) => {
                   stop(e);
                   saveLease();

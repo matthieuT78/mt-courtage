@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownTrayIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, UserIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, UserIcon, UsersIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { depositCapForKind } from "../../../lib/landlord/depositCap";
 
@@ -572,6 +572,8 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                   landlordAddress={form.landlord_address}
                   tenantName={form.tenant_name}
                   tenantEmail={form.tenant_email}
+                  coTenantName={form.co_tenant_name}
+                  coTenantEmail={form.co_tenant_email}
                   onEdit={() => setEditingParties(true)}
                 />
               ) : (
@@ -1028,12 +1030,16 @@ function PrefilledParties({
   landlordAddress,
   tenantName,
   tenantEmail,
+  coTenantName,
+  coTenantEmail,
   onEdit,
 }: {
   landlordName: string;
   landlordAddress: string;
   tenantName: string;
   tenantEmail?: string;
+  coTenantName?: string;
+  coTenantEmail?: string;
   onEdit: () => void;
 }) {
   return (
@@ -1047,6 +1053,12 @@ function PrefilledParties({
           <UserIcon className="h-4 w-4 shrink-0 text-cyan-600" aria-hidden="true" />
           <span className="truncate"><span className="font-semibold text-cyan-700">Locataire</span> — {tenantName}{tenantEmail ? ` · ${tenantEmail}` : ""}</span>
         </div>
+        {coTenantName ? (
+          <div className="flex min-w-0 items-center gap-1.5 text-sm text-slate-800">
+            <UsersIcon className="h-4 w-4 shrink-0 text-violet-600" aria-hidden="true" />
+            <span className="truncate"><span className="font-semibold text-violet-700">Co-locataire</span> — {coTenantName}{coTenantEmail ? ` · ${coTenantEmail}` : ""}</span>
+          </div>
+        ) : null}
       </div>
       <button
         type="button"
