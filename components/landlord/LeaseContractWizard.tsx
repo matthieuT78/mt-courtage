@@ -670,7 +670,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 </p>
               </div>
             ) : null}
-            <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
+            <CollapsibleExtra
+              label={form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address ? "Co-locataire ou mandataire" : "Ajouter un co-locataire ou un mandataire (optionnel)"}
+              defaultOpen={!!(form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address)}
+            >
               <Fields
                 form={form}
                 set={set}
@@ -684,10 +687,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 names={[["co_tenant_name","Co-locataire (si applicable)"],["co_tenant_email","E-mail du co-locataire (pour la signature électronique)"],["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]}
               />
             </CollapsibleExtra>
-            <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
+            <CollapsibleExtra
+              label={form.garant_name || form.garant_address ? "Garant / caution" : "Ajouter un garant / une caution (optionnel)"}
+              defaultOpen={!!(form.garant_name || form.garant_address)}
+            >
               <Fields form={form} set={set} names={[["garant_name","Nom du garant"],["garant_address","Adresse du garant"]]} />
             </CollapsibleExtra>
-            <CollapsibleExtra label="Ajouter les numéros de téléphone portable (optionnel)">
+            <CollapsibleExtra
+              label={form.landlord_phone || form.tenant_phone ? "Numéros de téléphone portable" : "Ajouter les numéros de téléphone portable (optionnel)"}
+              defaultOpen={!!(form.landlord_phone || form.tenant_phone)}
+            >
               <Fields form={form} set={set} names={[["landlord_phone","Téléphone portable du bailleur"],["tenant_phone","Téléphone portable du locataire"]]} />
             </CollapsibleExtra>
           </>
@@ -894,7 +903,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 </InfoToggle>
               ) : null}
 
-              <CollapsibleExtra label="Informations sur le précédent locataire (optionnel)">
+              <CollapsibleExtra
+                label={form.previous_rent || form.previous_tenant_departure_date ? "Précédent locataire" : "Informations sur le précédent locataire (optionnel)"}
+                defaultOpen={!!(form.previous_rent || form.previous_tenant_departure_date)}
+              >
                 <Fields form={form} set={set} names={[["previous_rent","Dernier loyer appliqué","number"],["previous_tenant_departure_date","Date de départ du précédent locataire","date"]]} />
               </CollapsibleExtra>
             </>
@@ -1091,8 +1103,8 @@ function PrefilledParties({
     </div>
   );
 }
-function CollapsibleExtra({ label, children }: any) {
-  const [open, setOpen] = useState(false);
+function CollapsibleExtra({ label, children, defaultOpen = false }: any) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!open) {
     return (
       <button
