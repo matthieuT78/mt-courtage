@@ -24,7 +24,10 @@ function signerEmailHtml(opts: {
   expiresAt: string;
   totalSigners: number;
 }) {
-  const roleLabel = opts.role === "bailleur" ? "bailleur" : opts.role === "colocataire" ? "colocataire" : "locataire";
+  // "Locataire principal" seulement quand un colocataire existe aussi sur cette
+  // demande — sinon "principal" est un mot vide de sens pour un simple locataire seul.
+  const roleLabel =
+    opts.role === "bailleur" ? "bailleur" : opts.role === "colocataire" ? "colocataire" : opts.totalSigners > 2 ? "locataire principal" : "locataire";
   const othersLabel = opts.otherNames.length > 1
     ? `${opts.otherNames.slice(0, -1).join(", ")} et ${opts.otherNames[opts.otherNames.length - 1]} devront également apposer leur signature`
     : `${opts.otherNames[0]} devra également apposer sa signature`;
@@ -80,6 +83,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!document_type || !tenant_email) {
     return res.status(400).json({ error: "Paramètres manquants." });
   }
+  const isEmailLike = (v?: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+  if (!isEmailLike(tenant_email)) {
+    return res.status(400).json({ error: "L'email du locataire n'a pas un format valide." });
+  }
+  // Un nom sans email (ou l'inverse) laisserait un signataire apparaître sur le PDF
+  // sans jamais être invité à signer — même garde-fou que côté client, revérifié
+  // ici car ce endpoint ne doit jamais faire confiance à la seule validation UI.
+  if (!!co_tenant_name !== !!co_tenant_email) {
+    return res.status(400).json({ error: "Le co-locataire a un nom sans email (ou l'inverse) — complétez les deux, ou aucun des deux." });
+  }
+  if (co_tenant_email && !isEmailLike(co_tenant_email)) {
+    return res.status(400).json({ error: "L'email du co-locataire n'a pas un format valide." });
+  }
   const hasCoTenant = !!co_tenant_email;
 
   // Vérification d'appartenance côté serveur : on ne fait jamais confiance à
@@ -115,6 +131,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const landlord_email = auth.email;
   if (!landlord_email) return res.status(400).json({ error: "Email bailleur introuvable sur le compte." });
+
+  // Même email reproduit pour deux rôles (ex : co-locataire = locataire par erreur
+  // de saisie) : la personne recevrait deux liens distincts pour "signer deux fois"
+  // sans que ce soit jamais signalé — mieux vaut le refuser à la création.
+  if (hasCoTenant) {
+    const emails = [landlord_email.toLowerCase(), tenant_email.toLowerCase(), co_tenant_email.toLowerCase()];
+    if (new Set(emails).size !== emails.length) {
+      return res.status(400).json({ error: "Le bailleur, le locataire et le co-locataire doivent avoir trois emails différents." });
+    }
+  }
 
   // Dedup — éviter plusieurs demandes actives pour le même document. Une demande
   // expirée ne doit jamais bloquer indéfiniment une nouvelle tentative : on la

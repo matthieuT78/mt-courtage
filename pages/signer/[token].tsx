@@ -75,7 +75,8 @@ export default function SignerPage() {
     }
   }
 
-  const roleLabel = data?.role === "bailleur" ? "Bailleur" : data?.role === "colocataire" ? "Colocataire" : "Locataire";
+  const roleLabel =
+    data?.role === "bailleur" ? "Bailleur" : data?.role === "colocataire" ? "Colocataire" : data?.hasCoTenant ? "Locataire principal" : "Locataire";
 
   // Toutes les parties de cette demande hors le signataire courant — 2 ou 3
   // selon qu'un colocataire a été renseigné à la création de la demande.

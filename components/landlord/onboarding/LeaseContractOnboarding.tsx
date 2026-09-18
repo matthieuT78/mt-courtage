@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownTrayIcon, ChevronDownIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, UserIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { depositCapForKind } from "../../../lib/landlord/depositCap";
 
@@ -16,6 +16,10 @@ const KIND_OPTIONS: Array<[string, string]> = [
   ["professional", "Bail professionnel"],
 ];
 const KIND_LABELS: Record<string, string> = Object.fromEntries(KIND_OPTIONS);
+
+function isEmailLike(v?: string | null) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+}
 
 function fiscalIdRequired(country?: string) {
   return !["GP", "MQ", "GF", "RE", "YT"].includes(String(country || "FR").toUpperCase());
@@ -304,6 +308,21 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
 
   const sendForSignature = async () => {
     if (!document?.pdf_url || !form.tenant_email) return;
+    if (!isEmailLike(form.tenant_email)) { setSigError("L'email du locataire n'a pas un format valide."); return; }
+    // Un nom sans email (ou l'inverse) laisserait le co-locataire apparaître sur le
+    // PDF sans jamais être invité à signer — exactement le bug initial signalé.
+    if (!!form.co_tenant_name !== !!form.co_tenant_email) {
+      setSigError("Le co-locataire a un nom sans email (ou l'inverse) — complétez les deux champs, ou videz-les tous les deux, avant d'envoyer.");
+      return;
+    }
+    if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) {
+      setSigError("L'email du co-locataire n'a pas un format valide.");
+      return;
+    }
+    if (form.co_tenant_email && form.co_tenant_email.toLowerCase() === String(form.tenant_email).toLowerCase()) {
+      setSigError("Le co-locataire doit avoir un email différent de celui du locataire.");
+      return;
+    }
     setSigLoading(true); setSigError(null);
     try {
       const { data: sessionData } = await supabase!.auth.getSession();
@@ -351,6 +370,11 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
   };
 
   if (generatedDone && document?.pdf_url) {
+    const tenantEmailValid = isEmailLike(form.tenant_email);
+    const coTenantHalfFilled = !!form.co_tenant_name !== !!form.co_tenant_email;
+    const coTenantEmailValid = !form.co_tenant_email || isEmailLike(form.co_tenant_email);
+    const coTenantReady = !!form.co_tenant_name && !!form.co_tenant_email && coTenantEmailValid;
+    const canSendSignature = tenantEmailValid && !coTenantHalfFilled && coTenantEmailValid;
     return (
       <div>
         {showLeaveConfirm ? (
@@ -393,25 +417,32 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
             <p className="text-sm font-semibold text-slate-950">Signature électronique</p>
             <p className="mt-1 text-xs leading-5 text-slate-600">
               Envoyez les liens de signature par email au bailleur, au locataire ({form.tenant_email})
-              {form.co_tenant_name && form.co_tenant_email ? ` et au co-locataire (${form.co_tenant_email})` : ""}. Chacun signera depuis son
+              {coTenantReady ? ` et au co-locataire (${form.co_tenant_email})` : ""}. Chacun signera depuis son
               téléphone ou son ordinateur, sans compte lokt.fr.
             </p>
-            {form.co_tenant_name && !form.co_tenant_email ? (
+            {!tenantEmailValid ? (
+              <p className="mt-2 text-xs leading-5 text-red-600">L'email du locataire ({form.tenant_email}) n'a pas un format valide.</p>
+            ) : null}
+            {coTenantHalfFilled ? (
               <p className="mt-2 text-xs leading-5 text-amber-700">
-                Un co-locataire ({form.co_tenant_name}) est renseigné mais sans email : il apparaîtra sur le PDF mais ne recevra pas de lien de
-                signature. Ajoutez son email ci-dessus si besoin.
+                {form.co_tenant_name
+                  ? `Un co-locataire (${form.co_tenant_name}) est renseigné mais sans email : il apparaîtra sur le PDF mais ne sera pas invité à signer tant que son email n'est pas ajouté.`
+                  : `Un email de co-locataire est renseigné mais sans nom : ajoutez son nom pour qu'il soit invité à signer.`}
               </p>
+            ) : null}
+            {form.co_tenant_email && form.co_tenant_name && !coTenantEmailValid ? (
+              <p className="mt-2 text-xs leading-5 text-red-600">L'email du co-locataire ({form.co_tenant_email}) n'a pas un format valide.</p>
             ) : null}
             {sigError ? <p className="mt-2 text-xs text-red-600">{sigError}</p> : null}
             {sigSent ? (
               <p className="mt-2 text-xs font-semibold text-emerald-700">
                 Liens de signature envoyés ✓ — Vous recevrez le PDF certifié par email une fois{" "}
-                {form.co_tenant_name && form.co_tenant_email ? "les trois signatures recueillies" : "les deux signatures recueillies"}.
+                {coTenantReady ? "les trois signatures recueillies" : "les deux signatures recueillies"}.
               </p>
             ) : (
               <button
                 type="button"
-                disabled={sigLoading}
+                disabled={sigLoading || !canSendSignature}
                 onClick={sendForSignature}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
@@ -504,13 +535,34 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                   onEdit={() => setEditingParties(true)}
                 />
               ) : (
-                <Fields
-                  form={form}
-                  set={set}
-                  required={requiredFields(kind, form)}
-                  invalid={invalidFields}
-                  names={[["landlord_name", "Nom du bailleur"], ["landlord_address", "Adresse du bailleur"], ["tenant_name", "Nom du locataire (ou 1er locataire)"], ["tenant_email", "E-mail du locataire"]]}
-                />
+                <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                    <p className="mb-2 flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-indigo-700">
+                      <HomeModernIcon className="h-3.5 w-3.5" aria-hidden="true" /> Bailleur
+                    </p>
+                    <Fields
+                      form={form}
+                      set={set}
+                      required={requiredFields(kind, form)}
+                      invalid={invalidFields}
+                      columns={1}
+                      names={[["landlord_name", "Nom du bailleur"], ["landlord_address", "Adresse du bailleur"]]}
+                    />
+                  </div>
+                  <div className="rounded-xl border border-cyan-100 bg-cyan-50/50 p-3">
+                    <p className="mb-2 flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-cyan-700">
+                      <UserIcon className="h-3.5 w-3.5" aria-hidden="true" /> Locataire
+                    </p>
+                    <Fields
+                      form={form}
+                      set={set}
+                      required={requiredFields(kind, form)}
+                      invalid={invalidFields}
+                      columns={1}
+                      names={[["tenant_name", "Nom du locataire (ou 1er locataire)"], ["tenant_email", "E-mail du locataire"]]}
+                    />
+                  </div>
+                </div>
               )}
               {kind === "empty_primary" ? (
                 <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
@@ -774,10 +826,10 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-function Fields({ form, set, names, required = [], invalid }: any) {
+function Fields({ form, set, names, required = [], invalid, columns = 2 }: any) {
   const invalidSet: Set<string> = invalid || new Set();
   return (
-    <div className="mb-4 grid gap-3 sm:grid-cols-2">
+    <div className={`grid gap-3 ${columns === 1 ? "" : "sm:grid-cols-2"} ${columns === 1 ? "" : "mb-4"}`}>
       {names.map(([key, title, type = "text", options = [], hint]: any[]) => {
         const isInvalid = invalidSet.has(key);
         const fieldClass = isInvalid ? `${input.replace("border-slate-300", "border-red-400")} ring-1 ring-red-300` : input;
