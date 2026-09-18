@@ -1011,7 +1011,7 @@ export function DashboardShell(props: any) {
         <div className="pb-24 lg:pb-0">
           <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 text-center">
             <a
-              href="https://trstp.lt/fhpsTXqoDX"
+              href="https://fr.trustpilot.com/review/lokt.fr"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#635bff]"
