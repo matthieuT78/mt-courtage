@@ -21,12 +21,15 @@ export function hashPdfBuffer(buf: Buffer | Uint8Array): string {
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
+// Heure de Paris plutôt qu'UTC : les baux sont signés par des parties en
+// France, un horodatage en UTC (2h de moins l'été) était lu comme faux par
+// les utilisateurs plutôt que compris comme un choix de fuseau différent.
 function formatDate(d: Date): string {
   return d.toLocaleString("fr-FR", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
-    timeZone: "UTC",
-  }) + " UTC";
+    timeZone: "Europe/Paris",
+  }) + " (heure de Paris)";
 }
 
 export async function stampPdf(originalBytes: Uint8Array, opts: StampOptions): Promise<Uint8Array> {
