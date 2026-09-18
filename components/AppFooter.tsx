@@ -106,6 +106,9 @@ export default function AppFooter() {
           <Link href="/confidentialite" className="underline hover:text-slate-700">
             Confidentialité (RGPD)
           </Link>
+          <Link href="/securite" className="underline hover:text-slate-700">
+            Sécurité des données
+          </Link>
           <button type="button" onClick={() => reopenCookieConsent()} className="underline hover:text-slate-700">
             Gérer les cookies
           </button>
