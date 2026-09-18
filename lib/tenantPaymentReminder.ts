@@ -56,6 +56,13 @@ export async function getTenantPaymentReminderContext(params: {
 
   const tenantEmail = safeStr(lease.tenant_receipt_email) || safeStr((tenant as any)?.email);
   const tenantName = safeStr((tenant as any)?.full_name);
+  // Le colocataire est solidaire du bail au même titre que le locataire — il
+  // n'y a pas de "locataire principal" légalement dans un bail unique avec
+  // solidarité (le bailleur peut réclamer la totalité à l'un ou l'autre,
+  // sans ordre de préférence). Il est donc destinataire principal de la
+  // relance, pas simplement en copie.
+  const coTenantEmail = safeStr(lease.co_tenant_email) || null;
+  const reminderRecipients = [tenantEmail, coTenantEmail].filter((value): value is string => !!value);
   const landlordName = safeStr((landlord as any)?.display_name) || "Votre bailleur";
   const replyTo = safeStr((landlord as any)?.email) || safeStr(lease.reminder_email) || "contact@lokt.fr";
   const propertyLabel =
@@ -67,6 +74,8 @@ export async function getTenantPaymentReminderContext(params: {
     lease,
     tenantEmail,
     tenantName,
+    coTenantEmail,
+    reminderRecipients,
     landlordName,
     replyTo,
     propertyLabel,
@@ -133,7 +142,7 @@ export async function sendTenantPaymentReminder(params: {
       outcomes.push({ channel: "email", ok: false, error: "Email locataire manquant." });
     } else {
       const mail = await sendEmailViaResend({
-        to: context.tenantEmail,
+        to: context.reminderRecipients,
         replyTo: context.replyTo,
         subject: generated.subject,
         text: body,

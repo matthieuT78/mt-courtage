@@ -1,5 +1,6 @@
 type SendEmailParams = {
-  to: string;
+  to: string | string[];
+  cc?: string | string[] | null;
   subject: string;
   html: string;
   text?: string;
@@ -32,6 +33,7 @@ export async function sendEmailViaResend(params: SendEmailParams) {
       html: params.html,
       text: params.text,
       reply_to: replyTo, // Resend accepte reply_to
+      ...(params.cc ? { cc: params.cc } : {}),
       ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     }),
   });

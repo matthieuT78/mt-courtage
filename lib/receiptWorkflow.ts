@@ -116,8 +116,8 @@ function buildPdfBuffer(text: string) {
 }
 
 async function sendEmailViaResend(params: {
-  to: string;
-  cc?: string | null;
+  to: string | string[];
+  cc?: string | string[] | null;
   subject: string;
   html: string;
   filename: string;
@@ -493,6 +493,13 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     const ownerRes = await supabaseAdmin.auth.admin.getUserById(userId);
     ccEmail = safeStr(ownerRes.data?.user?.email) || null;
   }
+  // Le colocataire est solidaire du bail au même titre que le locataire — il
+  // n'y a pas de "locataire principal" légalement dans un bail unique avec
+  // solidarité (le bailleur peut réclamer la totalité à l'un ou l'autre,
+  // sans ordre de préférence). Il est donc destinataire principal de la
+  // quittance, pas simplement en copie.
+  const coTenantEmail = safeStr(lease.co_tenant_email) || null;
+  const toList = [toEmail, coTenantEmail].filter((value): value is string => !!value);
   const alreadySent = String(receipt.status || "").toLowerCase() === "sent" && !!receipt.sent_at;
 
   let email = { ok: false, disabled: false, error: "Email non tenté." };
@@ -504,7 +511,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     email = { ok: false, disabled: false, error: "PDF indisponible pour pièce jointe." };
   } else {
     email = await sendEmailViaResend({
-      to: toEmail,
+      to: toList,
       cc: ccEmail,
       subject: emailSubject,
       filename: pdfFilename,
