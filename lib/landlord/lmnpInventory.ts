@@ -51,7 +51,10 @@ export function isLmnpItemCompliant(item: LmnpInventoryItemLike): boolean {
   return getLmnpItemStatus(item) === "ok";
 }
 
-const FURNISHED_LEASE_KINDS = new Set(["furnished_primary", "furnished_student", "mobility"]);
+// Exporté pour être réutilisé partout où "ce bail est-il meublé ?" doit être
+// tranché (ex: alerte de cohérence entre le bail et le régime fiscal choisi
+// en Finance) — toujours la même liste, jamais redéfinie ailleurs.
+export const FURNISHED_LEASE_KINDS = new Set(["furnished_primary", "furnished_student", "mobility"]);
 
 export type LmnpLeaseLike = {
   property_id: string;

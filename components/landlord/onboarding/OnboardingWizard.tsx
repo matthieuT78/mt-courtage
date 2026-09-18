@@ -724,6 +724,46 @@ export function OnboardingWizard({
     }
   };
 
+  // Le choix meublé/nu fait à l'étape Location présuppose déjà un régime fiscal
+  // (meublé → LMNP, nu → location nue) : on le reporte sur property_finance pour
+  // éviter que l'onglet Finance affiche "régime non renseigné" alors que
+  // l'information a été donnée dès l'onboarding. Best-effort : ne bloque jamais
+  // la création du bail.
+  //
+  // Un immeuble à lots n'a qu'une ligne property_finance pour tout le bâtiment :
+  // deviner le régime à partir d'un seul lot serait faux si les lots ont des
+  // statuts meublé/nu différents — on s'abstient entièrement dans ce cas.
+  //
+  // On ne remplace un régime déjà présent que s'il s'agit d'un régime que ce
+  // même mécanisme aurait pu poser (AUTO_DERIVABLE_TAX_REGIMES) : ça permet de
+  // suivre un changement meublé↔nu fait en revenant en arrière dans le
+  // générateur de contrat (même lease, leaseKind modifié, on resoumet), sans
+  // jamais écraser un régime plus précis choisi à la main dans Finance
+  // (LMNP réel, micro-foncier réel, Pinel...).
+  const prefillTaxRegimeFromLeaseKind = async (propertyId: string, kind: string, isBuilding: boolean) => {
+    if (!supabase || !propertyId || isBuilding) return;
+    const derived = kind === "furnished_primary" ? "lmnp_micro" : kind === "empty_primary" ? "nu_micro" : null;
+    if (!derived) return;
+    const AUTO_DERIVABLE_TAX_REGIMES = new Set(["lmnp_micro", "nu_micro"]);
+    try {
+      const { data: existing } = await supabase
+        .from("property_finance")
+        .select("tax_regime")
+        .eq("property_id", propertyId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing?.tax_regime && !AUTO_DERIVABLE_TAX_REGIMES.has(existing.tax_regime)) return;
+      await supabase
+        .from("property_finance")
+        .upsert(
+          { property_id: propertyId, user_id: userId, tax_regime: derived, updated_at: new Date().toISOString() },
+          { onConflict: "property_id" }
+        );
+    } catch {
+      // silencieux — pré-remplissage de confort, pas critique
+    }
+  };
+
   /* -------------------- Étape 4 : Location (bail) -------------------- */
   const submitBail = async () => {
     if (!leaseChoice) return setErr("Merci d'indiquer si le bail existe déjà.");
@@ -777,6 +817,7 @@ export function OnboardingWizard({
         }
         if (error) throw error;
         await onRefresh();
+        await prefillTaxRegimeFromLeaseKind(targetPropertyId, leaseKind, targetPropertyIsBuilding);
         if (leaseChoice === "new") {
           // On revient réviser le contrat avec les valeurs à jour.
           setLeaseReloadNonce((n) => n + 1);
@@ -807,6 +848,7 @@ export function OnboardingWizard({
         throw new Error(json?.error || raw || `Erreur serveur ${res.status}.`);
       }
       await onRefresh();
+      await prefillTaxRegimeFromLeaseKind(targetPropertyId, leaseKind, targetPropertyIsBuilding);
       if (leaseChoice === "new" && json?.id) {
         // Le bail n'existe pas encore : on ouvre le générateur de contrat par-dessus
         // pour compléter les infos légales — il se charge lui-même de fermer l'assistant.

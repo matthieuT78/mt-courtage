@@ -10,6 +10,7 @@ import {
   CheckCircleIcon,
   DocumentArrowUpIcon,
   DocumentMagnifyingGlassIcon,
+  ExclamationTriangleIcon,
   InformationCircleIcon,
   PaperClipIcon,
   PencilSquareIcon,
@@ -36,6 +37,7 @@ import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
+import { FURNISHED_LEASE_KINDS } from "../../../lib/landlord/lmnpInventory";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
@@ -2230,7 +2232,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                     </button>
                     {openFinanceProps.has(property.id) && (
                       <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
-                        <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
+                        <PropertyFinanceForm propertyId={property.id} existing={existing} leases={safeLeases} onSave={upsertPropertyFinance} />
                       </div>
                     )}
                   </div>
@@ -3568,10 +3570,12 @@ function taxRegimeLabel(value: string) {
 function PropertyFinanceForm({
   propertyId,
   existing,
+  leases,
   onSave,
 }: {
   propertyId: string;
   existing: PropertyFinance | null;
+  leases?: Lease[];
   onSave: (propertyId: string, patch: Partial<PropertyFinance>) => Promise<void>;
 }) {
   const fromExisting = (ex: PropertyFinance | null): PropertyFinance => ({
@@ -3701,6 +3705,27 @@ function PropertyFinanceForm({
   const totalInvested =
     (s.purchase_price || 0) + (s.notary_fees || 0) + (s.agency_fees || 0) + (s.works || 0);
   const isLmnpReal = s.tax_regime === "lmnp_real";
+
+  // Alerte de cohérence : le régime fiscal (Finance) et le type de bail actif
+  // (meublé/nu) sont deux champs indépendants, jamais synchronisés une fois le
+  // bail créé — voir lib/landlord/lmnpInventory.ts pour pourquoi l'obligation
+  // d'inventaire LMNP se base volontairement sur le bail et non ce régime.
+  // On ne prévient que si TOUS les baux actifs du bien contredisent le régime
+  // choisi (un immeuble à lots mixtes meublé/nu ne doit pas déclencher une
+  // fausse alerte, la limite d'un seul régime pour tout le bâtiment étant déjà
+  // connue par ailleurs).
+  const propertyActiveLeases = (leases || []).filter(
+    (l) => l.property_id === propertyId && String(l.status || "").toLowerCase() === "active"
+  );
+  const anyFurnishedLease = propertyActiveLeases.some((l) => FURNISHED_LEASE_KINDS.has(String(l.lease_kind || "")));
+  const anyEmptyLease = propertyActiveLeases.some((l) => String(l.lease_kind || "") === "empty_primary");
+  const regime = s.tax_regime || "";
+  const regimeLeaseMismatch =
+    regime.startsWith("lmnp") && anyEmptyLease && !anyFurnishedLease
+      ? "Le bail actif de ce bien est un bail nu, mais le régime sélectionné ici est LMNP (meublé) — vérifiez que c'est bien voulu."
+      : regime.startsWith("nu") && anyFurnishedLease && !anyEmptyLease
+      ? "Le bail actif de ce bien est meublé, mais le régime sélectionné ici est location nue — l'abattement LMNP (50 % en micro) ne s'appliquerait pas."
+      : null;
 
   const currentYear = new Date().getFullYear();
   const fieldErrors: Partial<Record<keyof PropertyFinance, string>> = {};
@@ -3952,6 +3977,12 @@ function PropertyFinanceForm({
         {/* Régime fiscal */}
         <div className="py-5">
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Régime fiscal</p>
+          {regimeLeaseMismatch && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800">
+              <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{regimeLeaseMismatch}</span>
+            </div>
+          )}
           <div className={cx("grid gap-3", isLmnpReal ? "sm:grid-cols-2" : "sm:grid-cols-1 max-w-xs")}>
             <div className="space-y-1.5">
               <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
