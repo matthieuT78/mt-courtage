@@ -53,7 +53,13 @@ function missingRequiredFields(payload: any) {
   return required.filter((key) => String(d[key] ?? "").trim() === "");
 }
 
-function makePdf(payload: any) {
+export type SignedEntry = { role: "Bailleur" | "Locataire" | "Colocataire"; name: string; signedAt: Date };
+
+// signedEntries n'est fourni que par confirm.ts, une fois la signature
+// électronique entièrement recueillie (toutes les parties) — jamais au
+// moment de la génération initiale, où l'on ne sait pas encore si le bail
+// sera signé à la main ou électroniquement.
+export function makePdf(payload: any, opts?: { signedEntries?: SignedEntry[] }) {
   return new Promise<Buffer>((resolve) => {
     const doc = new PDFDocument({ size: "A4", margin: 54, info: { Title: "Contrat de location" } });
     const chunks: Buffer[] = [];
@@ -61,6 +67,9 @@ function makePdf(payload: any) {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     const d = payload.form_data || {};
     const isProfessional = payload.contract_kind === "professional";
+    const signedByRole = new Map((opts?.signedEntries || []).map((e) => [e.role, e]));
+    const fmtSignedDate = (date: Date) =>
+      date.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
     const W = doc.page.width - 108; // usable width (2 × margin 54)
 
@@ -349,34 +358,38 @@ function makePdf(payload: any) {
     row("Le", d.signature_date);
     doc.moveDown(1.5);
 
-    // Bailleur
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor("#0f172a").text("Bailleur — " + text(d.landlord_name));
-    doc.moveDown(0.3).font("Helvetica").fontSize(9).fillColor("#64748b").text("Précédée de la mention manuscrite « Lu et approuvé »");
-    doc.moveDown(3.5);
-    doc.moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.margins.left + W * 0.45, doc.y)
-      .strokeColor("#94a3b8").lineWidth(0.5).stroke();
-    doc.moveDown(0.3).font("Helvetica").fontSize(8).fillColor("#94a3b8").text("Signature du bailleur");
+    // Bloc manuscrit (ligne à signer) ou bloc électronique (mention + renvoi
+    // au certificat en dernière page) selon que ce rôle a signé électroniquement
+    // — jamais les deux : une ligne vide jamais remplie à côté d'une signature
+    // électronique déjà recueillie n'apporte rien, juste de la confusion.
+    const signatureBlock = (roleLabel: string, roleKey: SignedEntry["role"], name: string) => {
+      const signed = signedByRole.get(roleKey);
+      doc.font("Helvetica-Bold").fontSize(9.5).fillColor("#0f172a").text(`${roleLabel} — ${text(name)}`);
+      if (signed) {
+        // Pas de ✓ Unicode : les fonts standard PDFKit (Helvetica) sont en
+        // encodage WinAnsi et le rendent en caractère erroné (déjà contourné
+        // de la même façon sur la page de certificat, voir lib/pdfStamp.ts).
+        doc.moveDown(0.3).font("Helvetica-Bold").fontSize(8.5).fillColor("#059669").text(
+          `OK — Signé électroniquement le ${fmtSignedDate(signed.signedAt)} — voir le certificat de signature en dernière page.`,
+          { lineGap: 2 }
+        );
+      } else {
+        doc.moveDown(0.3).font("Helvetica").fontSize(9).fillColor("#64748b").text("Précédée de la mention manuscrite « Lu et approuvé »");
+        doc.moveDown(3.5);
+        doc.moveTo(doc.page.margins.left, doc.y)
+          .lineTo(doc.page.margins.left + W * 0.45, doc.y)
+          .strokeColor("#94a3b8").lineWidth(0.5).stroke();
+        doc.moveDown(0.3).font("Helvetica").fontSize(8).fillColor("#94a3b8").text(`Signature du ${roleLabel.toLowerCase()}`);
+      }
+    };
 
+    signatureBlock("Bailleur", "Bailleur", d.landlord_name);
     doc.moveDown(2);
-    // Locataire
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor("#0f172a").text("Locataire — " + text(d.tenant_name));
-    doc.moveDown(0.3).font("Helvetica").fontSize(9).fillColor("#64748b").text("Précédée de la mention manuscrite « Lu et approuvé »");
-    doc.moveDown(3.5);
-    doc.moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.margins.left + W * 0.45, doc.y)
-      .strokeColor("#94a3b8").lineWidth(0.5).stroke();
-    doc.moveDown(0.3).font("Helvetica").fontSize(8).fillColor("#94a3b8").text("Signature du locataire");
+    signatureBlock("Locataire", "Locataire", d.tenant_name);
 
     if (d.co_tenant_name) {
       doc.moveDown(2);
-      doc.font("Helvetica-Bold").fontSize(9.5).fillColor("#0f172a").text("Co-locataire — " + text(d.co_tenant_name));
-      doc.moveDown(0.3).font("Helvetica").fontSize(9).fillColor("#64748b").text("Précédée de la mention manuscrite « Lu et approuvé »");
-      doc.moveDown(3.5);
-      doc.moveTo(doc.page.margins.left, doc.y)
-        .lineTo(doc.page.margins.left + W * 0.45, doc.y)
-        .strokeColor("#94a3b8").lineWidth(0.5).stroke();
-      doc.moveDown(0.3).font("Helvetica").fontSize(8).fillColor("#94a3b8").text("Signature du co-locataire");
+      signatureBlock("Co-locataire", "Colocataire", d.co_tenant_name);
     }
 
     doc.moveDown(2).fontSize(8).fillColor("#94a3b8").text(

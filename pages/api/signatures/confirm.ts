@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { stampPdf, hashPdfBuffer, type SignatureAuditEntry } from "../../../lib/pdfStamp";
 import { contractPdfPath } from "../../../lib/leaseContract";
+import { makePdf as makeLeasePdf, type SignedEntry } from "../lease-contracts/generate";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr";
@@ -181,11 +182,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     signedPath = storagePath.replace(/\.pdf$/, ".signed.pdf");
   }
 
+  // Pour un bail, on ne se contente pas d'apposer le certificat sur le PDF
+  // original — celui-ci garderait ses lignes de signature manuscrite vides,
+  // jamais remplies puisque c'est la signature électronique qui a été
+  // utilisée. On régénère le corps du document avec les blocs de signature
+  // électronique déjà renseignés, à partir des mêmes données que la
+  // génération initiale, avant d'y apposer le certificat comme d'habitude.
+  let bytesToStamp: Uint8Array = pdfBytes;
+  if (sigReq.document_type === "bail" && sigReq.lease_contract_id) {
+    const { data: leaseDoc, error: leaseDocErr } = await supabaseAdmin
+      .from("lease_contract_documents")
+      .select("form_data, contract_kind")
+      .eq("id", sigReq.lease_contract_id)
+      .maybeSingle();
+    if (!leaseDocErr && leaseDoc) {
+      const signedEntries: SignedEntry[] = auditEntries.map((e) => ({ role: e.role as SignedEntry["role"], name: e.name, signedAt: e.signedAt }));
+      try {
+        bytesToStamp = await makeLeasePdf(leaseDoc, { signedEntries });
+      } catch (err) {
+        // Best-effort : en cas d'échec, on repart du PDF original plutôt que
+        // de bloquer la signature déjà enregistrée.
+        console.error("[signatures/confirm] Régénération du bail avec blocs signés échouée, repli sur le PDF original:", err);
+      }
+    }
+  }
+
   // Bug 5 fix: wrap PDF work so a crash here doesn't leave status permanently stuck.
   // The signature IS recorded; only the PDF generation failed.
   let signedPdfUrl: string;
   try {
-    const stampedBytes = await stampPdf(pdfBytes, {
+    const stampedBytes = await stampPdf(bytesToStamp, {
       documentLabel: sigReq.document_label,
       referenceId: sigReq.id,
       auditEntries,
