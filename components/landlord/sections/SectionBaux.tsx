@@ -1,5 +1,5 @@
 // components/landlord/sections/SectionBaux.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AcademicCapIcon,
@@ -855,6 +855,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  // Le bandeau d'erreur s'affiche tout en haut de la carte Locations, souvent
+  // hors écran quand on édite une location plus bas dans la liste — sans ce
+  // scroll, sauvegarder semble "ne rien faire" alors qu'une erreur de
+  // validation (ex: dépôt de garantie plafonné) vient d'apparaître, invisible.
+  const errBannerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (err) errBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [err]);
   const [autoWorkflowError, setAutoWorkflowError] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
@@ -3045,7 +3053,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         desc="Chaque location relie un logement, un locataire et un loyer — c'est ce qui pilote le suivi mensuel, les quittances et les alertes."
       />
 
-      {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
+      {err ? <div ref={errBannerRef} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
       {/* Toolbar */}

@@ -1259,7 +1259,18 @@ export function SectionDashboard({
       }
       const target = actionTarget(alert.action);
       if (!target) continue;
-      if (onboardingIncomplete && (target === "biens" || target === "locataires" || target === "baux")) continue;
+      // Pendant la mise en route, on masque uniquement les invites "créez votre
+      // premier X" — redondantes avec la checklist d'onboarding elle-même.
+      // Filtrer par section entière (biens/locataires/baux) masquerait à tort
+      // toute autre alerte ciblant ces sections, comme la caution non
+      // encaissée ci-dessous, qui doit rester visible dès la sortie de
+      // l'onboarding (mandatoryStepsComplete peut être vrai alors que Finance,
+      // le seul step restant, laisse onboardingIncomplete à true).
+      const isFirstStepPrompt =
+        alert.title === "Ajoutez votre premier logement" ||
+        alert.title === "Ajoutez un locataire" ||
+        alert.title === "Aucun bail actif";
+      if (onboardingIncomplete && isFirstStepPrompt) continue;
       if (actions.some((action) => action.target === target && action.title === alert.title)) continue;
       actions.push({
         tone: alert.tone === "red" ? "red" : alert.tone === "amber" ? "amber" : "emerald",
