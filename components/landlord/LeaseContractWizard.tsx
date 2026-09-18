@@ -494,16 +494,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
     );
   }
   if (document?.signed_pdf_url) {
-    // Un bail déjà signé (bailleur + locataire) sans colocataire au départ —
-    // le colocataire n'existait pas comme signataire possible avant l'ajout
-    // de ce 3e rôle — doit pouvoir être complété sans repartir de zéro :
-    // l'assistant de génération est bloqué une fois signé (409 côté serveur,
-    // volontaire), mais le PDF non signé (document.pdf_url) existe toujours
-    // et porte déjà le nom du colocataire s'il avait été renseigné. On peut
-    // donc relancer directement une nouvelle demande de signature dessus,
-    // sans régénérer le document.
-    const coTenantEmailValid = !form.co_tenant_email || isEmailLike(form.co_tenant_email);
-    const coTenantHalfFilled = !!form.co_tenant_name !== !!form.co_tenant_email;
     return (
       <Modal onClose={onClose}>
         <div className="border-b border-slate-200 px-5 py-4">
@@ -517,46 +507,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             <p className="mt-1 text-xs leading-5 text-emerald-800">{document.original_file_name || "bail-signé.pdf"} · Le bail est archivé dans Lokt et accessible depuis la fiche.</p>
           </div>
           <p className="text-sm leading-6 text-slate-600">Le bail signé est archivé dans Lokt et accessible depuis la fiche bail.</p>
-
-          {document.pdf_url ? (
-            <div className="rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4">
-              <p className="text-sm font-semibold text-slate-950">Un colocataire manquait à la signature ?</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600">
-                Renseignez son email pour lui envoyer un lien de signature. Comme le bailleur et le locataire ont déjà signé la première
-                fois, ils devront tous les deux signer à nouveau — les trois signatures doivent figurer ensemble sur le même document.
-              </p>
-              <div className="mt-3">
-                <Fields
-                  form={form}
-                  set={set}
-                  columns={1}
-                  fieldErrors={{
-                    co_tenant_name: "Ajoute aussi son email, sinon il ne sera pas invité à signer.",
-                    co_tenant_email: !form.co_tenant_name
-                      ? "Ajoute aussi son nom, sinon il ne sera pas invité à signer."
-                      : "Format d'email invalide (ex : nom@domaine.fr).",
-                  }}
-                  invalid={invalidFields}
-                  names={[["co_tenant_name","Nom du co-locataire"],["co_tenant_email","E-mail du co-locataire"]]}
-                />
-              </div>
-              {sigError ? <p className="mt-2 text-xs text-red-600">{sigError}</p> : null}
-              {sigSent ? (
-                <p className="mt-2 text-xs font-semibold text-emerald-700">
-                  Nouvelle demande de signature envoyée ✓ — bailleur, locataire et co-locataire recevront chacun leur lien.
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  disabled={sigLoading || !form.co_tenant_name || !form.co_tenant_email || !coTenantEmailValid || coTenantHalfFilled}
-                  onClick={sendForSignature}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  {sigLoading ? "Envoi…" : "Envoyer une nouvelle demande de signature →"}
-                </button>
-              )}
-            </div>
-          ) : null}
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white"><XMarkIcon className="h-4 w-4"/>Fermer</button>
