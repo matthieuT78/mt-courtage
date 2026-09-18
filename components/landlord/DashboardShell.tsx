@@ -598,7 +598,14 @@ export function DashboardShell(props: any) {
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
         cta: "Débloquer le pilotage performance",
-        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 15 logements actifs"],
+        features: [
+          "Rendement net et cash-flow calculés automatiquement, bien par bien",
+          "Plan d’action priorisé : le bien qui vous coûte de l’argent, identifié en un coup d’œil",
+          "Alertes concrètes : vacance locative, retard de loyer, caution non encaissée, révision IRL oubliée",
+          "Simulateur de renégociation de crédit basé sur les taux de marché réels",
+          "Comparatif micro-foncier / réel pour repérer les économies d’impôt possibles",
+          "Jusqu’à 15 logements actifs",
+        ],
         preview: (
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="Rendement brut" value="6,2 %" tone="emerald" />
@@ -617,7 +624,14 @@ export function DashboardShell(props: any) {
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
         cta: "Débloquer la boîte à outils",
-        features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
+        features: [
+          "Facturation eau au prorata des relevés, par compteur, avec historique et justificatifs",
+          "Répartition des charges de copropriété par lot, à partir des tantièmes",
+          "TEOM récupérable isolée automatiquement depuis l’avis de taxe foncière",
+          "Régularisation annuelle des charges : provisions versées vs dépenses réelles, solde calculé",
+          "Calculateur de préavis légal (bail vide/meublé, zone tendue, auteur du congé)",
+          "Simulateurs de décision : LMNP vs location nue, révision IRL, conserver ou vendre",
+        ],
         preview: (
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard label="Répartition eau" value="42,80 €" tone="indigo" />
@@ -642,6 +656,7 @@ export function DashboardShell(props: any) {
           "Score automatique sur 100 (revenus, stabilité, garant, pièces fournies)",
           "Classement des candidats mis à jour en temps réel",
           "Un clic pour créer le bail — coordonnées et revenus déjà repris, sans ressaisie",
+          "Agenda de visite intégré : proposez des créneaux, les candidats réservent eux-mêmes",
           "Dossiers non retenus supprimés automatiquement à la clôture, conforme RGPD",
         ],
         preview: (
@@ -672,10 +687,12 @@ export function DashboardShell(props: any) {
         planId: "landlord_5",
         cta: "Débloquer la messagerie",
         features: [
-          "Un fil de discussion par locataire, centralisé",
-          "Historique conservé avec le dossier du bail",
-          "Notifications sur les nouveaux messages",
-          "Inclus avec le portail locataire lokt·one",
+          "Un fil de discussion par locataire, centralisé et privé — fini les échanges par SMS ou numéro perso",
+          "Le locataire est notifié par email à chaque nouveau message, aucune demande ne se perd",
+          "Accusé de lecture horodaté : sachez quand votre message a été vu",
+          "Historique conservé avec le dossier du bail, consultable à tout moment",
+          "Inclus avec le portail locataire lokt·one : quittances, bail et état des lieux en ligne pour le locataire",
+          "Activable ou désactivable par locataire, à tout moment",
         ],
         preview: (
           <div className="space-y-2 text-left">
