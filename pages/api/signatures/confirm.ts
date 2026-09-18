@@ -15,7 +15,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   if (!r.ok) throw new Error(`Resend ${r.status}: ${await r.text()}`);
 }
 
-function completedEmailHtml(opts: { documentLabel: string; downloadUrl: string }) {
+function completedEmailHtml(opts: { documentLabel: string; downloadUrl: string; totalSigners: number }) {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f6f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
@@ -27,7 +27,7 @@ function completedEmailHtml(opts: { documentLabel: string; downloadUrl: string }
     <p style="margin:0 0 8px;font-size:13px;color:#059669;font-weight:600;text-transform:uppercase;letter-spacing:.08em">Document signé</p>
     <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;font-weight:700">${opts.documentLabel}</h1>
     <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6">
-      Les deux parties ont signé. Vous trouverez ci-dessous le PDF certifié avec le certificat de signature électronique en dernière page.
+      ${opts.totalSigners > 2 ? "Toutes les parties ont signé" : "Les deux parties ont signé"}. Vous trouverez ci-dessous le PDF certifié avec le certificat de signature électronique en dernière page.
     </p>
     <table cellpadding="0" cellspacing="0"><tr><td style="background:#059669;border-radius:100px">
       <a href="${opts.downloadUrl}" style="display:inline-block;padding:14px 28px;color:#fff;font-size:14px;font-weight:700;text-decoration:none">
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data: sigReq, error } = await supabaseAdmin
     .from("signature_requests")
     .select("*")
-    .or(`landlord_token.eq.${token},tenant_token.eq.${token}`)
+    .or(`landlord_token.eq.${token},tenant_token.eq.${token},co_tenant_token.eq.${token}`)
     .single();
 
   if (error || !sigReq) return res.status(404).json({ error: "Demande introuvable." });
@@ -67,7 +67,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const isLandlord = sigReq.landlord_token === token;
-  const isTenant = sigReq.tenant_token === token;
+  const isTenant = !isLandlord && sigReq.tenant_token === token;
+  const isCoTenant = !isLandlord && !isTenant && !!sigReq.co_tenant_email && sigReq.co_tenant_token === token;
 
   if (isLandlord && sigReq.landlord_signed_at) {
     return res.status(200).json({ status: sigReq.status, alreadySigned: true });
@@ -75,12 +76,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (isTenant && sigReq.tenant_signed_at) {
     return res.status(200).json({ status: sigReq.status, alreadySigned: true });
   }
+  if (isCoTenant && sigReq.co_tenant_signed_at) {
+    return res.status(200).json({ status: sigReq.status, alreadySigned: true });
+  }
 
   const now = new Date().toISOString();
-  const updateFields = isLandlord
-    ? { landlord_signed_at: now, landlord_ip: ip, landlord_user_agent: userAgent }
-    : { tenant_signed_at: now, tenant_ip: ip, tenant_user_agent: userAgent };
-  const otherSigned = isLandlord ? !!sigReq.tenant_signed_at : !!sigReq.landlord_signed_at;
+  const signedField = isLandlord ? "landlord_signed_at" : isTenant ? "tenant_signed_at" : "co_tenant_signed_at";
+  const ipField = isLandlord ? "landlord_ip" : isTenant ? "tenant_ip" : "co_tenant_ip";
+  const uaField = isLandlord ? "landlord_user_agent" : isTenant ? "tenant_user_agent" : "co_tenant_user_agent";
+  const updateFields: Record<string, string> = { [signedField]: now, [ipField]: ip, [uaField]: userAgent };
+
+  // Un colocataire n'est un signataire attendu que s'il a été renseigné à la
+  // création de la demande (co_tenant_email non nul) — sinon on ne l'attend
+  // jamais, comme avant l'ajout de ce 3e signataire optionnel.
+  const hasCoTenant = !!sigReq.co_tenant_email;
+  const landlordDone = isLandlord || !!sigReq.landlord_signed_at;
+  const tenantDone = isTenant || !!sigReq.tenant_signed_at;
+  const coTenantDone = !hasCoTenant || isCoTenant || !!sigReq.co_tenant_signed_at;
+  const allSigned = landlordDone && tenantDone && coTenantDone;
 
   // Bug 10 fix: atomic guard — `.is()` ensures the field is still NULL before writing,
   // preventing two concurrent requests from both believing they signed last.
@@ -90,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from("signature_requests")
     .update({ ...updateFields, status: "partially_signed" })
     .eq("id", sigReq.id)
-    .is(isLandlord ? "landlord_signed_at" : "tenant_signed_at", null)
+    .is(signedField, null)
     .select("id");
 
   if (updateErr) return res.status(500).json({ error: "Erreur lors de l'enregistrement de la signature." });
@@ -99,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ status: sigReq.status, alreadySigned: true });
   }
 
-  if (!otherSigned) {
+  if (!allSigned) {
     return res.status(200).json({ status: "partially_signed" });
   }
 
@@ -126,9 +139,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const landlordSignedAt = isLandlord ? new Date(now) : new Date(sigReq.landlord_signed_at);
-  const tenantSignedAt = isLandlord ? new Date(sigReq.tenant_signed_at) : new Date(now);
+  const tenantSignedAt = isTenant ? new Date(now) : new Date(sigReq.tenant_signed_at);
   const landlordIp = isLandlord ? ip : sigReq.landlord_ip;
-  const tenantIp = isLandlord ? sigReq.tenant_ip : ip;
+  const tenantIp = isTenant ? ip : sigReq.tenant_ip;
 
   const auditEntries: SignatureAuditEntry[] = [
     {
@@ -146,6 +159,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       signedAt: tenantSignedAt,
     },
   ];
+  if (hasCoTenant) {
+    const coTenantSignedAt = isCoTenant ? new Date(now) : new Date(sigReq.co_tenant_signed_at);
+    const coTenantIp = isCoTenant ? ip : sigReq.co_tenant_ip;
+    auditEntries.push({
+      role: "Colocataire",
+      name: sigReq.co_tenant_name || sigReq.co_tenant_email,
+      email: sigReq.co_tenant_email,
+      ip: coTenantIp,
+      signedAt: coTenantSignedAt,
+    });
+  }
 
   let signedPath: string;
   let signedBucket: string;
@@ -210,10 +234,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const downloadUrl = signedUrlData?.signedUrl || `${SITE_URL}/espace-bailleur`;
 
   // Bug 4 fix: log email failures rather than silently swallowing them.
-  const emailResults = await Promise.allSettled([
-    sendEmail(sigReq.landlord_email, `Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
-    sendEmail(sigReq.tenant_email, `Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
-  ]);
+  const completedRecipients = [sigReq.landlord_email, sigReq.tenant_email, ...(hasCoTenant ? [sigReq.co_tenant_email] : [])];
+  const emailResults = await Promise.allSettled(
+    completedRecipients.map((to) =>
+      sendEmail(to, `Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl, totalSigners: completedRecipients.length }))
+    )
+  );
   emailResults.forEach((r, i) => {
     if (r.status === "rejected") console.error(`[signatures/confirm] Email ${i} failed:`, r.reason);
   });

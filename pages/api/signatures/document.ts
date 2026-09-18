@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { data, error } = await supabaseAdmin
     .from("signature_requests")
     .select("original_pdf_url, signed_pdf_url, expires_at, status")
-    .or(`landlord_token.eq.${token},tenant_token.eq.${token}`)
+    .or(`landlord_token.eq.${token},tenant_token.eq.${token},co_tenant_token.eq.${token}`)
     .single();
 
   if (error || !data) return res.status(404).json({ error: "Demande introuvable." });

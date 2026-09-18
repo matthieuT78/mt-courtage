@@ -16,14 +16,18 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 }
 
 function signerEmailHtml(opts: {
-  role: "bailleur" | "locataire";
+  role: "bailleur" | "locataire" | "colocataire";
   recipientName: string;
-  otherName: string;
+  otherNames: string[];
   documentLabel: string;
   signerUrl: string;
   expiresAt: string;
+  totalSigners: number;
 }) {
-  const roleLabel = opts.role === "bailleur" ? "bailleur" : "locataire";
+  const roleLabel = opts.role === "bailleur" ? "bailleur" : opts.role === "colocataire" ? "colocataire" : "locataire";
+  const othersLabel = opts.otherNames.length > 1
+    ? `${opts.otherNames.slice(0, -1).join(", ")} et ${opts.otherNames[opts.otherNames.length - 1]} devront également apposer leur signature`
+    : `${opts.otherNames[0]} devra également apposer sa signature`;
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f6f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
@@ -37,14 +41,14 @@ function signerEmailHtml(opts: {
     <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6">
       Bonjour ${opts.recipientName},<br><br>
       En tant que <strong>${roleLabel}</strong>, vous êtes invité·e à signer ce document électroniquement.<br>
-      ${opts.otherName} devra également apposer sa signature pour que le document soit finalisé.
+      ${othersLabel} pour que le document soit finalisé.
     </p>
     <table cellpadding="0" cellspacing="0"><tr><td style="background:linear-gradient(135deg,#635bff,#00d4ff);border-radius:100px">
       <a href="${opts.signerUrl}" style="display:inline-block;padding:14px 28px;color:#fff;font-size:14px;font-weight:700;text-decoration:none">
         Lire et signer le document →
       </a>
     </td></tr></table>
-    <p style="margin:20px 0 0;font-size:12px;color:#94a3b8">Lien valable jusqu'au ${opts.expiresAt}. Une fois les deux signatures recueillies, vous recevrez le PDF signé par email.</p>
+    <p style="margin:20px 0 0;font-size:12px;color:#94a3b8">Lien valable jusqu'au ${opts.expiresAt}. Une fois ${opts.totalSigners > 2 ? "les " + opts.totalSigners + " signatures recueillies" : "les deux signatures recueillies"}, vous recevrez le PDF signé par email.</p>
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0">
     <p style="margin:0;font-size:11px;color:#94a3b8">Signature électronique simple conforme au Règlement eIDAS (UE) n°910/2014. Émis par lokt.fr.</p>
   </td></tr>
@@ -69,11 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     landlord_name,
     tenant_email,
     tenant_name,
+    co_tenant_email,
+    co_tenant_name,
   } = req.body as Record<string, string>;
 
   if (!document_type || !tenant_email) {
     return res.status(400).json({ error: "Paramètres manquants." });
   }
+  const hasCoTenant = !!co_tenant_email;
 
   // Vérification d'appartenance côté serveur : on ne fait jamais confiance à
   // original_pdf_url / landlord_email fournis par le client. On les dérive
@@ -159,6 +166,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       landlord_name: landlord_name || landlord_email,
       tenant_email,
       tenant_name: tenant_name || tenant_email,
+      co_tenant_email: hasCoTenant ? co_tenant_email : null,
+      co_tenant_name: hasCoTenant ? co_tenant_name || co_tenant_email : null,
+      // Pas de jeton de signature pour un signataire qui n'existe pas sur cette
+      // demande — sinon un jeton valide traînerait sans email associé.
+      co_tenant_token: hasCoTenant ? undefined : null,
     })
     .select()
     .single();
@@ -170,41 +182,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const expiresLabel = new Date(sigReq.expires_at).toLocaleDateString("fr-FR");
   const landlordUrl = `${SITE_URL}/signer/${sigReq.landlord_token}`;
   const tenantUrl = `${SITE_URL}/signer/${sigReq.tenant_token}`;
+  const coTenantUrl = hasCoTenant ? `${SITE_URL}/signer/${sigReq.co_tenant_token}` : null;
+  const totalSigners = hasCoTenant ? 3 : 2;
+
+  const landlordOthers = hasCoTenant ? [tenant_name || tenant_email, co_tenant_name || co_tenant_email] : [tenant_name || tenant_email];
+  const tenantOthers = hasCoTenant ? [landlord_name || landlord_email, co_tenant_name || co_tenant_email] : [landlord_name || landlord_email];
 
   // Bug 4 fix: detect email failures instead of silently swallowing them.
-  const emailResults = await Promise.allSettled([
+  const emailPromises = [
     sendEmail(landlord_email, `À signer : ${sigReq.document_label}`, signerEmailHtml({
       role: "bailleur",
       recipientName: landlord_name || "Bailleur",
-      otherName: tenant_name || tenant_email,
+      otherNames: landlordOthers,
       documentLabel: sigReq.document_label,
       signerUrl: landlordUrl,
       expiresAt: expiresLabel,
+      totalSigners,
     })),
     sendEmail(tenant_email, `À signer : ${sigReq.document_label}`, signerEmailHtml({
       role: "locataire",
       recipientName: tenant_name || "Locataire",
-      otherName: landlord_name || landlord_email,
+      otherNames: tenantOthers,
       documentLabel: sigReq.document_label,
       signerUrl: tenantUrl,
       expiresAt: expiresLabel,
+      totalSigners,
     })),
-  ]);
+  ];
+  if (hasCoTenant && coTenantUrl) {
+    emailPromises.push(
+      sendEmail(co_tenant_email, `À signer : ${sigReq.document_label}`, signerEmailHtml({
+        role: "colocataire",
+        recipientName: co_tenant_name || "Colocataire",
+        otherNames: [landlord_name || landlord_email, tenant_name || tenant_email],
+        documentLabel: sigReq.document_label,
+        signerUrl: coTenantUrl,
+        expiresAt: expiresLabel,
+        totalSigners,
+      }))
+    );
+  }
+  const emailResults = await Promise.allSettled(emailPromises);
   const emailErrors = emailResults.filter((r) => r.status === "rejected");
   emailErrors.forEach((r) => console.error("[signatures/create] Email failed:", (r as PromiseRejectedResult).reason));
-  if (emailErrors.length === 2) {
+  if (emailErrors.length === emailPromises.length) {
     return res.status(500).json({ error: "La demande a été créée mais l'envoi des emails a échoué. Vérifiez la configuration Resend." });
   }
 
-  // Un seul des deux emails a échoué : la demande existe bel et bien (donc pas
+  // Au moins un email a échoué : la demande existe bel et bien (donc pas
   // d'erreur 500), mais il faut le signaler au bailleur — sinon il croit à tort
-  // que les deux parties ont reçu leur lien.
+  // que toutes les parties ont reçu leur lien.
   let emailWarning: string | null = null;
-  if (emailErrors.length === 1) {
-    const landlordFailed = emailResults[0].status === "rejected";
-    emailWarning = landlordFailed
-      ? `L'email n'a pas pu être envoyé à ${landlord_email} (bailleur). Le locataire a bien reçu le sien.`
-      : `L'email n'a pas pu être envoyé à ${tenant_email} (locataire). Le bailleur a bien reçu le sien.`;
+  if (emailErrors.length > 0) {
+    const recipients = hasCoTenant
+      ? [{ email: landlord_email, label: "bailleur" }, { email: tenant_email, label: "locataire" }, { email: co_tenant_email, label: "colocataire" }]
+      : [{ email: landlord_email, label: "bailleur" }, { email: tenant_email, label: "locataire" }];
+    const failedLabels = emailResults
+      .map((r, i) => (r.status === "rejected" ? recipients[i] : null))
+      .filter((r): r is { email: string; label: string } => r != null);
+    emailWarning = `L'email n'a pas pu être envoyé à : ${failedLabels.map((r) => `${r.email} (${r.label})`).join(", ")}. Vérifiez ces adresses.`;
   }
 
   return res.status(200).json({ id: sigReq.id, status: sigReq.status, emailWarning });

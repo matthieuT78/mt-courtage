@@ -2,7 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import crypto from "crypto";
 
 export interface SignatureAuditEntry {
-  role: "Bailleur" | "Locataire";
+  role: "Bailleur" | "Locataire" | "Colocataire";
   name: string;
   email: string;
   ip: string;

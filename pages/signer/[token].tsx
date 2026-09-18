@@ -8,7 +8,7 @@ type StatusData = {
   document_label: string;
   document_type: string;
   status: string;
-  role: "bailleur" | "locataire";
+  role: "bailleur" | "locataire" | "colocataire";
   alreadySigned: boolean;
   expired: boolean;
   landlord_name: string;
@@ -17,6 +17,10 @@ type StatusData = {
   tenant_name: string;
   tenant_email: string;
   tenant_signed: boolean;
+  hasCoTenant: boolean;
+  co_tenant_name: string | null;
+  co_tenant_email: string | null;
+  co_tenant_signed: boolean;
   expires_at: string;
 };
 
@@ -71,10 +75,22 @@ export default function SignerPage() {
     }
   }
 
-  const roleLabel = data?.role === "bailleur" ? "Bailleur" : "Locataire";
-  const otherRole = data?.role === "bailleur" ? "Locataire" : "Bailleur";
-  const otherName = data?.role === "bailleur" ? (data.tenant_name || data.tenant_email) : (data?.landlord_name || data?.landlord_email);
-  const otherSigned = data?.role === "bailleur" ? data?.tenant_signed : data?.landlord_signed;
+  const roleLabel = data?.role === "bailleur" ? "Bailleur" : data?.role === "colocataire" ? "Colocataire" : "Locataire";
+
+  // Toutes les parties de cette demande hors le signataire courant — 2 ou 3
+  // selon qu'un colocataire a été renseigné à la création de la demande.
+  const allSigners = data
+    ? [
+        { role: "bailleur" as const, name: data.landlord_name || data.landlord_email, signed: data.landlord_signed },
+        { role: "locataire" as const, name: data.tenant_name || data.tenant_email, signed: data.tenant_signed },
+        ...(data.hasCoTenant ? [{ role: "colocataire" as const, name: data.co_tenant_name || data.co_tenant_email || "", signed: data.co_tenant_signed }] : []),
+      ]
+    : [];
+  const others = allSigners.filter((s) => s.role !== data?.role);
+  const othersRemaining = others.filter((s) => !s.signed);
+  const allOthersSigned = othersRemaining.length === 0;
+  const waitingOnLabel = othersRemaining.map((s) => s.name).join(", ");
+  const totalSigners = allSigners.length;
 
   return (
     <>
@@ -125,9 +141,9 @@ export default function SignerPage() {
               </div>
               <h1 className="text-lg font-semibold text-slate-900">Vous avez déjà signé</h1>
               <p className="mt-2 text-sm text-slate-500">
-                {otherSigned
-                  ? "Les deux signatures ont été recueillies. Vous avez reçu le PDF signé par email."
-                  : `En attente de la signature ${otherRole.toLowerCase()} (${otherName}).`}
+                {allOthersSigned
+                  ? `${totalSigners > 2 ? "Toutes les signatures ont" : "Les deux signatures ont"} été recueillies. Vous avez reçu le PDF signé par email.`
+                  : `En attente de la signature de : ${waitingOnLabel}.`}
               </p>
             </div>
           )}
@@ -139,7 +155,9 @@ export default function SignerPage() {
                 <span className="text-xl text-emerald-500">✓</span>
               </div>
               <h1 className="text-lg font-semibold text-slate-900">Document signé</h1>
-              <p className="mt-2 text-sm text-slate-500">Les deux signatures ont été recueillies. Le PDF certifié a été envoyé aux deux parties par email.</p>
+              <p className="mt-2 text-sm text-slate-500">
+                {totalSigners > 2 ? "Toutes les signatures ont" : "Les deux signatures ont"} été recueillies. Le PDF certifié a été envoyé à {totalSigners > 2 ? "toutes les parties" : "chaque partie"} par email.
+              </p>
             </div>
           )}
 
@@ -158,6 +176,7 @@ export default function SignerPage() {
                 {[
                   { role: "Bailleur", name: data.landlord_name || data.landlord_email, signed: data.landlord_signed },
                   { role: "Locataire", name: data.tenant_name || data.tenant_email, signed: data.tenant_signed },
+                  ...(data.hasCoTenant ? [{ role: "Colocataire", name: data.co_tenant_name || data.co_tenant_email || "", signed: data.co_tenant_signed }] : []),
                 ].map(({ role: r, name: n, signed }) => (
                   <div key={r} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                     <div>
@@ -236,8 +255,8 @@ export default function SignerPage() {
               <h1 className="text-xl font-semibold text-slate-900">Signature enregistrée</h1>
               <p className="mt-3 text-sm text-slate-500 leading-6">
                 {data?.status === "completed"
-                  ? "Les deux parties ont signé. Vous recevrez le PDF certifié par email dans quelques instants."
-                  : `Votre signature a été enregistrée. En attente de la signature ${otherRole.toLowerCase()} (${otherName}).`}
+                  ? `${totalSigners > 2 ? "Toutes les parties ont" : "Les deux parties ont"} signé. Vous recevrez le PDF certifié par email dans quelques instants.`
+                  : `Votre signature a été enregistrée. En attente de la signature de : ${waitingOnLabel}.`}
               </p>
             </div>
           )}

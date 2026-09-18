@@ -325,6 +325,9 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
           landlord_name: form.landlord_name || landlordEmail,
           tenant_email: form.tenant_email,
           tenant_name: form.tenant_name || form.tenant_email,
+          ...(form.co_tenant_name && form.co_tenant_email
+            ? { co_tenant_email: form.co_tenant_email, co_tenant_name: form.co_tenant_name }
+            : {}),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -388,10 +391,23 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
         {form.tenant_email ? (
           <div className="mt-4 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4">
             <p className="text-sm font-semibold text-slate-950">Signature électronique</p>
-            <p className="mt-1 text-xs leading-5 text-slate-600">Envoyez les liens de signature par email au bailleur et au locataire ({form.tenant_email}). Chacun signera depuis son téléphone ou son ordinateur, sans compte lokt.fr.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">
+              Envoyez les liens de signature par email au bailleur, au locataire ({form.tenant_email})
+              {form.co_tenant_name && form.co_tenant_email ? ` et au co-locataire (${form.co_tenant_email})` : ""}. Chacun signera depuis son
+              téléphone ou son ordinateur, sans compte lokt.fr.
+            </p>
+            {form.co_tenant_name && !form.co_tenant_email ? (
+              <p className="mt-2 text-xs leading-5 text-amber-700">
+                Un co-locataire ({form.co_tenant_name}) est renseigné mais sans email : il apparaîtra sur le PDF mais ne recevra pas de lien de
+                signature. Ajoutez son email ci-dessus si besoin.
+              </p>
+            ) : null}
             {sigError ? <p className="mt-2 text-xs text-red-600">{sigError}</p> : null}
             {sigSent ? (
-              <p className="mt-2 text-xs font-semibold text-emerald-700">Liens de signature envoyés ✓ — Vous recevrez le PDF certifié par email une fois les deux signatures recueillies.</p>
+              <p className="mt-2 text-xs font-semibold text-emerald-700">
+                Liens de signature envoyés ✓ — Vous recevrez le PDF certifié par email une fois{" "}
+                {form.co_tenant_name && form.co_tenant_email ? "les trois signatures recueillies" : "les deux signatures recueillies"}.
+              </p>
             ) : (
               <button
                 type="button"
@@ -505,7 +521,7 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                 </div>
               ) : null}
               <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
-                <Fields form={form} set={set} names={[["co_tenant_name", "Co-locataire (si applicable)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
+                <Fields form={form} set={set} names={[["co_tenant_name", "Co-locataire (si applicable)"], ["co_tenant_email", "E-mail du co-locataire (pour la signature électronique)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
               </CollapsibleExtra>
               <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
                 <Fields form={form} set={set} names={[["garant_name", "Nom du garant"], ["garant_address", "Adresse du garant"]]} />
