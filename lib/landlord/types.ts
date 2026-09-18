@@ -149,6 +149,8 @@ export type Lease = {
   irl_sent_at?: string | null;
   irl_applied_at?: string | null;
   irl_apply_on?: string | null;
+  co_tenant_name?: string | null;
+  co_tenant_email?: string | null;
   created_at: string;
   updated_at: string;
 };

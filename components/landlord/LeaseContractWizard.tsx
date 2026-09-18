@@ -51,6 +51,24 @@ function normalizePaymentMethod(value?: string | null): string {
 
 // Durée par défaut d'1 an à partir de la date de prise d'effet — évite un
 // champ vide qui donne l'impression que la génération du contrat est cassée.
+// Réutilise le garant déjà renseigné sur la fiche locataire (section
+// Locataires) plutôt que de faire retaper son identité dans le contrat —
+// simple pré-remplissage, reste éditable et propre à ce document (même
+// logique que pour le nom du bailleur ou du locataire).
+function guarantorDefaults(tenant: any): { garant_name: string; garant_address: string } {
+  if (!tenant?.guarantor_type) return { garant_name: "", garant_address: "" };
+  if (tenant.guarantor_type === "visale") {
+    return {
+      garant_name: `Garantie Visale${tenant.visale_number ? ` n° ${tenant.visale_number}` : ""}`,
+      garant_address: "Action Logement Services",
+    };
+  }
+  return {
+    garant_name: [tenant.guarantor_first_name, tenant.guarantor_last_name].filter(Boolean).join(" "),
+    garant_address: [tenant.guarantor_address_line1, tenant.guarantor_postal_code, tenant.guarantor_city].filter(Boolean).join(", "),
+  };
+}
+
 function defaultEndDate(startDate?: string): string {
   const base = startDate ? new Date(startDate) : new Date();
   if (Number.isNaN(base.getTime())) return "";
@@ -211,11 +229,14 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           reference_rent_increased: "",
           rent_supplement: "",
           rent_supplement_reason: "",
-          co_tenant_name: "",
+          // Pré-rempli depuis la fiche Location (lease.co_tenant_*) si déjà
+          // renseigné là — reste un instantané éditable propre à ce document,
+          // comme les autres champs pré-remplis (nom du locataire, etc.).
+          co_tenant_name: lease.co_tenant_name || "",
+          co_tenant_email: lease.co_tenant_email || "",
           mandataire_name: "",
           mandataire_address: "",
-          garant_name: "",
-          garant_address: "",
+          ...guarantorDefaults(tenant),
           annual_insurance_clause: true,
           // Servitude de résidence principale (art. L.151-14-1 code de l'urbanisme) : ne
           // concerne que certains logements neufs dans des communes/zones PLU délimitées.

@@ -89,6 +89,8 @@ export type Lease = {
   irl_apply_on?: string | null;
   irl_applied_at?: string | null;
   irl_previous_rent?: number | null;
+  co_tenant_name?: string | null;
+  co_tenant_email?: string | null;
 };
 
 export type PropertyLite = {
@@ -842,6 +844,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
     tracking_from: "now" as "now" | "start",
+    co_tenant_name: "",
+    co_tenant_email: "",
   });
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -1375,6 +1379,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
     tracking_from: "now" as "now" | "start",
+    co_tenant_name: "",
+    co_tenant_email: "",
   });
 
   const selectableProps = useMemo(
@@ -1501,6 +1507,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       tenant_receipt_email: lease.tenant_receipt_email || "",
       timezone: lease.timezone || "Europe/Paris",
       tracking_from: lease.tracking_from_date ? "now" : "start",
+      co_tenant_name: lease.co_tenant_name || "",
+      co_tenant_email: lease.co_tenant_email || "",
     });
   };
 
@@ -1659,6 +1667,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         }
       }
 
+      if (!!form.co_tenant_name !== !!form.co_tenant_email) {
+        throw new Error("Le co-locataire a un nom sans email (ou l’inverse) — complétez les deux champs, ou videz-les tous les deux.");
+      }
+      if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) {
+        throw new Error("L’email du co-locataire n’a pas un format valide.");
+      }
+
       const startDaysAgo = form.start_date
         ? Math.floor((Date.now() - new Date(form.start_date + "T00:00:00").getTime()) / 86400000)
         : 0;
@@ -1704,6 +1719,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         tenant_receipt_email: receiptEmail || null,
         timezone: form.timezone || "Europe/Paris",
         tracking_from_date: trackingFromDate,
+        co_tenant_name: form.co_tenant_name?.trim() || null,
+        co_tenant_email: form.co_tenant_email?.trim() || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -2588,6 +2605,29 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               }))}
             />
             {activeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire actif.</p> : null}
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[0.7rem] text-slate-700">Co-locataire (si applicable)</label>
+            <input
+              type="text"
+              value={form.co_tenant_name}
+              onChange={(e) => setForm((s) => ({ ...s, co_tenant_name: e.target.value }))}
+              placeholder="Nom du co-locataire"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[0.7rem] text-slate-700">Email du co-locataire</label>
+            <input
+              type="email"
+              value={form.co_tenant_email}
+              onChange={(e) => setForm((s) => ({ ...s, co_tenant_email: e.target.value }))}
+              placeholder="Pour la signature électronique du bail"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            />
           </div>
         </div>
 
