@@ -229,11 +229,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           reference_rent_increased: "",
           rent_supplement: "",
           rent_supplement_reason: "",
-          // Pré-rempli depuis la fiche Location (lease.co_tenant_*) si déjà
-          // renseigné là — reste un instantané éditable propre à ce document,
-          // comme les autres champs pré-remplis (nom du locataire, etc.).
-          co_tenant_name: lease.co_tenant_name || "",
-          co_tenant_email: lease.co_tenant_email || "",
           mandataire_name: "",
           mandataire_address: "",
           ...guarantorDefaults(tenant),
@@ -260,6 +255,13 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           signature_place: property.city || profile.city || "",
           signature_date: new Date().toISOString().slice(0, 10),
           ...(existing?.form_data || {}),
+          // Le colocataire vit désormais sur la Location (source de vérité) —
+          // s'il y est renseigné, il prime toujours sur un ancien instantané
+          // form_data (qui a pu être saisi avant l'existence de ce champ dédié,
+          // ou être devenu obsolète). S'il n'est pas renseigné côté Location,
+          // on garde ce qui était déjà dans form_data pour ne rien perdre.
+          co_tenant_name: lease.co_tenant_name || existing?.form_data?.co_tenant_name || "",
+          co_tenant_email: lease.co_tenant_email || existing?.form_data?.co_tenant_email || "",
         });
       } catch (error: any) {
         setErr(error?.message || "Chargement impossible.");
