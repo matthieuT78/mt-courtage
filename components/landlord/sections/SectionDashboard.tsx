@@ -218,7 +218,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
   onPrepareDeparture?: (leaseId: string) => void;
   onRefresh?: () => Promise<void>;
   onOpenAssistant?: (presetMessage?: string) => void;
@@ -1073,6 +1073,24 @@ export function SectionDashboard({
         desc: `${propertyLabel} · ${tenantName} : cette location est active mais aucun contrat de bail n'a encore été généré ou archivé dans lokt.`,
         onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id, openContract: true }),
         cta: "Générer le contrat",
+        leaseId: lease.id,
+      });
+    }
+
+    const depositsUncollected = activeLeases.filter(
+      (lease) => Number((lease as any).deposit_amount || 0) > 0 && !(lease as any).deposit_paid_at
+    );
+    for (const lease of depositsUncollected) {
+      const tenant = tenantById.get(lease.tenant_id);
+      const propertyLabel = leasePropertyLabel(lease);
+      const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
+      actions.push({
+        id: `deposit-not-collected-${lease.id}`,
+        tone: "amber",
+        title: "Caution non encaissée",
+        desc: `${propertyLabel} · ${tenantName} : le dépôt de garantie (${formatEuro(Number((lease as any).deposit_amount || 0))}) n'a pas encore été confirmé comme encaissé.`,
+        onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id, openPanel: "deposit", depositAction: "collect" }),
+        cta: "Confirmer la caution",
         leaseId: lease.id,
       });
     }

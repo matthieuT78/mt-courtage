@@ -638,30 +638,11 @@ export function useLandlordDashboard() {
         action: "Créer un bail",
       });
 
-    // Caution non encaissée : visible immédiatement dans le dashboard, sans
-    // attendre le rappel email du cron (lui volontairement différé de 7 jours
-    // pour laisser le temps au virement d'arriver) — utile juste après
-    // l'onboarding, où il n'y a encore eu aucun email.
-    const depositsUncollected = activeLeases.filter(
-      (lease) => Number(lease.deposit_amount || 0) > 0 && !lease.deposit_paid_at
-    );
-    if (depositsUncollected.length > 0) {
-      const first = depositsUncollected[0];
-      const property = first.property_id ? propertyById.get(first.property_id) : null;
-      const label = property?.label || property?.address_line1 || "";
-      a.push({
-        tone: "amber",
-        title:
-          depositsUncollected.length === 1
-            ? `Caution non encaissée${label ? ` — ${label}` : ""}`
-            : `${depositsUncollected.length} cautions non encaissées`,
-        desc:
-          depositsUncollected.length === 1
-            ? `Le dépôt de garantie (${Number(first.deposit_amount).toLocaleString("fr-FR")} €) n'a pas encore été confirmé comme encaissé.`
-            : "Plusieurs dépôts de garantie n'ont pas encore été confirmés comme encaissés.",
-        action: "Confirmer la caution du bail",
-      });
-    }
+    // Caution non encaissée : déplacée dans SectionDashboard.tsx (priorityActions),
+    // le système riche avec deep-link par bail (onNavigateDeep → openPanel "deposit"),
+    // libellé bien/locataire et regroupement visuel — ce système simple ("alerts")
+    // ne supporte aucun de ces trois, ce qui isolait visuellement la carte du reste
+    // du cockpit. Garder les deux aurait dupliqué l'alerte.
 
     if (receiptWorkflowIssueCount > 0) {
       a.push({
@@ -702,8 +683,7 @@ export function useLandlordDashboard() {
   }, [
     properties.length,
     tenants.length,
-    activeLeases,
-    propertyById,
+    activeLeases.length,
     lateCount,
     missingReceiptsAfterPaymentCount,
     receiptWorkflowIssueCount,

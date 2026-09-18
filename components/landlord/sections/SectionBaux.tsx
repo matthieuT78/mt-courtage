@@ -3216,6 +3216,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                               {badge("emerald", "Actif")}
                               {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
                               {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
+                              {Number(l.deposit_amount || 0) > 0 && !l.deposit_paid_at && badge("amber", "Caution à encaisser")}
                             </div>
                           </div>
                         </div>
