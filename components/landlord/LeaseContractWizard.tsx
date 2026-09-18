@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AcademicCapIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, ArrowsRightLeftIcon, BriefcaseIcon, DocumentArrowUpIcon, DocumentTextIcon, HomeIcon, HomeModernIcon, InformationCircleIcon, TrashIcon, UserIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { AcademicCapIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, ArrowsRightLeftIcon, BriefcaseIcon, DocumentArrowUpIcon, DocumentTextIcon, HomeIcon, HomeModernIcon, InformationCircleIcon, PencilSquareIcon, TrashIcon, UserIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../UploadProgressBar";
@@ -91,6 +91,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [document, setDocument] = useState<any>(null);
   const [sourceMode, setSourceMode] = useState<"choose" | "generated" | "external">("choose");
   const [generatedDone, setGeneratedDone] = useState(false);
+  // Un bail signé est protégé par défaut (voir plus bas) — ce drapeau, posé
+  // sur une action explicite du bailleur, autorise à rouvrir l'assistant
+  // d'édition dessus malgré tout.
+  const [editingSignedLease, setEditingSignedLease] = useState(false);
   const [kind, setKind] = useState("furnished_primary");
   const [form, setForm] = useState<Record<string, any>>({});
   const [sigLoading, setSigLoading] = useState(false);
@@ -493,7 +497,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       </Modal>
     );
   }
-  if (document?.signed_pdf_url) {
+  if (document?.signed_pdf_url && !editingSignedLease) {
     return (
       <Modal onClose={onClose}>
         <div className="border-b border-slate-200 px-5 py-4">
@@ -512,6 +516,14 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           <div className="flex flex-wrap gap-2">
             <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail signé</a>
+            <button
+              type="button"
+              onClick={() => { setEditingSignedLease(true); setGeneratedDone(false); }}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+            >
+              <PencilSquareIcon className="h-4 w-4" />
+              Modifier ce bail (nouvelle signature requise)
+            </button>
           </div>
         </div>
       </Modal>
@@ -598,6 +610,13 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         {pendingSignature ? (
           <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
             Une demande de signature est en cours pour ce bail. Si vous modifiez puis régénérez le contrat, cette demande deviendra invalide — vous devrez en envoyer une nouvelle.
+          </p>
+        ) : null}
+        {editingSignedLease ? (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+            Ce bail a déjà été signé. La version actuellement signée reste consultable dans l'historique de la location — en régénérant le
+            PDF, vous créez une nouvelle version qui devra être signée à nouveau par toutes les parties (bailleur, locataire, et
+            colocataire le cas échéant).
           </p>
         ) : null}
         {step > 0 ? <p className="mb-4 text-xs leading-5 text-slate-500"><span className="font-bold text-red-600">*</span> Information obligatoire pour établir le contrat de location avec ce modèle.</p> : null}

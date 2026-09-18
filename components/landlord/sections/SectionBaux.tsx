@@ -551,6 +551,9 @@ type LeaseHistoryEvent = {
   tone: "emerald" | "amber" | "red" | "sky" | "slate";
   title: string;
   detail: string;
+  // Présent uniquement pour une ancienne version signée archivée (bail
+  // modifié puis re-signé) — permet d'ouvrir le PDF correspondant.
+  archivedVersion?: { documentId: string; url: string };
 };
 
 function csvCell(value: unknown) {
@@ -604,11 +607,32 @@ function amountLabel(value?: number | null) {
   return value == null ? "" : ` • ${formatEuro(value)}`;
 }
 
-function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: RentReceipt[], now = parisNow()) {
+function buildLeaseHistory(
+  lease: Lease,
+  payments: RentPayment[],
+  receipts: RentReceipt[],
+  now = parisNow(),
+  contractDoc?: { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }> }
+) {
   const events: LeaseHistoryEvent[] = [];
   const createdAt = parseISODateLocal(lease.created_at);
   const startAt = parseISODateLocal(lease.start_date);
   const endAt = parseISODateLocal(lease.end_date);
+
+  if (contractDoc) {
+    contractDoc.previous_signed_versions.forEach((version, index) => {
+      const archivedAt = parseISODateLocal(version.archived_at) || new Date(version.archived_at);
+      if (Number.isNaN(archivedAt.getTime())) return;
+      events.push({
+        id: `${lease.id}:contract-version:${index}`,
+        date: archivedAt,
+        tone: "slate",
+        title: "Ancienne version signée",
+        detail: "Le bail a été modifié après cette signature — une nouvelle signature a été demandée à toutes les parties.",
+        archivedVersion: { documentId: contractDoc.documentId, url: version.url },
+      });
+    });
+  }
 
   if (createdAt) {
     events.push({
@@ -875,6 +899,46 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   }, [err]);
   const [autoWorkflowError, setAutoWorkflowError] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
+  // Versions signées archivées (bail modifié puis re-signé après une première
+  // signature) — affichées dans l'historique de chaque location.
+  const [contractDocByLease, setContractDocByLease] = useState<
+    Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }> }>
+  >(new Map());
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("lease_contract_documents")
+        .select("id, lease_id, previous_signed_versions")
+        .eq("user_id", userId);
+      if (cancelled || !data) return;
+      const map = new Map<string, { documentId: string; previous_signed_versions: Array<{ url: string; archived_at: string }> }>();
+      for (const row of data as any[]) {
+        if (Array.isArray(row.previous_signed_versions) && row.previous_signed_versions.length > 0) {
+          map.set(row.lease_id, { documentId: row.id, previous_signed_versions: row.previous_signed_versions });
+        }
+      }
+      setContractDocByLease(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, contractLeaseId]);
+  const openArchivedContractVersion = async (documentId: string, url: string) => {
+    try {
+      const h = await authJsonHeaders();
+      const res = await fetch(
+        `/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(documentId)}&archivedUrl=${encodeURIComponent(url)}`,
+        { headers: h }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Ouverture impossible.");
+      window.open(json.signedUrl, "_blank", "noopener");
+    } catch (e: any) {
+      setErr(e?.message || "Ouverture impossible.");
+    }
+  };
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
   const [renewalOpenByLease, setRenewalOpenByLease] = useState<Record<string, boolean>>({});
   const [quittanceOpenByLease, setQuittanceOpenByLease] = useState<Record<string, boolean>>({});
@@ -1763,7 +1827,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     const lot = l.lot_id ? lotById.get(l.lot_id) : null;
     const flow = workflowInfo(l, t);
     const renewal = leaseRenewalInfo(l);
-    const history = buildLeaseHistory(l, safePayments, safeReceipts);
+    const history = buildLeaseHistory(l, safePayments, safeReceipts, undefined, contractDocByLease.get(l.id));
     const historyOpen = !!historyOpenByLease[l.id];
     const renewalOpen = renewalOpenByLease[l.id] ?? (renewal.tone === "amber" || renewal.tone === "red");
     const quittanceOpen = quittanceOpenByLease[l.id] ?? (flow.blockers.length > 0 || flow.warnings.length > 0);
@@ -2376,7 +2440,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                         <p className="text-xs font-semibold text-slate-700">{fmtFR(event.date)}</p>
                         <div className="mt-1">{badge(event.tone, event.title)}</div>
                       </div>
-                      <p className="text-sm leading-5 text-slate-700">{event.detail}</p>
+                      <div>
+                        <p className="text-sm leading-5 text-slate-700">{event.detail}</p>
+                        {event.archivedVersion ? (
+                          <button
+                            type="button"
+                            onClick={() => openArchivedContractVersion(event.archivedVersion!.documentId, event.archivedVersion!.url)}
+                            className="mt-1 text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+                          >
+                            Ouvrir cette version →
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                   {history.length > 12 ? <p className="text-xs text-slate-500">+ {history.length - 12} événement(s) plus ancien(s).</p> : null}

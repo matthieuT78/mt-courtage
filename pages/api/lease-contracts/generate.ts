@@ -501,18 +501,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("*").eq("id", documentId).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
-    if (document.status === "signed" || document.status === "archived" || document.signed_pdf_url) {
-      return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être régénéré." });
+    if (document.status === "archived") {
+      return res.status(409).json({ error: "Ce bail est archivé et ne peut plus être régénéré." });
     }
     const missing = missingRequiredFields(document);
     if (missing.length) return res.status(400).json({ error: `Contrat incomplet : ${missing.join(", ")}.` });
+
+    // Un bail déjà signé peut être modifié (typo, loyer, ajout d'un colocataire
+    // oublié...), mais ça produit un nouveau document qui doit être signé à
+    // nouveau par toutes les parties — jamais un écrasement silencieux de ce
+    // qui a été réellement signé. On archive donc l'ancienne version signée
+    // (copie horodatée, jamais supprimée) avant de régénérer.
+    const wasSigned = !!document.signed_pdf_url;
+    let previousSignedVersions = Array.isArray(document.previous_signed_versions) ? document.previous_signed_versions : [];
+    if (wasSigned) {
+      const [signedBucket, ...signedPathParts] = document.signed_pdf_url.split(":");
+      const signedPath = signedPathParts.join(":");
+      const archivedAt = new Date().toISOString();
+      const oldPath = signedPath.replace(/\.signed\.pdf$/, `.old-${archivedAt.slice(0, 19).replace(/[:T]/g, "-")}.signed.pdf`);
+      const { error: copyError } = await supabaseAdmin.storage.from(signedBucket).copy(signedPath, oldPath);
+      if (copyError) throw copyError;
+      previousSignedVersions = [...previousSignedVersions, { url: `${signedBucket}:${oldPath}`, archived_at: archivedAt }];
+    }
+
     const pdf = await makePdf(document);
     const path = contractPdfPath(String(userId), document.lease_id, document.id);
     const { error: uploadError } = await supabaseAdmin.storage.from(LEASE_CONTRACT_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw uploadError;
     invalidateStorageCache(String(userId));
     const pdfUrl = `${LEASE_CONTRACT_BUCKET}:${path}`;
-    const { data, error } = await supabaseAdmin.from("lease_contract_documents").update({ pdf_url: pdfUrl, status: "ready", generated_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", document.id).select("*").single();
+    const { data, error } = await supabaseAdmin
+      .from("lease_contract_documents")
+      .update({
+        pdf_url: pdfUrl,
+        status: "ready",
+        generated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...(wasSigned ? { signed_pdf_url: null, signed_at: null, previous_signed_versions: previousSignedVersions } : {}),
+      })
+      .eq("id", document.id)
+      .select("*")
+      .single();
     if (error) throw error;
     return res.status(200).json({ ok: true, document: data });
   } catch (error: any) {
