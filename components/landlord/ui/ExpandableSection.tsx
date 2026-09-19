@@ -9,6 +9,7 @@ export function ExpandableSection({
   children,
   defaultOpen = true,
   tone = "slate",
+  forceOpen = false,
 }: {
   title: string;
   subtitle?: string;
@@ -16,8 +17,16 @@ export function ExpandableSection({
   children: React.ReactNode;
   defaultOpen?: boolean;
   tone?: "slate" | "sky";
+  // Ouvre la section même si elle est repliée par défaut (ex. "Archivés") —
+  // un deep-link vers une ligne à l'intérieur ne sert à rien si la section
+  // qui la contient reste fermée. Ne referme jamais la section (one-way).
+  forceOpen?: boolean;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
+
+  React.useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
 
   const headerTone =
     tone === "sky"

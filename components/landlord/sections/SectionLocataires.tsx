@@ -831,21 +831,6 @@ export function SectionLocataires({
     }
   };
 
-  const refreshExitReport = async () => {
-    if (!archiveWorkflow) return;
-    setLoading(true);
-    try {
-      const exitReport = await getExitReportForLease(archiveWorkflow.leaseId);
-      const edlReady = ["ready", "signed", "archived"].includes((exitReport?.status || "").toLowerCase());
-      setArchiveWorkflow((wf) => (wf ? { ...wf, exitReport } : wf));
-      if (edlReady) setDepartureStep(3);
-    } catch (e: any) {
-      setErr(e?.message || "Erreur lors de la vérification.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!initialDepartureTenantId) return;
     setExpandedId(initialDepartureTenantId);
@@ -2035,6 +2020,9 @@ export function SectionLocataires({
                     <p className={cx("mt-1 text-[0.68rem] font-semibold", departureStep === index + 1 ? "text-slate-900" : "text-slate-500")}>
                       {label}
                     </p>
+                    {index === 0 ? (
+                      <p className="text-[0.65rem] text-slate-400">{formatDateFR(archiveWorkflow.exitDate)}</p>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -2087,30 +2075,16 @@ export function SectionLocataires({
                     Prépare le document dans lokt.fr ou importe le PDF transmis par l’agence. Reviens ensuite sur cette fenêtre pour continuer.
                   </p>
                   <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold text-slate-900">
-                          {departureEdlReady
-                            ? "État des lieux finalisé ✓"
-                            : archiveWorkflow.exitReport
-                            ? `Document ${archiveWorkflow.exitReport.status || "en cours"}`
-                            : "Aucun état des lieux de sortie rattaché"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-600">
-                          {departureEdlReady ? "Le document est prêt pour clôturer le bail." : "La sortie peut rester planifiée pendant la préparation du document."}
-                        </p>
-                      </div>
-                      {!departureEdlReady && (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={refreshExitReport}
-                          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          {loading ? "…" : "Vérifier"}
-                        </button>
-                      )}
-                    </div>
+                    <p className="text-xs font-semibold text-slate-900">
+                      {departureEdlReady
+                        ? "État des lieux finalisé ✓"
+                        : archiveWorkflow.exitReport
+                        ? `Document ${archiveWorkflow.exitReport.status || "en cours"}`
+                        : "Aucun état des lieux de sortie rattaché"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {departureEdlReady ? "Le document est prêt pour clôturer le bail." : "La sortie peut rester planifiée pendant la préparation du document."}
+                    </p>
                   </div>
                   <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
                     <button type="button" onClick={() => setDepartureStep(1)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">

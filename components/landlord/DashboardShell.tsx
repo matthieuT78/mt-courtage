@@ -800,6 +800,7 @@ export function DashboardShell(props: any) {
             onRefresh={refresh}
             onOpenAssistant={openAssistant}
             planLabel={planLabel}
+            plan={plan}
             // Toujours affiché : la caution à restituer est une obligation légale
             // indépendante de l'accès aux candidatures, qui ne doit pas la masquer.
             showTransitionPanel

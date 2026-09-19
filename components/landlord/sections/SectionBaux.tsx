@@ -866,7 +866,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       const lease = leases?.find((l) => l.id === leaseId);
       if (lease) {
         setTimeout(() => {
-          openDepositForm(leaseId, deepLink.depositAction ?? "return", lease);
+          // Sans encaissement enregistré, ouvrir directement le formulaire de
+          // "return" mène à un rejet serveur (409) — filet de sécurité pour
+          // tout appelant qui ne préciserait pas depositAction explicitement.
+          const defaultAction: DepositAction = lease.deposit_paid_at ? "return" : "collect";
+          openDepositForm(leaseId, deepLink.depositAction ?? defaultAction, lease);
           document.getElementById(`deposit-${leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
           setHighlightDepositLeaseId(leaseId);
           setTimeout(() => setHighlightDepositLeaseId(null), 2500);
@@ -3550,6 +3554,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           subtitle="Terminés et brouillons."
           right={badge("amber", pluralFR(filtered.archives.length, "bail"))}
           defaultOpen={false}
+          forceOpen={!!deepLink?.leaseId && filtered.archives.some((l) => l.id === deepLink.leaseId)}
         >
           {filtered.archives.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">

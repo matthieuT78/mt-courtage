@@ -1,14 +1,18 @@
 // components/landlord/sections/TransitionPanel.tsx
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
   ClockIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { cx } from "../ui/uiHelpers";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
+import type { Plan } from "../../../lib/permissions";
+import { planAllowsCandidatures } from "../../../lib/permissions";
 import { isInTransition } from "../../../lib/landlord/leaseTransition";
 
 type Props = {
@@ -16,7 +20,8 @@ type Props = {
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
   userId: string;
-  onGo: (k: LandlordSectionKey, link?: { leaseId?: string; openPanel?: string; openCreate?: boolean; prefillPropertyId?: string }) => void;
+  plan?: Plan;
+  onGo: (k: LandlordSectionKey, link?: { leaseId?: string; openPanel?: string; depositAction?: "collect" | "return"; openCreate?: boolean; prefillPropertyId?: string }) => void;
   onRefresh: () => Promise<void>;
 };
 
@@ -35,6 +40,10 @@ type TransitionData = {
   cautionTwoMonthDeadline: Date | null;
   hasNewLease: boolean;
   submittedCount: number;
+  // Un état des lieux de sortie sans état des lieux d'entrée au dossier ne
+  // permet aucune comparaison automatique des dégradations — le bailleur doit
+  // le savoir avant de s'y lancer, pas le découvrir une fois dedans.
+  hasEntryReport: boolean;
 };
 
 const STEPS: { key: StepKey; label: string }[] = [
@@ -64,31 +73,79 @@ function daysDiff(target: Date): number {
 
 export { isInTransition };
 
+// "done" : fait. "pending" : à faire par le bailleur, ce qui fait avancer la
+// relocation. "delegated"/"locked"/"not_required" sont trois raisons
+// différentes de ne PAS compter une étape comme à faire — délégué à une
+// agence, réservé au plan lokt·one (accélère la relocation mais optionnel),
+// ou sans objet (EDL de sortie sans EDL d'entrée au dossier, donc sans valeur
+// de comparaison). Elles sont regroupées ensemble pour la progression, mais
+// affichées différemment pour que le bailleur comprenne pourquoi.
+type StepStatus = "done" | "pending" | "delegated" | "locked" | "not_required";
+
+function computeStepStatus(
+  key: StepKey,
+  t: TransitionData,
+  delegatedListing: boolean,
+  delegatedBailEdl: boolean,
+  candidaturesLocked: boolean,
+): StepStatus {
+  if (t.steps[key]) return "done";
+  if (key === "edl" || key === "caution" || key === "nouveau_bail") {
+    if (delegatedBailEdl) return "delegated";
+  } else if (delegatedListing) {
+    return "delegated";
+  }
+  if (key === "edl" && !t.hasEntryReport) return "not_required";
+  if ((key === "annonce" || key === "candidat_retenu") && candidaturesLocked) return "locked";
+  return "pending";
+}
+
+const isSkipped = (status: StepStatus) => status === "delegated" || status === "locked" || status === "not_required";
+
+function transitionStepStatuses(t: TransitionData, plan: Plan | undefined): Record<StepKey, StepStatus> {
+  const delegatedServices = t.property?.delegated_services || [];
+  const delegatedListing = delegatedServices.includes("mise_en_location");
+  const delegatedBailEdl = delegatedServices.includes("bail_edl");
+  const candidaturesLocked = !planAllowsCandidatures(plan || "calc_full");
+  const entries = STEPS.map((s) => [s.key, computeStepStatus(s.key, t, delegatedListing, delegatedBailEdl, candidaturesLocked)] as const);
+  return Object.fromEntries(entries) as Record<StepKey, StepStatus>;
+}
+
+function hasPendingSteps(t: TransitionData, plan: Plan | undefined): boolean {
+  const statuses = transitionStepStatuses(t, plan);
+  return STEPS.some((s) => statuses[s.key] === "pending");
+}
+
 function nextAction(
-  steps: Record<StepKey, boolean>,
+  statusOf: (key: StepKey) => StepStatus,
   leaseId: string,
   submittedCount: number,
   propertyId: string,
-  isDelegatedStep: (key: StepKey) => boolean,
-): { label: string; target: LandlordSectionKey; link?: { leaseId?: string; openPanel?: string; openCreate?: boolean; prefillPropertyId?: string } } {
-  // Une étape déléguée à un tiers (agence...) n'est pas une tâche du
-  // bailleur — on ne la propose jamais comme prochaine action.
-  if (!steps.edl && !isDelegatedStep("edl"))
-    return { label: "Faire l'état des lieux", target: "etat_des_lieux" };
-  if (!steps.caution && !isDelegatedStep("caution"))
-    return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit" } };
-  if (!isDelegatedStep("annonce") && !steps.annonce)
+  depositPaid: boolean,
+): { label: string; target: LandlordSectionKey; link?: { leaseId?: string; openPanel?: string; depositAction?: "collect" | "return"; openCreate?: boolean; prefillPropertyId?: string } } {
+  // But du workflow : reloger le logement au plus vite. Les étapes déléguées,
+  // verrouillées par le plan ou sans objet ne bloquent jamais cet objectif —
+  // on saute directement à la prochaine étape réellement à faire.
+  if (statusOf("edl") === "pending")
+    return { label: "Faire l'état des lieux de sortie", target: "etat_des_lieux" };
+  if (statusOf("caution") === "pending") {
+    // Sans encaissement enregistré, "restituer" n'a pas de sens (l'API le
+    // refuse) — la vraie prochaine étape est d'abord d'encaisser la caution.
+    if (!depositPaid) return { label: "Encaisser la caution", target: "baux", link: { leaseId, openPanel: "deposit", depositAction: "collect" } };
+    return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit", depositAction: "return" } };
+  }
+  if (statusOf("annonce") === "pending")
     return { label: "Créer l'annonce", target: "candidatures" };
-  if (!isDelegatedStep("candidat_retenu") && !steps.candidat_retenu) {
-    if (submittedCount > 0)  return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
+  if (statusOf("candidat_retenu") === "pending") {
+    if (submittedCount > 0) return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
     return { label: "Partager l'annonce", target: "candidatures" };
   }
-  if (!steps.nouveau_bail && !isDelegatedStep("nouveau_bail"))
+  if (statusOf("nouveau_bail") === "pending")
     return { label: "Créer le bail", target: "baux", link: { openCreate: true, prefillPropertyId: propertyId } };
   return { label: "Voir le bail", target: "baux" };
 }
 
-export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo, onRefresh }: Props) {
+export function TransitionPanel({ leases, propertyById, tenantById, userId, plan, onGo, onRefresh }: Props) {
   const [transitions, setTransitions] = useState<TransitionData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -105,9 +162,8 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
       const [edlRes, listingsRes] = await Promise.all([
         supabase
           .from("inventory_reports")
-          .select("lease_id, status")
+          .select("lease_id, status, report_type")
           .eq("user_id", userId)
-          .eq("report_type", "exit")
           .in("lease_id", leaseIds),
         // Annonces non-archivées, les plus récentes en premier
         supabase
@@ -119,9 +175,14 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
           .order("created_at", { ascending: false }),
       ]);
 
-      const edlByLease = new Map<string, string>();
-      for (const r of edlRes.data || []) {
-        if (!edlByLease.has(r.lease_id)) edlByLease.set(r.lease_id, r.status || "");
+      const edlExitByLease = new Map<string, string>();
+      const entryReportLeases = new Set<string>();
+      for (const r of (edlRes.data || []) as any[]) {
+        if (r.report_type === "entry") {
+          entryReportLeases.add(r.lease_id);
+        } else if (r.report_type === "exit" && !edlExitByLease.has(r.lease_id)) {
+          edlExitByLease.set(r.lease_id, r.status || "");
+        }
       }
 
       // On garde uniquement la listing la plus récente par property
@@ -152,8 +213,9 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
       }
 
       const result: TransitionData[] = inTransition.map((lease) => {
-        const edlStatus = edlByLease.get(lease.id) || "";
+        const edlStatus = edlExitByLease.get(lease.id) || "";
         const edlDone = ["ready", "signed", "archived"].includes(edlStatus.toLowerCase());
+        const hasEntryReport = entryReportLeases.has(lease.id);
         const cautionDone = !!lease.deposit_returned_at;
         const listingId = listingByProp.get(lease.property_id);
         const annonceDone = !!listingId;
@@ -186,6 +248,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
           cautionTwoMonthDeadline,
           hasNewLease,
           submittedCount,
+          hasEntryReport,
         };
       });
 
@@ -208,40 +271,41 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
 
   if (loading || transitions.length === 0) return null;
 
-  const allDone = transitions.every((t) => Object.values(t.steps).every(Boolean));
+  const allDone = transitions.every((t) => !hasPendingSteps(t, plan));
   if (allDone) return null;
 
   return (
     <div className="space-y-2">
-      <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-400">
-        Logement{transitions.length > 1 ? "s" : ""} en transition
-        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.62rem] font-bold text-amber-700">
-          {transitions.length}
-        </span>
-      </p>
+      <div className="px-1">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-wider text-slate-400">
+          Logement{transitions.length > 1 ? "s" : ""} en transition
+          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.62rem] font-bold text-amber-700">
+            {transitions.length}
+          </span>
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Objectif : reloger au plus vite. Formalités de départ d'abord (EDL de sortie, caution), puis nouveau locataire.
+        </p>
+      </div>
 
       {transitions.map((t) => {
-        if (Object.values(t.steps).every(Boolean)) return null;
+        if (!hasPendingSteps(t, plan)) return null;
 
         // Services délégués à un tiers (agence...) : les tâches couvertes ne
         // sont pas à faire par le bailleur. "Mise en location & candidatures"
         // couvre l'annonce et le tri des dossiers ; "Bail & états des lieux"
         // couvre l'EDL sortie, la caution et le nouveau bail.
-        const delegatedServices = t.property?.delegated_services || [];
-        const delegatedListing = delegatedServices.includes("mise_en_location");
-        const delegatedBailEdl = delegatedServices.includes("bail_edl");
-        const isDelegatedStep = (key: StepKey) =>
-          (delegatedListing && (key === "annonce" || key === "candidat_retenu")) ||
-          (delegatedBailEdl && (key === "edl" || key === "caution" || key === "nouveau_bail"));
+        const statuses = transitionStepStatuses(t, plan);
+        const statusOf = (key: StepKey) => statuses[key];
 
-        const doneCount = STEPS.filter((s) => t.steps[s.key] || isDelegatedStep(s.key)).length;
+        const remaining = STEPS.filter((s) => statusOf(s.key) === "pending");
         const total = STEPS.length;
-        const pct = Math.round((doneCount / total) * 100);
-        const action = nextAction(t.steps, t.lease.id, t.submittedCount, t.lease.property_id, isDelegatedStep);
+        const pct = Math.round(((total - remaining.length) / total) * 100);
+        const action = nextAction(statusOf, t.lease.id, t.submittedCount, t.lease.property_id, !!t.lease.deposit_paid_at);
 
         const daysUntilOneMonth = t.cautionOneMonthDeadline ? daysDiff(t.cautionOneMonthDeadline) : null;
         const daysUntilTwoMonths = t.cautionTwoMonthDeadline ? daysDiff(t.cautionTwoMonthDeadline) : null;
-        const cautionShow = !t.steps.caution && !isDelegatedStep("caution") && daysUntilOneMonth !== null;
+        const cautionShow = statusOf("caution") === "pending" && daysUntilOneMonth !== null;
         // Délai légal maximum (2 mois) dépassé : vraiment en retard, quel que
         // soit le contexte. Entre 1 et 2 mois : le délai est atteint si l'EDL
         // ne révèle aucune dégradation, mais encore dans les clous sinon — on
@@ -267,8 +331,11 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
                     Départ de {tenantName} · {fmtDate(t.lease.end_date)}
                   </p>
               </div>
-              <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[0.68rem] font-semibold text-slate-600">
-                {doneCount}/{total}
+              <span className={cx(
+                "shrink-0 rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold",
+                remaining.length === 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+              )}>
+                {remaining.length === 0 ? "Prêt à signer" : `${remaining.length} étape${remaining.length > 1 ? "s" : ""} à faire`}
               </span>
             </div>
 
@@ -283,54 +350,70 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
             {/* Steps */}
             <div className="flex items-start gap-0 overflow-x-auto px-4 py-3">
               {STEPS.map((s, i) => {
-                const done = t.steps[s.key];
+                const status = statusOf(s.key);
                 const isLast = i === STEPS.length - 1;
-                const delegated = !done && isDelegatedStep(s.key);
+                const skipped = isSkipped(status);
                 // "Candidat" step : amber dot when submissions pending but none accepted yet
-                const isPending = s.key === "candidat_retenu" && !done && !delegated && t.submittedCount > 0;
+                const isWaiting = s.key === "candidat_retenu" && status === "pending" && t.submittedCount > 0;
                 return (
                   <React.Fragment key={s.key}>
-                    <div className="flex min-w-[52px] flex-col items-center gap-1 text-center">
+                    <div className={cx("flex min-w-[68px] flex-col items-center gap-1 text-center", skipped && "opacity-60")}>
                       <div className={cx(
                         "flex h-7 w-7 items-center justify-center rounded-full border-2 transition",
-                        done
+                        status === "done"
                           ? "border-emerald-400 bg-emerald-50"
-                          : delegated
-                          ? "border-indigo-300 bg-indigo-50"
-                          : isPending
+                          : skipped
+                          ? "border-dashed border-slate-300 bg-slate-50"
+                          : isWaiting
                           ? "border-amber-400 bg-amber-50"
-                          : "border-slate-200 bg-white"
+                          : "border-indigo-300 bg-white"
                       )}>
-                        {done
+                        {status === "done"
                           ? <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
-                          : delegated
-                          ? <span className="h-2 w-2 rounded-full bg-indigo-400" />
-                          : isPending
+                          : status === "locked"
+                          ? <LockClosedIcon className="h-3 w-3 text-slate-400" />
+                          : skipped
+                          ? <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                          : isWaiting
                           ? <span className="h-2 w-2 rounded-full bg-amber-400" />
-                          : <span className="h-2 w-2 rounded-full bg-slate-200" />
+                          : <span className="h-2 w-2 rounded-full bg-indigo-400" />
                         }
                       </div>
                       <span className={cx(
                         "text-[0.6rem] font-semibold leading-tight",
-                        done ? "text-emerald-600" : delegated ? "text-indigo-500" : isPending ? "text-amber-600" : "text-slate-400"
+                        status === "done" ? "text-emerald-600" : skipped ? "text-slate-400" : isWaiting ? "text-amber-600" : "text-indigo-600"
                       )}>
-                        {delegated
-                          ? "Délégué"
-                          : s.key === "candidat_retenu" && isPending
+                        {s.key === "candidat_retenu" && isWaiting
                           ? `${t.submittedCount} dossier${t.submittedCount > 1 ? "s" : ""}`
                           : s.label}
                       </span>
+                      {status === "delegated" ? (
+                        <span className="text-[0.55rem] font-medium leading-tight text-slate-400">Délégué agence</span>
+                      ) : status === "locked" ? (
+                        <Link href="/tarifs?source=transition" className="text-[0.55rem] font-semibold leading-tight text-[#4f46e5] underline-offset-2 hover:underline">
+                          Plan lokt·one →
+                        </Link>
+                      ) : status === "not_required" ? (
+                        <span className="text-[0.55rem] font-medium leading-tight text-slate-400">Non requis</span>
+                      ) : null}
                     </div>
                     {!isLast && (
                       <div className={cx(
                         "mt-3.5 h-px flex-1 min-w-[8px]",
-                        done || delegated ? "bg-emerald-200" : "bg-slate-100"
+                        status === "done" || skipped ? "bg-emerald-200" : "bg-slate-100"
                       )} />
                     )}
                   </React.Fragment>
                 );
               })}
             </div>
+
+            {statusOf("edl") === "not_required" ? (
+              <p className="flex items-center gap-1.5 border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
+                <ClockIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                Aucun état des lieux d'entrée au dossier pour ce bail — pas de comparaison possible, cette étape n'est pas requise.
+              </p>
+            ) : null}
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5">

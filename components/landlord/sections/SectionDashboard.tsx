@@ -14,6 +14,7 @@ import { isLmnpItemCompliant, lotRequiresLmnpInventory, propertyRequiresLmnpInve
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
+import type { Plan } from "../../../lib/permissions";
 import { TransitionPanel } from "./TransitionPanel";
 
 type DashboardAlert = {
@@ -194,6 +195,7 @@ export function SectionDashboard({
   onOpenAssistant,
   userId,
   planLabel,
+  plan,
   showTransitionPanel = true,
   profile,
   profileLoaded = false,
@@ -226,6 +228,7 @@ export function SectionDashboard({
   onOpenAssistant?: (presetMessage?: string) => void;
   userId?: string;
   planLabel?: string;
+  plan?: Plan;
   showTransitionPanel?: boolean;
   profile?: Profile | null;
   profileLoaded?: boolean;
@@ -2221,6 +2224,7 @@ export function SectionDashboard({
           propertyById={propertyById}
           tenantById={tenantById}
           userId={userId}
+          plan={plan}
           onGo={(k, link) => { if (link) { onNavigateDeep?.(k, link as any); } else { onGo(k); } }}
           onRefresh={onRefresh || (async () => {})}
         />
