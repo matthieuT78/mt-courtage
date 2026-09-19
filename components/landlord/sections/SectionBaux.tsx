@@ -1762,6 +1762,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       };
 
       let renewalSchemaSkipped = false;
+      const originalLeaseForSave = mode === "edit" && editingId ? safeLeases.find((l) => l.id === editingId) : null;
+      const removingCoTenantOnSave = !!originalLeaseForSave?.co_tenant_id && !form.co_tenant_id;
 
       if (mode === "edit") {
         if (!editingId) throw new Error("Aucun bail en cours d’édition.");
@@ -1783,6 +1785,23 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             renewalSchemaSkipped = true;
           }
         }
+        if (removingCoTenantOnSave && originalLeaseForSave?.co_tenant_id) {
+          // Le bail continue sous le même id : sans ce plafond, l'ancien colocataire
+          // (accès conservé à vie sur ce bail, voir data.ts) verrait les quittances
+          // et documents générés après son départ — y compris pour un éventuel
+          // nouveau colocataire. Best-effort, ne bloque jamais la sauvegarde du bail.
+          try {
+            await supabase
+              .from("tenant_portal_access")
+              .update({ access_until: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .eq("tenant_id", originalLeaseForSave.co_tenant_id)
+              .eq("lease_id", editingId)
+              .in("status", ["invited", "active"]);
+          } catch {
+            // Non bloquant.
+          }
+        }
+
         setOk(
           renewalSchemaSkipped
             ? "Bail mis à jour ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."

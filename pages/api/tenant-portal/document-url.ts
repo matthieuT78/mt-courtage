@@ -19,11 +19,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const accesses = await getTenantPortalAccess(auth.userId);
     const tenantIds = accesses.map((access) => access.tenant_id);
     if (tenantIds.length === 0) return res.status(403).json({ error: "Accès refusé." });
+    const grantedLeaseIds = Array.from(new Set(accesses.map((access) => access.lease_id).filter(Boolean)));
+    // Même plafond que data.ts : un bail retrouvé via le lease_id mémorisé peut
+    // avoir reçu de nouveaux documents après le départ de cette personne — sans
+    // ce contrôle ici (pas seulement côté affichage), un id de document deviné
+    // ou mémorisé donnerait quand même accès au PDF.
+    const accessUntilByLease = new Map(
+      accesses.filter((a) => a.lease_id && a.access_until).map((a) => [a.lease_id as string, a.access_until as string])
+    );
 
     const { data: leases, error: leasesError } = await supabaseAdmin
       .from("leases")
       .select("id")
-      .or(`tenant_id.in.(${tenantIds.join(",")}),co_tenant_id.in.(${tenantIds.join(",")})`);
+      .or(
+        [
+          `tenant_id.in.(${tenantIds.join(",")})`,
+          `co_tenant_id.in.(${tenantIds.join(",")})`,
+          grantedLeaseIds.length ? `id.in.(${grantedLeaseIds.join(",")})` : null,
+        ]
+          .filter(Boolean)
+          .join(",")
+      );
     if (leasesError) throw leasesError;
     const leaseIds = (leases || []).map((lease: any) => lease.id);
     if (leaseIds.length === 0) return res.status(403).json({ error: "Accès refusé." });
@@ -45,13 +61,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const table = kind === "receipt" ? "rent_receipts" : kind === "inventory" ? "inventory_reports" : "lease_contract_documents";
     const pdfColumn = kind === "lease_contract" ? "signed_pdf_url,external_pdf_url" : "pdf_url";
+    // created_at (toujours renseigné) plutôt qu'un champ métier (performed_at
+    // sur l'EDL, par ex., peut être vide) — sinon un document sans cette valeur
+    // resterait accessible sans aucune vérification de date.
     const { data: document, error } = await supabaseAdmin
       .from(table)
-      .select(`id,lease_id,${pdfColumn},status`)
+      .select(`id,lease_id,${pdfColumn},status,created_at`)
       .eq("id", documentId)
       .in("lease_id", leaseIds)
       .single();
     if (error || !document) return res.status(404).json({ error: "Document introuvable." });
+
+    const cutoff = accessUntilByLease.get((document as any).lease_id);
+    if (cutoff && new Date((document as any).created_at) > new Date(cutoff)) {
+      return res.status(403).json({ error: "Document postérieur à ton départ du bail." });
+    }
+
     const pdfUrl = kind === "lease_contract" ? (document as any).signed_pdf_url || (document as any).external_pdf_url : (document as any).pdf_url;
     if (!pdfUrl) return res.status(409).json({ error: "PDF indisponible." });
 

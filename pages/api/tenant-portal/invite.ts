@@ -142,6 +142,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!tenantUser?.id) throw new Error("Compte locataire introuvable.");
 
+    // Capturé une fois à l'invitation, jamais réécrit ailleurs : si les rôles
+    // locataire/colocataire sont inversés plus tard sur ce bail (promotion),
+    // cet accès continue de pointer vers le même bail — donc les mêmes
+    // documents — plutôt que de dépendre de qui y est actuellement inscrit.
+    const { data: lease } = await supabaseAdmin
+      .from("leases")
+      .select("id,property_id")
+      .eq("user_id", auth.userId)
+      .or(`tenant_id.eq.${tenant.id},co_tenant_id.eq.${tenant.id}`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     const now = new Date().toISOString();
     const { data: access, error: accessError } = await supabaseAdmin
       .from("tenant_portal_access")
@@ -153,6 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           invited_email: email,
           status: "invited",
           messaging_enabled: messagingEnabled,
+          lease_id: lease?.id || null,
           invited_at: now,
           updated_at: now,
         },
@@ -161,15 +175,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("*")
       .single();
     if (accessError) throw accessError;
-
-    const { data: lease } = await supabaseAdmin
-      .from("leases")
-      .select("id,property_id")
-      .eq("user_id", auth.userId)
-      .or(`tenant_id.eq.${tenant.id},co_tenant_id.eq.${tenant.id}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
 
     await getOrCreateTenantThread({
       landlordUserId: auth.userId,

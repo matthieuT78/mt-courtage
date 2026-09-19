@@ -20,6 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const tenantIds = accesses.map((access) => access.tenant_id);
     const landlordIds = Array.from(new Set(accesses.map((access) => access.landlord_user_id)));
+    // Bail mémorisé à l'invitation (lease_id) : reste valable même si les rôles
+    // locataire/colocataire sont inversés depuis sur ce bail, contrairement à
+    // tenant_id/co_tenant_id qui reflètent seulement l'état actuel.
+    const grantedLeaseIds = Array.from(new Set(accesses.map((access) => access.lease_id).filter(Boolean)));
 
     const [
       { data: tenants, error: tenantsError },
@@ -30,7 +34,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       supabaseAdmin
         .from("leases")
         .select("*")
-        .or(`tenant_id.in.(${tenantIds.join(",")}),co_tenant_id.in.(${tenantIds.join(",")})`)
+        .or(
+          [
+            `tenant_id.in.(${tenantIds.join(",")})`,
+            `co_tenant_id.in.(${tenantIds.join(",")})`,
+            grantedLeaseIds.length ? `id.in.(${grantedLeaseIds.join(",")})` : null,
+          ]
+            .filter(Boolean)
+            .join(",")
+        )
         .order("created_at", { ascending: false }),
       supabaseAdmin.from("landlords").select("user_id,display_name,address,iban,bic").in("user_id", landlordIds),
     ]);
@@ -54,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("rent_receipts")
-            .select("id,lease_id,period_start,period_end,total_amount,issue_date,pdf_url,status,sent_at,receipt_number")
+            .select("id,lease_id,period_start,period_end,total_amount,issue_date,pdf_url,status,sent_at,receipt_number,created_at")
             .in("lease_id", leaseIds)
             .not("pdf_url", "is", null)
             .order("period_start", { ascending: false })
@@ -62,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("inventory_reports")
-            .select("id,lease_id,report_type,status,performed_at,pdf_url")
+            .select("id,lease_id,report_type,status,performed_at,pdf_url,created_at")
             .in("lease_id", leaseIds)
             .not("pdf_url", "is", null)
             .order("created_at", { ascending: false })
@@ -70,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("lease_contract_documents")
-            .select("id,lease_id,contract_kind,status,document_source,signed_pdf_url,external_pdf_url,original_file_name,signed_at")
+            .select("id,lease_id,contract_kind,status,document_source,signed_pdf_url,external_pdf_url,original_file_name,signed_at,created_at")
             .in("lease_id", leaseIds)
             .order("signed_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),
@@ -84,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("rent_payments")
-            .select("id,lease_id,period_start,period_end,paid_at,total_amount,rent_amount,charges_amount,source")
+            .select("id,lease_id,period_start,period_end,paid_at,total_amount,rent_amount,charges_amount,source,created_at")
             .in("lease_id", leaseIds)
             .order("period_start", { ascending: false })
             .limit(12)
@@ -96,6 +108,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (contractsError) throw contractsError;
     if (dpesError) throw dpesError;
     if (paymentsError) throw paymentsError;
+
+    // Un bail retrouvé via le lease_id mémorisé (colocataire retiré, ou promotion)
+    // continue de recevoir de nouveaux documents après le départ de cette personne
+    // — sans ce plafond, elle verrait les quittances d'un éventuel remplaçant.
+    // Un access_until nul veut dire "toujours en cours", aucun plafond.
+    const accessUntilByLease = new Map(
+      accesses.filter((a) => a.lease_id && a.access_until).map((a) => [a.lease_id as string, a.access_until as string])
+    );
+    const withinAccessWindow = (leaseId: unknown, dateStr: unknown) => {
+      const cutoff = typeof leaseId === "string" ? accessUntilByLease.get(leaseId) : undefined;
+      if (!cutoff) return true;
+      if (!dateStr) return true;
+      return new Date(String(dateStr)) <= new Date(cutoff);
+    };
 
     const threads = [];
     for (const access of accesses) {
@@ -129,18 +155,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ...(virementsLandlordIds.has(l.user_id) && l.iban ? { iban: l.iban, bic: l.bic || null } : {}),
     }));
 
+    // Ne jamais révéler qui a repris le bail après le départ de cette personne.
+    const leasesRedacted = (leases || []).map((l: any) =>
+      accessUntilByLease.has(l.id) ? { ...l, co_tenant_id: null, co_tenant_name: null, co_tenant_email: null, tenant_receipt_email: null } : l
+    );
+
     return res.status(200).json({
       user: { id: auth.userId, email: auth.email || null },
       messagingEnabled,
       tenants: tenants || [],
-      leases: leases || [],
+      leases: leasesRedacted,
       landlords: landlordsFiltered,
       properties: properties || [],
-      receipts: receipts || [],
-      inventoryReports: reports || [],
-      leaseContracts: (contracts || []).filter((contract: any) => contract.signed_pdf_url || contract.external_pdf_url),
+      receipts: (receipts || []).filter((r: any) => withinAccessWindow(r.lease_id, r.created_at)),
+      inventoryReports: (reports || []).filter((r: any) => withinAccessWindow(r.lease_id, r.created_at)),
+      leaseContracts: (contracts || [])
+        .filter((contract: any) => contract.signed_pdf_url || contract.external_pdf_url)
+        .filter((c: any) => withinAccessWindow(c.lease_id, c.created_at)),
       dpes: dpes || [],
-      payments: payments || [],
+      payments: (payments || []).filter((p: any) => withinAccessWindow(p.lease_id, p.created_at)),
       threads,
     });
   } catch (e: any) {

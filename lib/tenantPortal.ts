@@ -8,6 +8,13 @@ export type TenantPortalAccess = {
   invited_email: string;
   status: "invited" | "active" | "revoked";
   messaging_enabled: boolean;
+  lease_id: string | null;
+  // Posé quand cette personne quitte le bail alors que celui-ci continue sous
+  // le même id (colocataire retiré, ou promotion) : plafonne l'historique
+  // visible à ce qui existait à cette date, pour ne jamais montrer les
+  // quittances/documents générés après son départ (ex. pour un nouveau
+  // colocataire). Null = toujours en cours, aucun plafond.
+  access_until: string | null;
 };
 
 export async function getTenantPortalAccess(userId: string, tenantId?: string) {

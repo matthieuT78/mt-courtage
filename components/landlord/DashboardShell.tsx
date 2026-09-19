@@ -190,6 +190,10 @@ export function DashboardShell(props: any) {
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
+  const [departureChoiceLeaseId, setDepartureChoiceLeaseId] = useState<string | null>(null);
+  const [promotingCoTenant, setPromotingCoTenant] = useState(false);
+  const [departureChoiceError, setDepartureChoiceError] = useState<string | null>(null);
+  const [promotionSuccess, setPromotionSuccess] = useState<{ oldName: string; newName: string } | null>(null);
   const [submittedCandidaturesCount, setSubmittedCandidaturesCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -452,7 +456,23 @@ export function DashboardShell(props: any) {
   // dans le panneau "Logement en transition" (voir isInTransition,
   // TransitionPanel.tsx). Centralisé ici plutôt que dupliqué par bouton pour
   // qu'un futur point d'entrée en hérite automatiquement.
+  // Un bail avec colocataire a 3 dénouements possibles, pas un seul : les deux
+  // partent (le bail se termine, cas ci-dessous inchangé), seul le colocataire
+  // part (le bail continue, déjà couvert par "Modifier" → retirer le
+  // colocataire), ou seul le locataire principal part et le colocataire reste
+  // (le bail continue, le colocataire est promu locataire principal). On ne
+  // peut pas deviner lequel sans demander.
   async function handlePrepareDeparture(leaseId: string) {
+    const lease = leases.find((l: any) => l.id === leaseId);
+    if (lease?.co_tenant_id) {
+      setDepartureChoiceError(null);
+      setDepartureChoiceLeaseId(leaseId);
+      return;
+    }
+    await runFullDeparture(leaseId);
+  }
+
+  async function runFullDeparture(leaseId: string) {
     const lease = leases.find((l: any) => l.id === leaseId);
     if (lease && (lease as any).auto_renewal_enabled !== false && supabase) {
       try {
@@ -469,7 +489,63 @@ export function DashboardShell(props: any) {
       }
     }
     if (lease) setDepartureTenantId(lease.tenant_id);
+    setDepartureChoiceLeaseId(null);
     onChangeTab("locataires");
+  }
+
+  // Le colocataire devient le locataire principal du même bail (continuité :
+  // même date de début, même historique de paiements/quittances) — pas un
+  // nouveau bail. Comme les parties du bail changent, un avenant signé par
+  // toutes les parties reste nécessaire ; on ne le génère pas automatiquement
+  // ici, on guide vers "Modifier ce bail" qui régénère déjà le PDF à partir de
+  // l'état courant du bail.
+  async function promoteCoTenantToPrimary(leaseId: string) {
+    const lease = leases.find((l: any) => l.id === leaseId);
+    if (!lease?.co_tenant_id || !supabase) return;
+    setPromotingCoTenant(true);
+    setDepartureChoiceError(null);
+    try {
+      const oldName = tenantById.get(lease.tenant_id)?.full_name || (lease as any).tenant_name || "L'ancien locataire";
+      const newName = tenantById.get(lease.co_tenant_id)?.full_name || (lease as any).co_tenant_name || "Le colocataire";
+      const { error } = await supabase
+        .from("leases")
+        .update({
+          tenant_id: lease.co_tenant_id,
+          co_tenant_id: null,
+          co_tenant_name: null,
+          co_tenant_email: null,
+          tenant_receipt_email: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", leaseId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      // Le bail continue sous le même id : sans ce plafond, l'ancien locataire
+      // (accès conservé à vie sur ce bail) verrait les quittances et documents
+      // générés après son départ — y compris pour un éventuel futur colocataire.
+      try {
+        await supabase
+          .from("tenant_portal_access")
+          .update({ access_until: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("tenant_id", lease.tenant_id)
+          .eq("lease_id", leaseId)
+          .in("status", ["invited", "active"]);
+      } catch {
+        // Non bloquant.
+      }
+      await refresh?.();
+      setDepartureChoiceLeaseId(null);
+      // Ne passe pas par departureTenantId/"locataires" : ce déclencheur suppose un
+      // vrai départ (workflow EDL/caution) et, l'ancien locataire n'ayant plus aucun
+      // bail actif après la promotion, il archiverait sa fiche instantanément et
+      // sans explication — correct pour un départ classique, surprenant ici.
+      navigateDeep("baux", { leaseId });
+      setPromotionSuccess({ oldName, newName });
+    } catch (e: any) {
+      setDepartureChoiceError(e?.message || "Impossible de mettre à jour le bail.");
+    } finally {
+      setPromotingCoTenant(false);
+    }
   }
 
   // ── Index de recherche ────────────────────────────────────────────────────
@@ -1068,6 +1144,102 @@ export function DashboardShell(props: any) {
 
       {/* ── Popup notation ───────────────────────────────────── */}
       <ReviewPrompt user={props?.user} />
+
+      {/* ── Choix du départ sur un bail avec colocataire ───────── */}
+      {departureChoiceLeaseId ? (() => {
+        const lease = leases.find((l: any) => l.id === departureChoiceLeaseId);
+        if (!lease) return null;
+        const tenantName = tenantById.get(lease.tenant_id)?.full_name || (lease as any).tenant_name || "Le locataire";
+        const coTenantName = tenantById.get((lease as any).co_tenant_id)?.full_name || (lease as any).co_tenant_name || "Le colocataire";
+        return (
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/30"
+              onClick={() => !promotingCoTenant && setDepartureChoiceLeaseId(null)}
+              aria-label="Fermer"
+            />
+            <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+              <p className="text-sm font-semibold text-slate-950">Qui quitte le logement ?</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                Ce bail a un locataire ({tenantName}) et un colocataire ({coTenantName}) — le départ n'est pas le même
+                selon qui s'en va.
+              </p>
+              {departureChoiceError ? (
+                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{departureChoiceError}</p>
+              ) : null}
+              <div className="mt-4 space-y-2">
+                <button
+                  type="button"
+                  disabled={promotingCoTenant}
+                  onClick={() => runFullDeparture(departureChoiceLeaseId)}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Les deux quittent le logement
+                  <span className="block text-xs font-normal text-slate-500">Le bail se termine — parcours de départ habituel.</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={promotingCoTenant}
+                  onClick={() => {
+                    setDepartureChoiceLeaseId(null);
+                    navigateDeep("baux", { leaseId: departureChoiceLeaseId! });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Seulement {coTenantName} (colocataire)
+                  <span className="block text-xs font-normal text-slate-500">
+                    Le bail continue — retire le colocataire depuis "Modifier" sur ce bail.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={promotingCoTenant}
+                  onClick={() => promoteCoTenantToPrimary(departureChoiceLeaseId)}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {promotingCoTenant ? "Mise à jour…" : `Seulement ${tenantName} (locataire principal)`}
+                  <span className="block text-xs font-normal text-slate-500">
+                    Le bail continue avec {coTenantName} comme locataire principal — pense à formaliser le changement
+                    par un avenant signé (régénère le bail depuis "Bail").
+                  </span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => !promotingCoTenant && setDepartureChoiceLeaseId(null)}
+                disabled={promotingCoTenant}
+                className="mt-3 text-xs font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:opacity-50"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        );
+      })() : null}
+
+      {/* ── Confirmation après promotion du colocataire ────────── */}
+      {promotionSuccess ? (
+        <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl sm:inset-x-auto sm:right-6">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-950">Bail mis à jour ✅</p>
+            <button
+              type="button"
+              onClick={() => setPromotionSuccess(null)}
+              className="shrink-0 text-slate-400 hover:text-slate-600"
+              aria-label="Fermer"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-600">
+            {promotionSuccess.newName} est maintenant locataire principal de ce bail. Deux choses à faire toi-même :
+            régénère et fais signer un avenant depuis "Bail" (les parties ont changé), et si le départ de{" "}
+            {promotionSuccess.oldName} est définitif, archive sa fiche depuis la section Locataires — elle n'est plus
+            rattachée à aucun bail mais reste active tant que tu ne l'archives pas toi-même.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

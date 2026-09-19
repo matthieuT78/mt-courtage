@@ -713,6 +713,27 @@ export function SectionLocataires({
     return ((res as any)?.data ?? null) as InventoryExitReport | null;
   };
 
+  // Archiver un locataire coupe la messagerie (plus de relation locative en
+  // cours) mais NE révoque PAS l'accès au portail : le locataire doit pouvoir
+  // continuer à consulter/télécharger ses quittances, son bail et son EDL
+  // indéfiniment — beaucoup s'en servent comme unique archive. Sans risque
+  // fuite de données : le bail reste rattaché à sa propre fiche, jamais à
+  // celle d'un futur locataire du même bien. Best-effort : l'archivage ne
+  // doit pas échouer si aucun accès portail n'existait pour ce locataire.
+  const restrictPortalMessaging = async (tenantId: string) => {
+    if (!supabase || !userId) return;
+    try {
+      await supabase
+        .from("tenant_portal_access")
+        .update({ messaging_enabled: false, updated_at: new Date().toISOString() })
+        .eq("tenant_id", tenantId)
+        .eq("landlord_user_id", userId)
+        .in("status", ["invited", "active"]);
+    } catch {
+      // Non bloquant.
+    }
+  };
+
   const archiveTenantOnly = async (tenantId: string, message = "Locataire archivé ✅") => {
     if (!userId) return;
 
@@ -739,6 +760,7 @@ export function SectionLocataires({
       // @ts-ignore
       if ((res as any)?.error) throw (res as any).error;
 
+      await restrictPortalMessaging(tenantId);
       setOk(message);
       await safeRefresh();
     } catch (e: any) {
@@ -921,6 +943,7 @@ export function SectionLocataires({
       // @ts-ignore
       if ((tenantRes as any)?.error) throw (tenantRes as any).error;
 
+      await restrictPortalMessaging(tenantId);
       setArchiveWorkflow(null);
       setOk("Sortie clôturée : bail terminé, automatisations arrêtées, locataire archivé ✅");
       await safeRefresh();

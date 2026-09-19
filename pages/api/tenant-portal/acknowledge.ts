@@ -47,6 +47,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const tenantIds = accesses.map((a) => a.tenant_id);
     const landlordUserIds = Array.from(new Set(accesses.map((a) => a.landlord_user_id)));
+    // Bail mémorisé à l'invitation : reste valable même si les rôles locataire/
+    // colocataire sont inversés depuis sur ce bail.
+    const tenantIdByGrantedLease = new Map(accesses.filter((a) => a.lease_id).map((a) => [a.lease_id as string, a.tenant_id]));
 
     // Verify document belongs to one of the tenant's leases
     let landlordUserId: string | null = null;
@@ -67,7 +70,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select("tenant_id, co_tenant_id, user_id")
         .eq("id", doc.lease_id)
         .maybeSingle();
-      const matchedTenantId = lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id));
+      const matchedTenantId =
+        (lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id))) ||
+        tenantIdByGrantedLease.get(doc.lease_id);
       if (!lease || !matchedTenantId) return res.status(403).json({ ok: false, error: "Accès refusé." });
 
       landlordUserId = doc.user_id;
@@ -86,7 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select("tenant_id, co_tenant_id")
         .eq("id", report.lease_id)
         .maybeSingle();
-      const matchedTenantId = lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id));
+      const matchedTenantId =
+        (lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id))) ||
+        tenantIdByGrantedLease.get(report.lease_id);
       if (!lease || !matchedTenantId) return res.status(403).json({ ok: false, error: "Accès refusé." });
 
       landlordUserId = report.user_id;

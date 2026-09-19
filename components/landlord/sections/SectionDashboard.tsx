@@ -895,6 +895,8 @@ export function SectionDashboard({
 
     return activeLeases.map((lease) => {
       const tenant = tenantById.get(lease.tenant_id);
+      const coTenantId = (lease as any).co_tenant_id;
+      const coTenant = coTenantId ? tenantById.get(coTenantId) : null;
       const payment = currentMonthPayments.find((p) => p.lease_id === lease.id);
       const receipt = currentMonthReceipts.find((r) => r.lease_id === lease.id);
       const rentPeriod = getLeaseRentPeriod(lease, currentMonth);
@@ -923,6 +925,7 @@ export function SectionDashboard({
         lease,
         propertyLabel: leasePropertyLabel(lease),
         tenantName: tenant?.full_name || "Locataire",
+        coTenantName: coTenant?.full_name || (coTenantId ? (lease as any).co_tenant_name || null : null),
         total,
         paymentStatus,
         missingAmount: paymentState.missing,
@@ -2410,7 +2413,10 @@ export function SectionDashboard({
                 <div key={card.lease.id} className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr,auto] items-center gap-3 px-4 py-3 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">{card.propertyLabel}</p>
-                    <p className="truncate text-xs text-slate-600">{card.tenantName}</p>
+                    <p className="truncate text-xs text-slate-600">
+                      {card.tenantName}
+                      {card.coTenantName ? ` + ${card.coTenantName}` : ""}
+                    </p>
                     {card.leaseEndingSoon ? (
                       <p className="mt-1 text-xs font-semibold text-amber-700">Échéance à surveiller : {card.watchDate ? fmtDate(toISODate(card.watchDate)) : "—"}</p>
                     ) : null}
