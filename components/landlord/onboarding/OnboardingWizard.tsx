@@ -458,6 +458,18 @@ export function OnboardingWizard({
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(() => defaultEndDate());
   const [depositAmount, setDepositAmount] = useState("");
+  // Le colocataire doit avoir sa propre fiche locataire (mêmes droits que le
+  // locataire principal) — mais à ce stade de l'onboarding (première connexion),
+  // aucune autre fiche que celle qu'on vient de créer ne peut exister : un simple
+  // sélecteur serait donc toujours vide. On crée sa fiche directement ici, avec
+  // les mêmes contrôles que la création du locataire principal ci-dessus.
+  const [addingCoTenant, setAddingCoTenant] = useState(false);
+  const [coTenantId, setCoTenantId] = useState("");
+  const [coTenantFirstName, setCoTenantFirstName] = useState("");
+  const [coTenantLastName, setCoTenantLastName] = useState("");
+  const [coTenantEmail, setCoTenantEmail] = useState("");
+  const [coTenantPhone, setCoTenantPhone] = useState("");
+  const [savingCoTenant, setSavingCoTenant] = useState(false);
   const [createdLeaseId, setCreatedLeaseId] = useState<string | null>(null);
   const [reviewingLease, setReviewingLease] = useState(false);
   const [leaseReloadNonce, setLeaseReloadNonce] = useState(0);
@@ -724,6 +736,35 @@ export function OnboardingWizard({
     }
   };
 
+  const createCoTenant = async () => {
+    if (!coTenantFirstName.trim() || !coTenantLastName.trim()) {
+      return setErr("Prénom et nom du colocataire sont obligatoires.");
+    }
+    if (coTenantEmail.trim() && !isEmailLike(coTenantEmail)) return setErr("Email colocataire invalide.");
+    if (!supabase) return setErr("Supabase non initialisé.");
+    setSavingCoTenant(true);
+    setErr(null);
+    try {
+      const payload = {
+        user_id: userId,
+        first_name: coTenantFirstName.trim(),
+        last_name: coTenantLastName.trim(),
+        full_name: buildFullName(coTenantFirstName, coTenantLastName) || "Locataire",
+        email: coTenantEmail.trim() || null,
+        phone: coTenantPhone.trim() || null,
+      };
+      const { data, error } = await supabase.from("tenants").insert(payload).select("id").single();
+      if (error) throw error;
+      setCoTenantId(data?.id || "");
+      setAddingCoTenant(false);
+      await onRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de créer le colocataire.");
+    } finally {
+      setSavingCoTenant(false);
+    }
+  };
+
   // Le choix meublé/nu fait à l'étape Location présuppose déjà un régime fiscal
   // (meublé → LMNP, nu → location nue) : on le reporte sur property_finance pour
   // éviter que l'onglet Finance affiche "régime non renseigné" alors que
@@ -803,6 +844,9 @@ export function OnboardingWizard({
         lease_kind: leaseKind,
         payment_day: 1,
         status: "active",
+        co_tenant_id: coTenantId || null,
+        co_tenant_name: coTenantId ? buildFullName(coTenantFirstName, coTenantLastName) || null : null,
+        co_tenant_email: coTenantId ? coTenantEmail.trim() || null : null,
       };
 
       if (createdLeaseId) {
@@ -1329,6 +1373,45 @@ export function OnboardingWizard({
                   ))}
                 </div>
               )}
+              <div className="space-y-2">
+                <span className="block text-xs font-semibold text-slate-700">Colocataire (optionnel)</span>
+                {coTenantId ? (
+                  <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                    Fiche colocataire créée : <strong>{buildFullName(coTenantFirstName, coTenantLastName)}</strong>
+                    {coTenantEmail ? ` (${coTenantEmail})` : ""} ✓
+                  </p>
+                ) : addingCoTenant ? (
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <TextField label="Prénom" value={coTenantFirstName} onChange={setCoTenantFirstName} required />
+                      <TextField label="Nom" value={coTenantLastName} onChange={setCoTenantLastName} required />
+                    </div>
+                    <TextField label="Email" value={coTenantEmail} onChange={setCoTenantEmail} type="email" placeholder="colocataire@email.fr" />
+                    <TextField label="Téléphone" value={coTenantPhone} onChange={setCoTenantPhone} placeholder="06 12 34 56 78" />
+                    <div className="flex items-center gap-3">
+                      <PrimaryButton onClick={createCoTenant} disabled={savingCoTenant}>
+                        {savingCoTenant ? "Création…" : "Créer cette fiche"}
+                      </PrimaryButton>
+                      <button
+                        type="button"
+                        onClick={() => setAddingCoTenant(false)}
+                        disabled={savingCoTenant}
+                        className="text-xs font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:opacity-50"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingCoTenant(true)}
+                    className="text-xs font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+                  >
+                    + Ajouter un colocataire
+                  </button>
+                )}
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <TextField label="Loyer (€)" hint="Hors charges" value={rentAmount} onChange={setRentAmount} placeholder="850" required />
                 <TextField label="Charges (€)" value={chargesAmount} onChange={setChargesAmount} placeholder="50" />
