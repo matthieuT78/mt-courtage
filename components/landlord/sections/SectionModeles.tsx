@@ -66,6 +66,34 @@ export const TEMPLATES: Template[] = [
     status: "available",
     seoPath: "/modele-regularisation-charges-locatives",
   },
+  {
+    id: "demande-assurance",
+    title: "Demande de justificatif d'assurance habitation",
+    subtitle: "Relance annuelle — obligation du locataire, art. 7g loi 89-462",
+    category: "courrier",
+    status: "available",
+  },
+  {
+    id: "declaration-entree",
+    title: "Déclaration d'entrée du locataire",
+    subtitle: "Atteste la date d'entrée dans les lieux, pour les démarches du locataire",
+    category: "gestion",
+    status: "available",
+  },
+  {
+    id: "declaration-depart",
+    title: "Déclaration de départ du locataire",
+    subtitle: "Atteste la date de départ du logement, pour les démarches du locataire",
+    category: "gestion",
+    status: "available",
+  },
+  {
+    id: "attestation-fin-bail",
+    title: "Attestation de fin de bail",
+    subtitle: "Certifie la date de fin du bail, pour un tiers (nouveau bailleur, employeur…)",
+    category: "gestion",
+    status: "available",
+  },
 ];
 
 const CATEGORY_LABEL: Record<Template["category"], string> = {
@@ -1457,6 +1485,205 @@ ${form.landlordName || "[Signature]"}`;
   );
 }
 
+// ── Formulaire partagé : demande d'assurance / déclarations d'entrée-sortie / attestation de fin de bail ─────
+type AttestationKind = "demande-assurance" | "declaration-entree" | "declaration-depart" | "attestation-fin-bail";
+
+const ATTESTATION_META: Record<AttestationKind, { title: string; category: "courrier" | "gestion"; desc: string; eventDateLabel: string | null }> = {
+  "demande-assurance": {
+    title: "Demande de justificatif d'assurance habitation",
+    category: "courrier",
+    desc: "Relance à envoyer chaque année pour obtenir l'attestation d'assurance du locataire.",
+    eventDateLabel: null,
+  },
+  "declaration-entree": {
+    title: "Déclaration d'entrée du locataire",
+    category: "gestion",
+    desc: "Atteste que le locataire occupe le logement depuis une date donnée — utile pour ses démarches administratives.",
+    eventDateLabel: "Date d'entrée dans les lieux",
+  },
+  "declaration-depart": {
+    title: "Déclaration de départ du locataire",
+    category: "gestion",
+    desc: "Atteste que le locataire a quitté le logement à une date donnée.",
+    eventDateLabel: "Date de départ du logement",
+  },
+  "attestation-fin-bail": {
+    title: "Attestation de fin de bail",
+    category: "gestion",
+    desc: "Certifie la date de fin du bail, pour les démarches du locataire auprès d'un tiers.",
+    eventDateLabel: "Date de fin du bail",
+  },
+};
+
+function AttestationForm({ kind, onBack }: { kind: AttestationKind; onBack: () => void }) {
+  const meta = ATTESTATION_META[kind];
+  const inp = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
+  const lbl = "block space-y-1 text-xs font-semibold text-slate-700";
+
+  const [form, setForm] = useState({
+    landlordName: "",
+    landlordAddress: "",
+    tenantName: "",
+    propertyAddress: "",
+    leaseStartDate: "",
+    eventDate: "",
+    signaturePlace: "",
+    signatureDate: new Date().toISOString().slice(0, 10),
+  });
+  const [showLetter, setShowLetter] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const letter = useMemo(() => {
+    const today = fmtDate(form.signatureDate) || "[date]";
+    const place = form.signaturePlace || "[Ville]";
+    const landlordName = form.landlordName || "[Nom du bailleur]";
+    const landlordAddress = form.landlordAddress || "[Adresse du bailleur]";
+    const tenantName = form.tenantName || "[Nom du locataire]";
+    const propertyAddress = form.propertyAddress || "[adresse du logement]";
+    const eventDateFR = form.eventDate ? fmtDate(form.eventDate) : "[date]";
+    const leaseStartFR = form.leaseStartDate ? fmtDate(form.leaseStartDate) : "";
+
+    const header = `${place}, le ${today}\n\n${landlordName}\n${landlordAddress}`;
+    const signature = `\n\n${place}, le ${today}\n\n\n___________________________\n${landlordName}`;
+
+    if (kind === "demande-assurance") {
+      return `${header}\n\nÀ l'attention de ${tenantName}\n\nObjet : Demande de justificatif d'assurance habitation — ${propertyAddress}\n\nMadame, Monsieur,\n\nConformément à l'article 7g de la loi n° 89-462 du 6 juillet 1989, vous êtes tenu(e) de vous assurer contre les risques locatifs (incendie, dégât des eaux, explosion) pour le logement que vous occupez au ${propertyAddress}, et de me justifier de cette assurance chaque année à ma demande.\n\nJe vous remercie de bien vouloir me faire parvenir une attestation d'assurance habitation en cours de validité dans les meilleurs délais.\n\nÀ défaut de réponse de votre part dans un délai raisonnable, je me réserve la possibilité de souscrire moi-même une assurance pour votre compte, dont le coût vous serait refacturé avec le loyer, conformément à la loi.\n\nVeuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.${signature}`;
+    }
+
+    if (kind === "declaration-entree") {
+      return `${header}\n\nObjet : Déclaration d'entrée dans les lieux\n\nJe soussigné(e) ${landlordName}, propriétaire du logement situé ${propertyAddress}, atteste que ${tenantName} occupe ce logement à titre de résidence depuis le ${eventDateFR}${leaseStartFR ? `, dans le cadre du bail signé le ${leaseStartFR}` : ""}.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+    }
+
+    if (kind === "declaration-depart") {
+      return `${header}\n\nObjet : Déclaration de départ du locataire\n\nJe soussigné(e) ${landlordName}, propriétaire du logement situé ${propertyAddress}, atteste que ${tenantName} a quitté ce logement le ${eventDateFR}, mettant fin à son occupation à titre de résidence.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+    }
+
+    // attestation-fin-bail
+    return `${header}\n\nObjet : Attestation de fin de bail\n\nJe soussigné(e) ${landlordName}, atteste que le bail conclu avec ${tenantName} pour le logement situé ${propertyAddress}${leaseStartFR ? `, ayant débuté le ${leaseStartFR}` : ""}, a pris fin le ${eventDateFR}.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+  }, [form, kind]);
+
+  function copyLetter() {
+    navigator.clipboard.writeText(letter).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
+
+  const canGenerate = !!form.landlordName && !!form.tenantName && !!form.propertyAddress && (!meta.eventDateLabel || !!form.eventDate);
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Retour aux modèles
+      </button>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-[#635bff]">{CATEGORY_LABEL[meta.category]}</p>
+        <h2 className="mt-1 text-xl font-semibold text-slate-950">{meta.title}</h2>
+        <p className="mt-1 text-sm text-slate-500">{meta.desc}</p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Bailleur</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom complet
+              <input className={inp} value={form.landlordName} onChange={(e) => set("landlordName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse
+              <input className={inp} value={form.landlordAddress} onChange={(e) => set("landlordAddress", e.target.value)} placeholder="12 rue des Lilas, 75010 Paris" />
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Locataire & logement</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom du locataire
+              <input className={inp} value={form.tenantName} onChange={(e) => set("tenantName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse du logement
+              <input className={inp} value={form.propertyAddress} onChange={(e) => set("propertyAddress", e.target.value)} placeholder="5 av. Victor Hugo, 69001 Lyon" />
+            </label>
+          </div>
+        </div>
+
+        {(kind !== "demande-assurance") && (
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Informations bail</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={lbl}>
+                Date de début du bail <span className="font-normal text-slate-400">(optionnel)</span>
+                <input type="date" className={inp} value={form.leaseStartDate} onChange={(e) => set("leaseStartDate", e.target.value)} />
+              </label>
+              {meta.eventDateLabel && (
+                <label className={lbl}>
+                  {meta.eventDateLabel}
+                  <input type="date" className={inp} value={form.eventDate} onChange={(e) => set("eventDate", e.target.value)} />
+                </label>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Signature</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Lieu
+              <input className={inp} value={form.signaturePlace} onChange={(e) => set("signaturePlace", e.target.value)} placeholder="Paris" />
+            </label>
+            <label className={lbl}>
+              Date
+              <input type="date" className={inp} value={form.signatureDate} onChange={(e) => set("signatureDate", e.target.value)} />
+            </label>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            disabled={!canGenerate}
+            onClick={() => setShowLetter((v) => !v)}
+            className="text-sm font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {showLetter ? "Masquer le courrier" : "Aperçu du courrier"}
+          </button>
+          <button
+            type="button"
+            disabled={!canGenerate}
+            onClick={copyLetter}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {copied ? (
+              <><CheckIcon className="h-4 w-4" />Copié !</>
+            ) : (
+              <><ClipboardDocumentIcon className="h-4 w-4" />Copier le courrier</>
+            )}
+          </button>
+        </div>
+
+        {showLetter && canGenerate && (
+          <pre className="whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-4 font-mono text-[0.7rem] leading-[1.6] text-slate-700">
+            {letter}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Composant principal ──────────────────────────────────────
 export function SectionModeles({ userId }: Props) {
   const [activeTemplate, setActiveTemplateRaw] = useState<string | null>(null);
@@ -1483,6 +1710,15 @@ export function SectionModeles({ userId }: Props) {
 
   if (activeTemplate === "regularisation-charges") {
     return <RegularisationChargesForm userId={userId} onBack={() => setActiveTemplate(null)} />;
+  }
+
+  if (
+    activeTemplate === "demande-assurance" ||
+    activeTemplate === "declaration-entree" ||
+    activeTemplate === "declaration-depart" ||
+    activeTemplate === "attestation-fin-bail"
+  ) {
+    return <AttestationForm kind={activeTemplate} onBack={() => setActiveTemplate(null)} />;
   }
 
   return (
