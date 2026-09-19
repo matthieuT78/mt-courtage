@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch lease → tenant
     const { data: lease } = await supabaseAdmin
       .from("leases")
-      .select("id,tenant_id,property_id")
+      .select("id,tenant_id,property_id,co_tenant_email")
       .eq("id", doc.lease_id)
       .maybeSingle();
     if (!lease) return res.status(404).json({ ok: false, error: "Bail introuvable." });
@@ -58,6 +58,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("id", lease.tenant_id)
       .maybeSingle();
     if (!tenant?.email) return res.status(400).json({ ok: false, error: "Email du locataire manquant." });
+
+    // Le colocataire est cosignataire du bail au même titre que le locataire
+    // principal — il reçoit le document en destinataire principal.
+    const coTenantEmail = String(lease.co_tenant_email || "").trim();
+    const toEmails = Array.from(new Set([tenant.email, coTenantEmail].filter(Boolean)));
 
     // Fetch property for label/address
     const { data: property } = await supabaseAdmin
@@ -96,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const result = await sendEmailViaResend({
-      to: tenant.email,
+      to: toEmails,
       subject: `Votre contrat de location — ${propertyLabel} | lokt.fr`,
       html,
       text,
@@ -109,13 +114,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       await supabaseAdmin
         .from("lease_contract_documents")
-        .update({ shared_with_tenant_at: new Date().toISOString(), shared_to_tenant_email: tenant.email } as any)
+        .update({ shared_with_tenant_at: new Date().toISOString(), shared_to_tenant_email: toEmails.join(", ") } as any)
         .eq("id", documentId);
     } catch {
       // migration not yet applied — non-blocking
     }
 
-    return res.status(200).json({ ok: true, sentTo: tenant.email, pdfSignedUrl });
+    return res.status(200).json({ ok: true, sentTo: toEmails.join(", "), pdfSignedUrl });
   } catch (e: any) {
     return res.status(500).json({ ok: false, error: e?.message || "Erreur interne" });
   }

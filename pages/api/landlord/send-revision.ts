@@ -82,6 +82,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const toEmail = String(tenant?.email || "").trim();
   if (!toEmail) return res.status(400).json({ error: "Le locataire n'a pas d'adresse email enregistrée." });
 
+  // Le colocataire est solidaire du bail au même titre que le locataire
+  // principal — il reçoit la notification de révision en destinataire
+  // principal, pas en copie.
+  const coTenantEmail = String(lease.co_tenant_email || "").trim();
+  const toEmails = Array.from(new Set([toEmail, coTenantEmail].filter(Boolean)));
+
   // Compute IRL revision (lecture DB avec fallback statique)
   const [refEntry, newEntry] = await Promise.all([
     irlByQuarterAsync(refQuarter),
@@ -197,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 </table>
 </body></html>`;
 
-  const result = await sendEmailViaResend({ to: toEmail, subject, html });
+  const result = await sendEmailViaResend({ to: toEmails, subject, html });
 
   // Sauvegarder l'état IRL sur le bail (non-bloquant)
   const applyOn = lease.start_date ? nextAnniversary(lease.start_date) : null;
@@ -217,7 +223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await supabaseAdmin.from("email_logs").insert({
       user_id: auth.userId,
       lease_id: leaseId,
-      to_email: toEmail,
+      to_email: toEmails.join(", "),
       subject,
       body_preview: `Révision IRL ${refEntry.label} → ${newEntry.label} · ${euro(currentRent)} → ${euro(newRent)}`,
       status: result.ok ? "sent" : "error",
@@ -232,7 +238,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(200).json({
     ok: true,
-    to: toEmail,
+    to: toEmails.join(", "),
     newRent,
     change,
     applyOn,

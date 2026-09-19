@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: report, error: reportErr } = await supabaseAdmin
       .from("inventory_reports")
-      .select("id,user_id,status,pdf_url,report_type,occupant_email,occupant_label,property_label,property_address_line1,property_city,performed_at")
+      .select("id,user_id,status,pdf_url,report_type,occupant_email,occupant_label,property_label,property_address_line1,property_city,performed_at,lease_id")
       .eq("id", String(reportId))
       .single();
 
@@ -66,6 +66,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ ok: false, error: "Aucun email locataire renseigné sur cet état des lieux." });
     }
 
+    // Le colocataire est cosignataire de l'état des lieux au même titre que le
+    // locataire principal — il reçoit le document en destinataire principal.
+    let toEmails = [email];
+    if (report.lease_id) {
+      const { data: lease } = await supabaseAdmin.from("leases").select("co_tenant_email").eq("id", report.lease_id).maybeSingle();
+      const coTenantEmail = safeStr(lease?.co_tenant_email).toLowerCase();
+      if (coTenantEmail && coTenantEmail.includes("@")) toEmails = Array.from(new Set([email, coTenantEmail]));
+    }
+
     const raw = String(report.pdf_url);
     const sepIndex = raw.indexOf(":");
     if (sepIndex === -1) {
@@ -87,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const text = buildEdlLocataireEmailText({ reportType, occupantLabel, propertyLabel, propertyAddress, performedAt: report.performed_at || null, pdfUrl: signedData.signedUrl });
 
     const result = await sendEmailViaResend({
-      to: email,
+      to: toEmails,
       subject: `État des lieux ${typeLabel} — ${propertyLabel} | lokt.fr`,
       html,
       text,

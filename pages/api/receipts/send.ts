@@ -24,7 +24,7 @@ function getResendError(r: ResendResult): string | null {
 }
 
 async function sendEmailViaResend(params: {
-  to: string;
+  to: string | string[];
   cc?: string | null;
   subject: string;
   html: string;
@@ -136,6 +136,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const toEmail = safeStr(tenant?.email);
     if (!toEmail) return res.status(400).json({ error: "Le locataire n’a pas d’email." });
 
+    // Le colocataire est solidaire du paiement au même titre que le locataire
+    // principal — il reçoit la quittance en destinataire principal, pas en
+    // simple copie.
+    const coTenantEmail = safeStr(lease.co_tenant_email);
+    const toEmails = Array.from(new Set([toEmail, coTenantEmail].filter(Boolean)));
+
     let ccEmail = safeStr(lease.reminder_email) || null;
     if (!ccEmail) {
       const ownerRes = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -178,7 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     `;
 
     const email = await sendEmailViaResend({
-      to: toEmail,
+      to: toEmails,
       cc: ccEmail,
       subject,
       html,
@@ -195,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         user_id: userId,
         lease_id: receipt.lease_id,
         receipt_id: receipt.id,
-        to_email: toEmail,
+        to_email: toEmails.join(", "),
         cc_email: ccEmail,
         subject,
         body_preview: `Quittance ${yyyymm}`,
@@ -243,7 +249,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const upd = await supabaseAdmin
       .from("rent_receipts")
       .update({
-        sent_to_tenant_email: toEmail,
+        sent_to_tenant_email: toEmails.join(", "),
         sent_at: new Date().toISOString(),
         status: "sent",
         send_error: null,

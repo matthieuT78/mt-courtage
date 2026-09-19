@@ -154,7 +154,7 @@ export async function sendTenantPaymentReminder(params: {
           await supabaseAdmin.from("email_logs").insert({
             user_id: params.userId,
             lease_id: params.leaseId,
-            to_email: context.tenantEmail,
+            to_email: context.reminderRecipients.join(", "),
             subject: generated.subject,
             body_preview: `${reasonLabel(params.reason)} · ${params.periodStart.slice(0, 7)} · reste ${euro(context.missingAmount)}`,
             sent_at: new Date().toISOString(),
