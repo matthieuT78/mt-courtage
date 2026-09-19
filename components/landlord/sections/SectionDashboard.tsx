@@ -1095,6 +1095,27 @@ export function SectionDashboard({
       });
     }
 
+    const coTenantsMissingEmail = activeLeases.filter((lease) => {
+      const coTenantId = (lease as any).co_tenant_id;
+      return !!coTenantId && !tenantById.get(coTenantId)?.email;
+    });
+    for (const lease of coTenantsMissingEmail) {
+      const tenant = tenantById.get(lease.tenant_id);
+      const coTenant = tenantById.get((lease as any).co_tenant_id);
+      const propertyLabel = leasePropertyLabel(lease);
+      const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
+      const coTenantName = coTenant?.full_name || (lease as any).co_tenant_name || "Le co-locataire";
+      actions.push({
+        id: `co-tenant-email-missing-${lease.id}`,
+        tone: "amber",
+        title: "Email co-locataire manquant",
+        desc: `${propertyLabel} · ${tenantName} : ${coTenantName} n'a pas d'email — il ne reçoit ni quittances ni invitation à signer le bail.`,
+        onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id }),
+        cta: "Ouvrir la location",
+        leaseId: lease.id,
+      });
+    }
+
     if (lateCount > 0) {
       const lateCards = leaseCards.filter((card) => card.paymentStatus === "En retard");
       const lateDetails = lateCards

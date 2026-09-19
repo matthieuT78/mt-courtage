@@ -122,6 +122,14 @@ const ALERTS: AlertConfig[] = [
     group: "Données manquantes",
     level: "À compléter",
   },
+  {
+    key: "co_tenant_email_missing",
+    title: "Email du co-locataire manquant",
+    desc: "Le co-locataire a les mêmes droits que le locataire mais son email n'est pas renseigné : il ne reçoit ni quittances ni invitation à signer le bail.",
+    schedule: "Chaque semaine jusqu'à correction",
+    group: "Données manquantes",
+    level: "À compléter",
+  },
 ];
 
 const GROUP_META: Record<AlertConfig["group"], { icon: ReactNode; desc: string }> = {

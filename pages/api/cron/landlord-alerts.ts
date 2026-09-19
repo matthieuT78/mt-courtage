@@ -148,6 +148,7 @@ const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, DelegatedSer
   receipt_to_finalize:     "gestion_courante",
   rent_revision_due:       "gestion_courante",
   tenant_email_missing:    "gestion_courante",
+  co_tenant_email_missing: "gestion_courante",
   lease_end:               "bail_edl",
   expired_active_lease:    "bail_edl",
   entry_inventory_missing: "bail_edl",
@@ -195,6 +196,10 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
   tenant_email_missing: {
     why: "Sans email locataire, l'envoi automatique des quittances est impossible — vous repassez en gestion manuelle sans vous en rendre compte.",
     how: "Ajoutez l'adresse email du locataire depuis sa fiche.",
+  },
+  co_tenant_email_missing: {
+    why: "Le co-locataire a les mêmes droits que le locataire (quittances, relances, signature électronique, accès à l'espace locataire) mais sans email, il ne reçoit rien de tout ça et ne peut pas être invité à signer le bail.",
+    how: "Ajoutez l'adresse email du co-locataire depuis sa fiche locataire.",
   },
   entry_inventory_missing: {
     why: "Sans état des lieux d'entrée, impossible de prouver l'état du logement à l'arrivée du locataire — en cas de litige au départ, vous n'avez aucune référence pour justifier une retenue sur le dépôt de garantie.",
@@ -536,6 +541,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 propertyId: lease.property_id,
               });
             }
+          }
+
+          if (lease.co_tenant_id && !tenantsById.get(lease.co_tenant_id)?.email) {
+            alerts.push({
+              key: weeklyScheduleKey(`co-tenant-email:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
+              preferenceKey: "co_tenant_email_missing",
+              tone: "amber",
+              title: `Email co-locataire manquant - ${labels.property}`,
+              detail: `Ajoutez un email pour le co-locataire de ${labels.tenant} afin qu'il reçoive ses quittances et puisse être invité à signer le bail.`,
+              href: "/espace-bailleur",
+              propertyId: lease.property_id,
+            });
           }
 
           if (!lease.reminder_email) {

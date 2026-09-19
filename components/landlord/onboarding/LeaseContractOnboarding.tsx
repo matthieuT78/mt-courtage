@@ -317,14 +317,15 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
     try {
       setLoading(true); setErr(null);
       const missing = missingRequiredFields(kind, form);
-      // Les emails ne sont pas des champs "obligatoires" légalement (cf. décret
-      // contrat-type), mais un format invalide ou un co-locataire à moitié
-      // renseigné doit bloquer la génération — sinon ça ne se voit qu'au moment
-      // d'envoyer la signature, bien plus tard dans le parcours.
+      // L'email locataire n'est pas un champ "obligatoire" légalement (cf. décret
+      // contrat-type), mais un format invalide doit bloquer la génération — sinon
+      // ça ne se voit qu'au moment d'envoyer la signature, bien plus tard dans le
+      // parcours. Le co-locataire n'est plus éditable ici (il vient de sa fiche sur
+      // la location) : un nom sans email y est normal tant que l'email n'a pas été
+      // ajouté à sa fiche, jamais bloquant pour générer le PDF (seulement pour
+      // l'inviter à signer, voir sendForSignature).
       const badFormat: string[] = [];
       if (form.tenant_email && !isEmailLike(form.tenant_email)) badFormat.push("tenant_email");
-      if (!!form.co_tenant_name !== !!form.co_tenant_email) badFormat.push(form.co_tenant_name ? "co_tenant_email" : "co_tenant_name");
-      else if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) badFormat.push("co_tenant_email");
       const allInvalid = [...missing, ...badFormat];
       if (allInvalid.length) {
         setInvalidFields(new Set(allInvalid));
@@ -615,22 +616,27 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                   </p>
                 </div>
               ) : null}
+              <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+                <p className="text-xs font-semibold text-slate-700">Co-locataire</p>
+                {form.co_tenant_name ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    {form.co_tenant_name}
+                    {form.co_tenant_email ? ` (${form.co_tenant_email})` : ""} — repris de la fiche colocataire de
+                    cette location. Pour le changer, termine l'onboarding puis modifie la location depuis la section
+                    Baux.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Aucun colocataire sur cette location. Pour en ajouter un, termine l'onboarding puis modifie la
+                    location depuis la section Baux — il apparaîtra ici automatiquement.
+                  </p>
+                )}
+              </div>
               <CollapsibleExtra
-                label={form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address ? "Co-locataire ou mandataire" : "Ajouter un co-locataire ou un mandataire (optionnel)"}
-                defaultOpen={!!(form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address)}
+                label={form.mandataire_name || form.mandataire_address ? "Mandataire" : "Ajouter un mandataire / gestionnaire (optionnel)"}
+                defaultOpen={!!(form.mandataire_name || form.mandataire_address)}
               >
-                <Fields
-                  form={form}
-                  set={set}
-                  invalid={invalidFields}
-                  fieldErrors={{
-                    co_tenant_name: "Ajoutez aussi son email, sinon il ne sera pas invité à signer.",
-                    co_tenant_email: !form.co_tenant_name
-                      ? "Ajoutez aussi son nom, sinon il ne sera pas invité à signer."
-                      : "Format d'email invalide (ex : nom@domaine.fr).",
-                  }}
-                  names={[["co_tenant_name", "Co-locataire (si applicable)"], ["co_tenant_email", "E-mail du co-locataire (pour la signature électronique)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]}
-                />
+                <Fields form={form} set={set} names={[["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
               </CollapsibleExtra>
               <CollapsibleExtra
                 label={form.garant_name || form.garant_address ? "Garant / caution" : "Ajouter un garant / une caution (optionnel)"}

@@ -1539,9 +1539,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       tenant_receipt_email: lease.tenant_receipt_email || "",
       timezone: lease.timezone || "Europe/Paris",
       tracking_from: lease.tracking_from_date ? "now" : "start",
+      // co_tenant_name/email sont un instantané écrit à la sélection — s'il existe une fiche
+      // liée, on relit son état actuel plutôt que l'instantané, sinon une modification de la
+      // fiche colocataire (ex. ajout de son email) resterait invisible tant qu'on ne re-choisit
+      // pas la même personne dans le sélecteur.
       co_tenant_id: lease.co_tenant_id || "",
-      co_tenant_name: lease.co_tenant_name || "",
-      co_tenant_email: lease.co_tenant_email || "",
+      co_tenant_name: (lease.co_tenant_id && tenantById.get(lease.co_tenant_id)?.full_name) || lease.co_tenant_name || "",
+      co_tenant_email: (lease.co_tenant_id && getTenantEmail(tenantById.get(lease.co_tenant_id))) || lease.co_tenant_email || "",
     });
     setCoTenantFieldsOpen(!!lease.co_tenant_id);
     setConfirmedCoTenantRemoval(false);
@@ -1980,6 +1984,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             </div>
             <p className="mt-1 font-semibold text-slate-900 break-words">{t?.full_name || "—"}</p>
             {t?.email ? <p className="break-words text-xs text-slate-600">{t.email}</p> : null}
+            {l.co_tenant_id ? (
+              <div className="mt-2 border-t border-slate-100 pt-2">
+                <p className="text-[0.65rem] uppercase tracking-[0.14em] text-violet-500">Co-locataire</p>
+                <p className="font-semibold text-slate-900 break-words">{l.co_tenant_name || "—"}</p>
+                {l.co_tenant_email ? <p className="break-words text-xs text-slate-600">{l.co_tenant_email}</p> : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">

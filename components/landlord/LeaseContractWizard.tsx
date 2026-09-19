@@ -299,15 +299,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   };
   const validateStep = (targetStep: number) => {
     const missing = missingRequiredFields(targetStep, kind, form);
-    // Les emails (locataire, co-locataire) ne sont pas des champs "obligatoires"
-    // légalement (cf. décret contrat-type), mais un format invalide ou un
-    // co-locataire à moitié renseigné doit bloquer l'avancée — sinon ça ne se
-    // voit qu'au moment d'envoyer la signature, bien plus tard dans le parcours.
+    // L'email locataire n'est pas un champ "obligatoire" légalement (cf. décret
+    // contrat-type), mais un format invalide doit bloquer l'avancée — sinon ça ne
+    // se voit qu'au moment d'envoyer la signature, bien plus tard dans le parcours.
+    // Le co-locataire, lui, n'est plus un champ éditable ici (il vient de sa fiche
+    // sur la location) : un nom sans email y est un état normal et attendu tant que
+    // l'email n'a pas été ajouté à sa fiche — ce n'est jamais bloquant pour générer
+    // le PDF, seulement pour l'inviter à signer (voir sendForSignature).
     const badFormat: string[] = [];
     if (targetStep === 1) {
       if (form.tenant_email && !isEmailLike(form.tenant_email)) badFormat.push("tenant_email");
-      if (!!form.co_tenant_name !== !!form.co_tenant_email) badFormat.push(form.co_tenant_name ? "co_tenant_email" : "co_tenant_name");
-      else if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) badFormat.push("co_tenant_email");
     }
     const allInvalid = [...missing, ...badFormat];
     if (!allInvalid.length) {
@@ -695,21 +696,30 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                 </p>
               </div>
             ) : null}
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+              <p className="text-xs font-semibold text-slate-700">Co-locataire</p>
+              {form.co_tenant_name ? (
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  {form.co_tenant_name}
+                  {form.co_tenant_email ? ` (${form.co_tenant_email})` : ""} — repris de la fiche colocataire de cette
+                  location. Pour le changer, ferme cette fenêtre puis modifie la location.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Aucun colocataire sur cette location. Pour en ajouter un, ferme cette fenêtre puis clique sur
+                  "Modifier" sur la location — il apparaîtra ici automatiquement.
+                </p>
+              )}
+            </div>
             <CollapsibleExtra
-              label={form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address ? "Co-locataire ou mandataire" : "Ajouter un co-locataire ou un mandataire (optionnel)"}
-              defaultOpen={!!(form.co_tenant_name || form.co_tenant_email || form.mandataire_name || form.mandataire_address)}
+              label={form.mandataire_name || form.mandataire_address ? "Mandataire" : "Ajouter un mandataire / gestionnaire (optionnel)"}
+              defaultOpen={!!(form.mandataire_name || form.mandataire_address)}
             >
               <Fields
                 form={form}
                 set={set}
                 invalid={invalidFields}
-                fieldErrors={{
-                  co_tenant_name: "Ajoute aussi son email, sinon il ne sera pas invité à signer.",
-                  co_tenant_email: !form.co_tenant_name
-                    ? "Ajoute aussi son nom, sinon il ne sera pas invité à signer."
-                    : "Format d'email invalide (ex : nom@domaine.fr).",
-                }}
-                names={[["co_tenant_name","Co-locataire (si applicable)"],["co_tenant_email","E-mail du co-locataire (pour la signature électronique)"],["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]}
+                names={[["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]}
               />
             </CollapsibleExtra>
             <CollapsibleExtra
