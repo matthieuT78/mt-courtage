@@ -927,7 +927,7 @@ export function DashboardShell(props: any) {
         return <SectionCandidatures userId={userId} onNavigate={setActive} onNavigateDeep={navigateDeep} onRefresh={refresh} />;
 
       case "documents":
-        return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;
+        return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} profile={profile} />;
 
 
 

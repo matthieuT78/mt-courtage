@@ -14,7 +14,65 @@ import { SectionTitle } from "../UiBits";
 import type { CongeKind } from "../../../pages/api/lease-contracts/generate-conge";
 import { IRL_TABLE, LATEST_IRL, irlByQuarter } from "../../../lib/irlData";
 
-type Props = { userId: string };
+type PropertyLite = { id: string; label?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null };
+type TenantLite = { id: string; full_name?: string | null; archived_at?: string | null };
+type LeaseLite = {
+  id: string;
+  property_id?: string | null;
+  tenant_id?: string | null;
+  co_tenant_id?: string | null;
+  co_tenant_name?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status?: string | null;
+};
+type ProfileLite = { full_name?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null } | null;
+
+type Props = {
+  userId: string;
+  properties?: PropertyLite[];
+  tenants?: TenantLite[];
+  leases?: LeaseLite[];
+  profile?: ProfileLite;
+};
+
+type OccupancyOption = {
+  leaseId: string;
+  label: string;
+  tenantName: string;
+  propertyAddress: string;
+  leaseStartDate: string;
+  leaseEndDate: string;
+};
+
+function buildOccupancyOptions(properties: PropertyLite[] = [], tenants: TenantLite[] = [], leases: LeaseLite[] = []): OccupancyOption[] {
+  const propertyById = new Map(properties.map((p) => [p.id, p]));
+  const tenantById = new Map(tenants.map((t) => [t.id, t]));
+
+  return leases
+    .filter((l) => l.tenant_id)
+    .map((l) => {
+      const tenant = tenantById.get(l.tenant_id!);
+      const property = l.property_id ? propertyById.get(l.property_id) : undefined;
+      const primaryName = tenant?.full_name || "Locataire";
+      const tenantName = l.co_tenant_name ? `${primaryName} et ${l.co_tenant_name}` : primaryName;
+      const propertyAddress = property
+        ? [property.address_line1, [property.postal_code, property.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+        : "";
+      const isActive = String(l.status || "").toLowerCase() === "active";
+      return {
+        leaseId: l.id,
+        tenantName,
+        propertyAddress: propertyAddress || property?.label || "",
+        leaseStartDate: l.start_date || "",
+        leaseEndDate: l.end_date || "",
+        label: `${tenantName} — ${property?.label || propertyAddress || "Bien"}${isActive ? "" : " (terminé)"}`,
+        _isActive: isActive,
+      };
+    })
+    .sort((a, b) => Number(b._isActive) - Number(a._isActive))
+    .map(({ _isActive, ...opt }) => opt);
+}
 
 type Template = {
   id: string;
@@ -1515,25 +1573,60 @@ const ATTESTATION_META: Record<AttestationKind, { title: string; category: "cour
   },
 };
 
-function AttestationForm({ kind, onBack }: { kind: AttestationKind; onBack: () => void }) {
+function AttestationForm({
+  kind,
+  onBack,
+  properties,
+  tenants,
+  leases,
+  profile,
+}: {
+  kind: AttestationKind;
+  onBack: () => void;
+  properties?: PropertyLite[];
+  tenants?: TenantLite[];
+  leases?: LeaseLite[];
+  profile?: ProfileLite;
+}) {
   const meta = ATTESTATION_META[kind];
   const inp = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
   const lbl = "block space-y-1 text-xs font-semibold text-slate-700";
 
-  const [form, setForm] = useState({
-    landlordName: "",
-    landlordAddress: "",
+  const occupancyOptions = useMemo(() => buildOccupancyOptions(properties, tenants, leases), [properties, tenants, leases]);
+
+  // Le bailleur est toujours le même pour ce compte — pré-rempli d'entrée,
+  // pas la peine de le resaisir à chaque courrier.
+  const [form, setForm] = useState(() => ({
+    landlordName: profile?.full_name || "",
+    landlordAddress: profile ? [profile.address_line1, [profile.postal_code, profile.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "",
     tenantName: "",
     propertyAddress: "",
     leaseStartDate: "",
     eventDate: "",
-    signaturePlace: "",
+    signaturePlace: profile?.city || "",
     signatureDate: new Date().toISOString().slice(0, 10),
-  });
+  }));
   const [showLetter, setShowLetter] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const applyOccupancy = (leaseId: string) => {
+    const opt = occupancyOptions.find((o) => o.leaseId === leaseId);
+    if (!opt) return;
+    setForm((f) => ({
+      ...f,
+      tenantName: opt.tenantName,
+      propertyAddress: opt.propertyAddress || f.propertyAddress,
+      leaseStartDate: opt.leaseStartDate || f.leaseStartDate,
+      eventDate:
+        kind === "declaration-entree"
+          ? opt.leaseStartDate || f.eventDate
+          : kind === "declaration-depart" || kind === "attestation-fin-bail"
+          ? opt.leaseEndDate || f.eventDate
+          : f.eventDate,
+    }));
+  };
 
   const letter = useMemo(() => {
     const today = fmtDate(form.signatureDate) || "[date]";
@@ -1591,6 +1684,26 @@ function AttestationForm({ kind, onBack }: { kind: AttestationKind; onBack: () =
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+        {occupancyOptions.length > 0 && (
+          <div>
+            <label className={lbl}>
+              Destinataire
+              <select
+                className={inp}
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) applyOccupancy(e.target.value);
+                }}
+              >
+                <option value="">— Sélectionner un locataire pour pré-remplir —</option>
+                {occupancyOptions.map((o) => (
+                  <option key={o.leaseId} value={o.leaseId}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Bailleur</p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -1685,7 +1798,7 @@ function AttestationForm({ kind, onBack }: { kind: AttestationKind; onBack: () =
 }
 
 // ── Composant principal ──────────────────────────────────────
-export function SectionModeles({ userId }: Props) {
+export function SectionModeles({ userId, properties, tenants, leases, profile }: Props) {
   const [activeTemplate, setActiveTemplateRaw] = useState<string | null>(null);
   const setActiveTemplate = (tpl: string | null) => {
     setActiveTemplateRaw(tpl);
@@ -1718,7 +1831,16 @@ export function SectionModeles({ userId }: Props) {
     activeTemplate === "declaration-depart" ||
     activeTemplate === "attestation-fin-bail"
   ) {
-    return <AttestationForm kind={activeTemplate} onBack={() => setActiveTemplate(null)} />;
+    return (
+      <AttestationForm
+        kind={activeTemplate}
+        onBack={() => setActiveTemplate(null)}
+        properties={properties}
+        tenants={tenants}
+        leases={leases}
+        profile={profile}
+      />
+    );
   }
 
   return (

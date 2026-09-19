@@ -13,18 +13,23 @@ type DocTab = "vault" | "modeles";
 import { usePermissions } from "../../PermissionProvider";
 import { supabase } from "../../../lib/supabaseClient";
 
-type PropertyLite = { id: string; label?: string | null; address?: string | null; city?: string | null; status?: string | null };
+type PropertyLite = { id: string; label?: string | null; address?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null; status?: string | null };
 type TenantLite = { id: string; full_name?: string | null; email?: string | null; status?: string | null; archived_at?: string | null };
 type LeaseLite = {
   id: string;
   property_id?: string | null;
   tenant_id?: string | null;
+  co_tenant_id?: string | null;
+  co_tenant_name?: string | null;
   rent_amount?: number | null;
   charges_amount?: number | null;
   deposit_amount?: number | null;
   start_date?: string | null;
+  end_date?: string | null;
   status?: string | null;
 };
+
+type ProfileLite = { full_name?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null } | null;
 
 type Props = {
   userId: string;
@@ -32,6 +37,7 @@ type Props = {
   properties?: PropertyLite[];
   tenants?: TenantLite[];
   leases?: LeaseLite[];
+  profile?: ProfileLite;
 };
 
 type TemplateCategory = "bail" | "garantie" | "courrier" | "gestion" | "fiscal";
@@ -434,7 +440,7 @@ function compareDocuments(a: VaultDocument, b: VaultDocument, sort: DocumentSort
   return dateCompare || titleCompare;
 }
 
-export function SectionDocumentsTemplates({ userId, properties, tenants, leases }: Props) {
+export function SectionDocumentsTemplates({ userId, properties, tenants, leases, profile }: Props) {
   const { loading, canUseLandlord } = usePermissions();
   const [tab, setTab] = useState<DocTab>("vault");
   const [folder, setFolder] = useState<FolderKey>("all");
@@ -819,7 +825,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
       </div>
 
       {/* ── Modèles tab ───────────────────────────────────────────── */}
-      {tab === "modeles" && <SectionModeles userId={userId} />}
+      {tab === "modeles" && <SectionModeles userId={userId} properties={properties} tenants={tenants} leases={leases} profile={profile} />}
 
       {/* ── Coffre tab ────────────────────────────────────────────── */}
       {tab === "vault" && <>
