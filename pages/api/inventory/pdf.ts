@@ -963,7 +963,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // y sont écrits) — se rabattre sur profiles.full_name (rempli à l'onboarding)
     // avant le libellé générique, sinon le PDF affiche littéralement "Bailleur".
     const landlordName = safeStr(landlord?.display_name) || safeStr(rProfile.data?.full_name) || "Bailleur";
-    const tenantName = safeStr(tenant?.full_name) || safeStr(report.occupant_label) || "Occupant";
+    const primaryTenantName = safeStr(tenant?.full_name) || safeStr(report.occupant_label) || "Occupant";
+    // Le colocataire est cosignataire du bail et de l'état des lieux au même
+    // titre que le locataire principal — le document doit nommer les deux.
+    const coTenantName = safeStr(lease?.co_tenant_name);
+    const tenantName = coTenantName ? `${primaryTenantName} et ${coTenantName}` : primaryTenantName;
     const propertyLabel = safeStr(property?.label) || safeStr(report.property_label) || "Logement";
     const propertyAddress =
       [
