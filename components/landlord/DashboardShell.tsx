@@ -1181,20 +1181,6 @@ export function DashboardShell(props: any) {
                 <button
                   type="button"
                   disabled={promotingCoTenant}
-                  onClick={() => {
-                    setDepartureChoiceLeaseId(null);
-                    navigateDeep("baux", { leaseId: departureChoiceLeaseId! });
-                  }}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Seulement {coTenantName} (colocataire)
-                  <span className="block text-xs font-normal text-slate-500">
-                    Le bail continue — retire le colocataire depuis "Modifier" sur ce bail.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  disabled={promotingCoTenant}
                   onClick={() => promoteCoTenantToPrimary(departureChoiceLeaseId)}
                   className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
                 >
@@ -1205,6 +1191,24 @@ export function DashboardShell(props: any) {
                   </span>
                 </button>
               </div>
+              {/* Pas un vrai "départ" au sens de ce bouton (pas d'EDL, pas de caution, le
+                  bail continue à l'identique) — un simple lien vers "Modifier", pas une
+                  action au même niveau que les deux ci-dessus. */}
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                Seulement {coTenantName} qui part, {tenantName} reste ? Ce n'est pas un départ — retire le
+                colocataire directement depuis{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDepartureChoiceLeaseId(null);
+                    navigateDeep("baux", { leaseId: departureChoiceLeaseId! });
+                  }}
+                  className="font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f47cc]"
+                >
+                  "Modifier" sur ce bail
+                </button>
+                .
+              </p>
               <button
                 type="button"
                 onClick={() => !promotingCoTenant && setDepartureChoiceLeaseId(null)}

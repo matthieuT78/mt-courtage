@@ -77,6 +77,10 @@ type ArchiveWorkflow = {
   exitDate: string;
   exitReport: InventoryExitReport | null;
   edlConfirmed: boolean;
+  // Posé uniquement quand ce départ vient du choix "les deux quittent" (bail
+  // avec colocataire) — jamais quand on archive une seule fiche à la main
+  // depuis sa propre carte, où seule cette personne doit être concernée.
+  alsoArchiveCoTenantId?: string | null;
 };
 
 type Props = {
@@ -761,6 +765,11 @@ export function SectionLocataires({
       if ((res as any)?.error) throw (res as any).error;
 
       await restrictPortalMessaging(tenantId);
+      // Le formulaire local (editForms) garde sinon l'ancienne valeur affichée —
+      // par exemple vide si ce champ n'avait jamais été rempli avant — au lieu
+      // de la raison qu'on vient réellement d'enregistrer, donnant l'impression
+      // à tort que l'archivage n'a rien fait.
+      setEditForms((m) => ({ ...m, [tenantId]: { ...(m[tenantId] || emptyForm), archived_reason: reason || "" } }));
       setOk(message);
       await safeRefresh();
     } catch (e: any) {
@@ -771,7 +780,7 @@ export function SectionLocataires({
     }
   };
 
-  const archiveTenant = async (tenantId: string) => {
+  const archiveTenant = async (tenantId: string, opts?: { alsoArchiveCoTenant?: boolean }) => {
     if (!userId) return;
 
     const activeLease = activeLeaseForTenant(tenantId);
@@ -794,12 +803,20 @@ export function SectionLocataires({
         startStep = edlReady ? 3 : 2;
       }
 
+      // La date de fin contractuelle n'est un bon point de départ que si elle
+      // est déjà passée (ou aujourd'hui) — sinon (ex. bail qui ne se termine
+      // que dans un an) elle donnerait l'impression qu'on déclare un départ
+      // dans le futur, alors qu'on traite un départ en train de se produire.
+      const today = todayISO();
+      const defaultExitDate = activeLease.end_date && activeLease.end_date <= today ? activeLease.end_date : today;
+
       setArchiveWorkflow({
         tenantId,
         leaseId: activeLease.id,
-        exitDate: activeLease.end_date || todayISO(),
+        exitDate: defaultExitDate,
         exitReport,
         edlConfirmed: false,
+        alsoArchiveCoTenantId: opts?.alsoArchiveCoTenant ? (activeLease as any).co_tenant_id || null : null,
       });
       setDepartureStep(startStep);
     } catch (e: any) {
@@ -828,7 +845,7 @@ export function SectionLocataires({
   useEffect(() => {
     if (!initialDepartureTenantId) return;
     setExpandedId(initialDepartureTenantId);
-    archiveTenant(initialDepartureTenantId);
+    archiveTenant(initialDepartureTenantId, { alsoArchiveCoTenant: true });
     onDepartureOpened?.();
     // Le tenantId sert de signal ponctuel envoyé par le cockpit ou la section Baux.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -944,12 +961,51 @@ export function SectionLocataires({
       if ((tenantRes as any)?.error) throw (tenantRes as any).error;
 
       await restrictPortalMessaging(tenantId);
+      setEditForms((m) => ({ ...m, [tenantId]: { ...(m[tenantId] || emptyForm), archived_reason: reason } }));
+
+      // "Les deux quittent" (seul chemin qui pose ce drapeau) : le colocataire
+      // part avec le locataire principal, sans confirmation séparée — il n'a
+      // pas sa propre étape EDL/caution, c'est le même départ du même bail.
+      const coTenantId = archiveWorkflow.alsoArchiveCoTenantId;
+      if (coTenantId) {
+        try {
+          await supabase.from("tenants").update({ archived_at: now, archived_reason: reason }).eq("id", coTenantId).eq("user_id", userId);
+          await restrictPortalMessaging(coTenantId);
+          setEditForms((m) => ({ ...m, [coTenantId]: { ...(m[coTenantId] || emptyForm), archived_reason: reason } }));
+        } catch (coError) {
+          console.error("[completeExitAndArchive] co-tenant archive error:", coError);
+        }
+      }
+
       setArchiveWorkflow(null);
-      setOk("Sortie clôturée : bail terminé, automatisations arrêtées, locataire archivé ✅");
+      setOk(
+        coTenantId
+          ? "Sortie clôturée : bail terminé, automatisations arrêtées, locataire et colocataire archivés ✅"
+          : "Sortie clôturée : bail terminé, automatisations arrêtées, locataire archivé ✅"
+      );
       await safeRefresh();
     } catch (e: any) {
       console.error("[completeExitAndArchive] error:", e);
       setErr(e?.message || "Impossible de clôturer le workflow de sortie.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveArchivedReason = async (tenantId: string) => {
+    if (!userId || !supabase) return;
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const reason = editForms[tenantId]?.archived_reason?.trim() || null;
+      const { error } = await supabase.from("tenants").update({ archived_reason: reason }).eq("id", tenantId).eq("user_id", userId);
+      if (error) throw error;
+      setOk("Raison d’archivage mise à jour ✅");
+      await safeRefresh();
+    } catch (e: any) {
+      console.error("[saveArchivedReason] error:", e);
+      setErr(e?.message || "Enregistrement impossible.");
     } finally {
       setLoading(false);
     }
@@ -1021,6 +1077,9 @@ export function SectionLocataires({
 
   const departureTenant = archiveWorkflow ? safeTenants.find((tenant) => tenant.id === archiveWorkflow.tenantId) || null : null;
   const departureLease = archiveWorkflow ? safeLeases.find((lease) => lease.id === archiveWorkflow.leaseId) || null : null;
+  const departureCoTenant = archiveWorkflow?.alsoArchiveCoTenantId
+    ? safeTenants.find((tenant) => tenant.id === archiveWorkflow.alsoArchiveCoTenantId) || null
+    : null;
   const departureSummary =
     archiveWorkflow && departureLease ? departureProrataSummary(departureLease, archiveWorkflow.exitDate) : null;
   const departureEdlReady = ["ready", "signed", "archived"].includes(
@@ -1497,6 +1556,15 @@ export function SectionLocataires({
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2 items-center">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => saveArchivedReason(activeTenant.id)}
+                      className="rounded-full border border-[#635bff]/30 bg-white px-5 py-2 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-60"
+                    >
+                      Enregistrer
+                    </button>
+
                     {onContactTenant ? (
                       <button
                         type="button"
@@ -1935,6 +2003,11 @@ export function SectionLocataires({
                     Départ locataire · étape {departureStep}/3
                   </p>
                   <h3 className="mt-1 text-lg font-semibold text-slate-950">Départ de {displayName(departureTenant)}</h3>
+                  {departureCoTenant ? (
+                    <p className="mt-1 text-xs font-medium text-violet-700">
+                      {displayName(departureCoTenant)} (colocataire) sera aussi archivé·e à la clôture.
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"
