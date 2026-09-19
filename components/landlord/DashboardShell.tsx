@@ -1226,10 +1226,10 @@ export function DashboardShell(props: any) {
             </button>
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            {promotionSuccess.newName} est maintenant locataire principal de ce bail. Deux choses à faire toi-même :
-            régénère et fais signer un avenant depuis "Bail" (les parties ont changé), et si le départ de{" "}
-            {promotionSuccess.oldName} est définitif, archive sa fiche depuis la section Locataires — elle n'est plus
-            rattachée à aucun bail mais reste active tant que tu ne l'archives pas toi-même.
+            {promotionSuccess.newName} est maintenant locataire principal de ce bail. La fiche de{" "}
+            {promotionSuccess.oldName} a été archivée automatiquement — restaure-la depuis Locataires si son départ
+            n'était pas définitif. Il reste une chose à faire toi-même : régénère et fais signer un avenant depuis
+            "Bail" (les parties ont changé).
           </p>
         </div>
       ) : null}

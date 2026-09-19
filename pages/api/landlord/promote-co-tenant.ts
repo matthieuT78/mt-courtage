@@ -61,12 +61,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       await supabaseAdmin
         .from("tenant_portal_access")
-        .update({ access_until: now, updated_at: now })
+        .update({ access_until: now, messaging_enabled: false, updated_at: now })
         .eq("tenant_id", lease.tenant_id)
         .eq("lease_id", leaseId)
         .in("status", ["invited", "active"]);
     } catch {
       // Non bloquant.
+    }
+
+    // Archive automatiquement l'ancien locataire — pas d'action manuelle en
+    // plus pour ce cas courant : il n'est plus rattaché à ce bail, et la
+    // restauration (section Locataires) reste disponible si son départ n'était
+    // pas définitif. Best-effort, ne bloque jamais la promotion elle-même.
+    try {
+      await supabaseAdmin
+        .from("tenants")
+        .update({ archived_at: now, archived_reason: `${newName} devient locataire principal du bail` })
+        .eq("id", lease.tenant_id)
+        .eq("user_id", userId);
+    } catch (archiveError) {
+      console.error("[promote-co-tenant] archive error:", archiveError);
     }
 
     // Email de trace immédiate — indépendant de la session du bailleur, pour
@@ -87,17 +101,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6">
       <strong>${newName}</strong> est maintenant locataire principal de ce bail, à la place de <strong>${oldName}</strong> qui a quitté le logement. Le bail continue sous le même contrat (même date de début, même historique de paiements/quittances).
     </p>
-    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">Deux choses à faire toi-même :</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6">
+      La fiche de ${oldName} a été archivée automatiquement — si son départ n'est pas définitif, tu peux la restaurer à tout moment depuis la section Locataires.
+    </p>
+    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">Une chose à faire toi-même :</p>
     <ul style="margin:0 0 20px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
       <li>Régénère le bail et fais-le signer par toutes les parties (un avenant, les parties ont changé) — depuis "Bail" sur cette location.</li>
-      <li>Si le départ de ${oldName} est définitif, archive sa fiche depuis la section Locataires.</li>
     </ul>
     <a href="https://lokt.fr/espace-bailleur?tab=baux" style="display:inline-block;border-radius:999px;background:#0f172a;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;text-decoration:none">Ouvrir la location →</a>
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
-        await sendEmailViaResend({ to: auth.email, subject, html, text: `${newName} est maintenant locataire principal de ce bail (${propertyLabel}), à la place de ${oldName}. Pense à régénérer et faire signer un avenant depuis "Bail", et à archiver la fiche de ${oldName} si son départ est définitif.` });
+        await sendEmailViaResend({ to: auth.email, subject, html, text: `${newName} est maintenant locataire principal de ce bail (${propertyLabel}), à la place de ${oldName} (fiche archivée automatiquement, restaurable depuis Locataires si besoin). Pense à régénérer et faire signer un avenant depuis "Bail".` });
       } catch (emailError) {
         console.error("[promote-co-tenant] email error:", emailError);
       }
