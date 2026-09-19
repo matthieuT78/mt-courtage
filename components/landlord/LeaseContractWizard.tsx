@@ -260,8 +260,8 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           // form_data (qui a pu être saisi avant l'existence de ce champ dédié,
           // ou être devenu obsolète). S'il n'est pas renseigné côté Location,
           // on garde ce qui était déjà dans form_data pour ne rien perdre.
-          co_tenant_name: lease.co_tenant_name || existing?.form_data?.co_tenant_name || "",
-          co_tenant_email: lease.co_tenant_email || existing?.form_data?.co_tenant_email || "",
+          co_tenant_name: lease.co_tenant_name || "",
+          co_tenant_email: lease.co_tenant_email || "",
         });
       } catch (error: any) {
         setErr(error?.message || "Chargement impossible.");
