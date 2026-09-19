@@ -106,12 +106,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const lease: any = leaseRes.data;
 
     if (lease.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
-    const canSendReceiptEmail = await userCanUseReceiptAutomation(userId);
-    if (!canSendReceiptEmail) {
-      return res.status(402).json({
-        error:
-          "L’envoi des quittances par email est réservé aux abonnements payants. La génération PDF manuelle reste disponible en gratuit.",
-      });
+
+    // L'envoi juste après une confirmation manuelle (resendOnly: false, cf.
+    // confirmPaymentForRow côté client) est ouvert à tous les plans — le
+    // bailleur a déjà fait le travail de saisie/confirmation, l'email ne
+    // coûte rien de plus. Un vrai renvoi (resendOnly: true — bouton
+    // "Renvoyer"/"Envoyer" plus tard, relance) reste réservé aux payants.
+    const isImmediateSendAfterConfirm = resendOnly === false;
+    if (!isImmediateSendAfterConfirm) {
+      const canSendReceiptEmail = await userCanUseReceiptAutomation(userId);
+      if (!canSendReceiptEmail) {
+        return res.status(402).json({
+          error:
+            "L’envoi des quittances par email est réservé aux abonnements payants. La génération PDF manuelle reste disponible en gratuit.",
+        });
+      }
     }
 
     // 3) tenant + property
