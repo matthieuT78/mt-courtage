@@ -963,7 +963,11 @@ export function SectionQuittances({
     setOk(null);
 
     const receiptsDisabled = !!row.lease?.receipts_disabled;
-    const willSendAfter = !receiptsDisabled && !!sendAfterGenerate && canUseReceiptAutomation;
+    // L'envoi juste après une confirmation manuelle ne coûte rien de plus au
+    // bailleur qu'un clic supplémentaire (il a déjà saisi les montants) — pas
+    // besoin d'un plan payant pour ça, contrairement à la relance et à la
+    // boucle 100% automatique (auto_quittance_enabled) qui restent premium.
+    const willSendAfter = !receiptsDisabled && !!sendAfterGenerate;
 
     const steps = receiptsDisabled
       ? [
@@ -1789,7 +1793,7 @@ export function SectionQuittances({
                                     rent: String(row.pay.expectedRent),
                                     charges: String(row.pay.expectedCharges),
                                     paymentMethod: row.lease.payment_method || "virement",
-                                    sendAfter: canUseReceiptAutomation,
+                                    sendAfter: true,
                                   },
                                 }));
                               }}
@@ -1992,25 +1996,14 @@ export function SectionQuittances({
                             </select>
                           </label>
                           {!(row.lease as any)?.receipts_disabled ? (
-                            <label
-                              className={cx(
-                                "flex items-start gap-2 rounded-lg border px-3 py-2 text-xs",
-                                canUseReceiptAutomation ? "border-indigo-200 bg-white text-slate-700" : "border-slate-200 bg-slate-100 text-slate-500"
-                              )}
-                              title={canUseReceiptAutomation ? undefined : "Envoi automatique réservé aux abonnements payants."}
-                            >
+                            <label className="flex items-start gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-slate-700">
                               <input
                                 type="checkbox"
                                 checked={override.sendAfter}
-                                disabled={!canUseReceiptAutomation}
                                 onChange={(e) => setConfirmOverrideByRow((p) => ({ ...p, [rowKey]: { ...p[rowKey], sendAfter: e.target.checked } }))}
                                 className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300"
                               />
-                              <span>
-                                {canUseReceiptAutomation
-                                  ? "Envoyer la quittance au locataire par email une fois générée"
-                                  : "Envoyer la quittance au locataire par email une fois générée (abonnement payant)"}
-                              </span>
+                              <span>Envoyer la quittance au locataire par email une fois générée</span>
                             </label>
                           ) : null}
                           <p className="text-xs text-slate-500">Total : {fmtEur(rentNum + chargesNum)}</p>

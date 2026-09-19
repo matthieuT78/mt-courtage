@@ -633,7 +633,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       safeStr(profile?.city) ||
       "";
 
-    const tenantName = safeStr(tenant?.full_name) || safeStr(lease?.tenant_name) || "Locataire";
+    const primaryTenantName = safeStr(tenant?.full_name) || safeStr(lease?.tenant_name) || "Locataire";
+    // Le colocataire est solidaire du paiement au même titre que le locataire
+    // principal — la quittance doit nommer les deux, pas seulement celui
+    // enregistré comme tenant_id sur le bail.
+    const coTenantName = safeStr(lease?.co_tenant_name);
+    const tenantName = coTenantName ? `${primaryTenantName} et ${coTenantName}` : primaryTenantName;
     const tenantEmail = safeStr(tenant?.email) || "";
 
     const propertyLabel = safeStr(property?.label) || safeStr(lease?.property_label) || "Bien";
