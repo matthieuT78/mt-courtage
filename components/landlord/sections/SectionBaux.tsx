@@ -1807,6 +1807,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             ? "Bail mis à jour ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."
             : justEnded
             ? "Bail marqué terminé ✅ Quittances et relances auto désactivées. Pense à archiver la fiche du locataire depuis la section Locataires si ce n'est pas déjà fait."
+            : removingCoTenantOnSave
+            ? `Bail mis à jour ✅ Le bail déjà signé reste valable tel quel, aucun avenant n'est nécessaire pour ce départ — c'est le congé donné par ${originalLeaseForSave?.co_tenant_name || "le colocataire"} au bailleur qui compte : sa solidarité cesse automatiquement 6 mois après sa date d'effet. Garde une trace écrite de ce congé (date reçue). Un avenant ne sera utile que si un nouveau colocataire le remplace.`
             : "Bail mis à jour ✅"
         );
         setExpandedId(editingId);
