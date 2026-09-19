@@ -2094,6 +2094,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, propertyLots, 
           landlord_email: landlordEmail,
           tenant_email: effectiveTenantEmail,
           tenant_name: selectedReport.occupant_label || effectiveTenantEmail,
+          ...(selectedLease?.co_tenant_name && selectedLease?.co_tenant_email
+            ? { co_tenant_name: selectedLease.co_tenant_name, co_tenant_email: selectedLease.co_tenant_email }
+            : {}),
         }),
       });
       const json = await res.json().catch(() => ({}));

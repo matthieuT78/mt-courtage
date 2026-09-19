@@ -20,7 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const tenantIds = accesses.map((access) => access.tenant_id);
     if (tenantIds.length === 0) return res.status(403).json({ error: "Accès refusé." });
 
-    const { data: leases, error: leasesError } = await supabaseAdmin.from("leases").select("id").in("tenant_id", tenantIds);
+    const { data: leases, error: leasesError } = await supabaseAdmin
+      .from("leases")
+      .select("id")
+      .or(`tenant_id.in.(${tenantIds.join(",")}),co_tenant_id.in.(${tenantIds.join(",")})`);
     if (leasesError) throw leasesError;
     const leaseIds = (leases || []).map((lease: any) => lease.id);
     if (leaseIds.length === 0) return res.status(403).json({ error: "Accès refusé." });

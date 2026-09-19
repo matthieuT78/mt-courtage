@@ -27,7 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: landlords, error: landlordsError },
     ] = await Promise.all([
       supabaseAdmin.from("tenants").select("id,full_name,first_name,last_name,email,phone").in("id", tenantIds),
-      supabaseAdmin.from("leases").select("*").in("tenant_id", tenantIds).order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("leases")
+        .select("*")
+        .or(`tenant_id.in.(${tenantIds.join(",")}),co_tenant_id.in.(${tenantIds.join(",")})`)
+        .order("created_at", { ascending: false }),
       supabaseAdmin.from("landlords").select("user_id,display_name,address,iban,bic").in("user_id", landlordIds),
     ]);
     if (tenantsError) throw tenantsError;
@@ -95,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const threads = [];
     for (const access of accesses) {
-      const lease = (leases || []).find((row: any) => row.tenant_id === access.tenant_id);
+      const lease = (leases || []).find((row: any) => row.tenant_id === access.tenant_id || row.co_tenant_id === access.tenant_id);
       threads.push(
         await getOrCreateTenantThread({
           landlordUserId: access.landlord_user_id,

@@ -64,14 +64,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { data: lease } = await supabaseAdmin
         .from("leases")
-        .select("tenant_id, user_id")
+        .select("tenant_id, co_tenant_id, user_id")
         .eq("id", doc.lease_id)
-        .in("tenant_id", tenantIds)
         .maybeSingle();
-      if (!lease) return res.status(403).json({ ok: false, error: "Accès refusé." });
+      const matchedTenantId = lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id));
+      if (!lease || !matchedTenantId) return res.status(403).json({ ok: false, error: "Accès refusé." });
 
       landlordUserId = doc.user_id;
-      tenantId = lease.tenant_id;
+      tenantId = matchedTenantId;
     } else {
       const { data: report } = await supabaseAdmin
         .from("inventory_reports")
@@ -83,14 +83,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { data: lease } = await supabaseAdmin
         .from("leases")
-        .select("tenant_id")
+        .select("tenant_id, co_tenant_id")
         .eq("id", report.lease_id)
-        .in("tenant_id", tenantIds)
         .maybeSingle();
-      if (!lease) return res.status(403).json({ ok: false, error: "Accès refusé." });
+      const matchedTenantId = lease && [lease.tenant_id, lease.co_tenant_id].find((id) => id && tenantIds.includes(id));
+      if (!lease || !matchedTenantId) return res.status(403).json({ ok: false, error: "Accès refusé." });
 
       landlordUserId = report.user_id;
-      tenantId = lease.tenant_id;
+      tenantId = matchedTenantId;
     }
 
     // Fetch tenant email

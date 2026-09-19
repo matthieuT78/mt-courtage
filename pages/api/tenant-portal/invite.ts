@@ -166,7 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("leases")
       .select("id,property_id")
       .eq("user_id", auth.userId)
-      .eq("tenant_id", tenant.id)
+      .or(`tenant_id.eq.${tenant.id},co_tenant_id.eq.${tenant.id}`)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

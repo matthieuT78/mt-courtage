@@ -132,7 +132,7 @@ export function makePdf(payload: any, opts?: { signedEntries?: SignedEntry[] }) 
     doc.moveDown(0.4);
     if (d.landlord_phone) row("Téléphone portable du bailleur", d.landlord_phone);
     row("Locataire", d.tenant_name);
-    if (d.co_tenant_name) row("Co-locataire", d.co_tenant_name);
+    if (d.co_tenant_name) row(isProfessional ? "Co-preneur" : "Co-locataire", d.co_tenant_name);
     if (d.tenant_email) row("Adresse e-mail du locataire", d.tenant_email);
     if (d.tenant_phone) row("Téléphone portable du locataire", d.tenant_phone);
     if (d.garant_name) {
@@ -317,9 +317,15 @@ export function makePdf(payload: any, opts?: { signedEntries?: SignedEntry[] }) 
     );
 
     if (d.co_tenant_name) {
+      // Le bail professionnel relève de la loi n°86-1290 et du droit commun, pas de la loi de 1989 :
+      // "colocataire" et le plafond de solidarité de l'art. 8-1 IV (loi ALUR) n'y ont pas cours — la
+      // solidarité entre preneurs professionnels repose sur sa stipulation expresse (art. 1310 C. civ.)
+      // et dure tant que le bail n'est pas modifié par avenant.
       clause(
-        "Solidarité entre co-locataires",
-        `Les co-locataires ${text(d.tenant_name)} et ${text(d.co_tenant_name)} sont solidairement tenus de l’ensemble des obligations découlant du présent bail, notamment du paiement du loyer et des charges. Le bailleur peut réclamer à l’un ou l’autre la totalité des sommes dues sans ordre de préférence.`
+        isProfessional ? "Solidarité entre co-preneurs" : "Solidarité entre co-locataires",
+        isProfessional
+          ? `Les preneurs ${text(d.tenant_name)} et ${text(d.co_tenant_name)} sont solidairement tenus de l’ensemble des obligations découlant du présent bail professionnel, notamment du paiement du loyer et des charges, cette solidarité étant expressément stipulée conformément à l’article 1310 du Code civil. Le bailleur peut réclamer à l’un ou l’autre la totalité des sommes dues sans ordre de préférence.`
+          : `Les co-locataires ${text(d.tenant_name)} et ${text(d.co_tenant_name)} sont solidairement tenus de l’ensemble des obligations découlant du présent bail, notamment du paiement du loyer et des charges. Le bailleur peut réclamer à l’un ou l’autre la totalité des sommes dues sans ordre de préférence. Conformément à l’article 8-1 IV de la loi n°89-462 du 6 juillet 1989, la solidarité du co-locataire ayant donné congé — ainsi que celle de sa caution, le cas échéant — cesse au terme d’un délai de six mois après la date d’effet de ce congé, sauf si un nouveau co-locataire est entré dans les lieux avant l’expiration de ce délai.`
       );
     }
 
@@ -389,7 +395,7 @@ export function makePdf(payload: any, opts?: { signedEntries?: SignedEntry[] }) 
 
     if (d.co_tenant_name) {
       doc.moveDown(2);
-      signatureBlock("Co-locataire", "Colocataire", d.co_tenant_name);
+      signatureBlock(isProfessional ? "Co-preneur" : "Co-locataire", "Colocataire", d.co_tenant_name);
     }
 
     doc.moveDown(2).fontSize(8).fillColor("#94a3b8").text(

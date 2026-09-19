@@ -89,6 +89,7 @@ export type Lease = {
   irl_apply_on?: string | null;
   irl_applied_at?: string | null;
   irl_previous_rent?: number | null;
+  co_tenant_id?: string | null;
   co_tenant_name?: string | null;
   co_tenant_email?: string | null;
 };
@@ -124,7 +125,7 @@ type Props = {
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (leaseId: string) => void;
   deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillLotId?: string } | null;
-  onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean }) => void;
+  onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean; openCreate?: boolean }) => void;
 };
 
 /* ======================================================
@@ -844,6 +845,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
     tracking_from: "now" as "now" | "start",
+    co_tenant_id: "",
     co_tenant_name: "",
     co_tenant_email: "",
   });
@@ -1383,6 +1385,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
     tracking_from: "now" as "now" | "start",
+    co_tenant_id: "",
     co_tenant_name: "",
     co_tenant_email: "",
   });
@@ -1417,6 +1420,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     () => includeSelected(activeTenants, safeTenants, form.tenant_id),
     [activeTenants, safeTenants, form.tenant_id]
   );
+  const selectableCoTenants = useMemo(
+    () => includeSelected(activeTenants, safeTenants, form.co_tenant_id).filter((t) => t.id !== form.tenant_id),
+    [activeTenants, safeTenants, form.co_tenant_id, form.tenant_id]
+  );
+
+  // Le locataire et le co-locataire ne peuvent pas être la même fiche — si le
+  // locataire choisi vient d'être aligné sur le co-locataire déjà sélectionné,
+  // on vide ce dernier plutôt que de laisser un bail avec la même personne aux
+  // deux rôles.
+  useEffect(() => {
+    if (form.co_tenant_id && form.co_tenant_id === form.tenant_id) {
+      setForm((s) => ({ ...s, co_tenant_id: "", co_tenant_name: "", co_tenant_email: "" }));
+    }
+  }, [form.tenant_id]);
 
   // Si le bien sélectionné délègue la gestion courante (quittances/révision IRL), le workflow
   // du bail ne peut pas rester sur Auto/Manuel — que ce soit à la création, à l'ouverture d'un
@@ -1522,10 +1539,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       tenant_receipt_email: lease.tenant_receipt_email || "",
       timezone: lease.timezone || "Europe/Paris",
       tracking_from: lease.tracking_from_date ? "now" : "start",
+      co_tenant_id: lease.co_tenant_id || "",
       co_tenant_name: lease.co_tenant_name || "",
       co_tenant_email: lease.co_tenant_email || "",
     });
-    setCoTenantFieldsOpen(!!(lease.co_tenant_name || lease.co_tenant_email));
+    setCoTenantFieldsOpen(!!lease.co_tenant_id);
     setConfirmedCoTenantRemoval(false);
   };
 
@@ -1684,11 +1702,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         }
       }
 
-      if (!!form.co_tenant_name !== !!form.co_tenant_email) {
-        throw new Error("Le co-locataire a un nom sans email (ou l’inverse) — complétez les deux champs, ou videz-les tous les deux.");
-      }
-      if (form.co_tenant_email && !isEmailLike(form.co_tenant_email)) {
-        throw new Error("L’email du co-locataire n’a pas un format valide.");
+      if (form.co_tenant_id && form.co_tenant_id === form.tenant_id) {
+        throw new Error("Le co-locataire doit être une fiche locataire différente du locataire.");
       }
 
       const startDaysAgo = form.start_date
@@ -1736,6 +1751,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         tenant_receipt_email: receiptEmail || null,
         timezone: form.timezone || "Europe/Paris",
         tracking_from_date: trackingFromDate,
+        co_tenant_id: form.co_tenant_id || null,
         co_tenant_name: form.co_tenant_name?.trim() || null,
         co_tenant_email: form.co_tenant_email?.trim() || null,
         updated_at: new Date().toISOString(),
@@ -2509,8 +2525,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     // nouvelle version ne le mentionnerait plus, comme s'il n'avait jamais
     // existé : on demande donc une confirmation explicite avant.
     const editingOriginalLease = mode === "edit" && editingId ? safeLeases.find((l) => l.id === editingId) : null;
-    const hadCoTenant = !!(editingOriginalLease?.co_tenant_name || editingOriginalLease?.co_tenant_email);
-    const removingCoTenant = hadCoTenant && !form.co_tenant_name && !form.co_tenant_email;
+    const hadCoTenant = !!editingOriginalLease?.co_tenant_id;
+    const removingCoTenant = hadCoTenant && !form.co_tenant_id;
     const coTenantHasSignedHistory = editingId ? !!contractDocByLease.get(editingId)?.hasSignedHistory : false;
     const needsCoTenantRemovalConfirm = removingCoTenant && coTenantHasSignedHistory && !confirmedCoTenantRemoval;
 
@@ -2632,7 +2648,19 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                 subtitle: t.email || undefined,
               }))}
             />
-            {activeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire actif.</p> : null}
+            {activeTenants.length === 0 ? (
+              <p className="text-[0.7rem] text-amber-700">
+                Ajoute d’abord un locataire actif, ou{" "}
+                <button
+                  type="button"
+                  onClick={() => onNavigateDeep?.("locataires", { openCreate: true })}
+                  className="font-semibold underline underline-offset-2 hover:text-amber-900"
+                >
+                  crée une fiche locataire
+                </button>
+                .
+              </p>
+            ) : null}
             {!coTenantFieldsOpen ? (
               <button
                 type="button"
@@ -2647,25 +2675,48 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
 
         {coTenantFieldsOpen ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-2">
               <label className="text-[0.7rem] text-slate-700">Co-locataire</label>
-              <input
-                type="text"
-                value={form.co_tenant_name}
-                onChange={(e) => setForm((s) => ({ ...s, co_tenant_name: e.target.value }))}
-                placeholder="Nom du co-locataire"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              <NiceSelect
+                icon={UserIcon}
+                value={form.co_tenant_id}
+                onChange={(coTenantId) => {
+                  const nextCoTenant = tenantById.get(coTenantId);
+                  setForm((s) => ({
+                    ...s,
+                    co_tenant_id: coTenantId,
+                    co_tenant_name: nextCoTenant?.full_name || "",
+                    co_tenant_email: getTenantEmail(nextCoTenant),
+                  }));
+                }}
+                options={selectableCoTenants.map((t) => ({
+                  value: t.id,
+                  label: t.full_name || "Locataire",
+                  subtitle: t.email || undefined,
+                }))}
               />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Email du co-locataire</label>
-              <input
-                type="email"
-                value={form.co_tenant_email}
-                onChange={(e) => setForm((s) => ({ ...s, co_tenant_email: e.target.value }))}
-                placeholder="Pour la signature électronique du bail"
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
+              {/* Le co-locataire est un locataire à part entière (mêmes droits : quittances,
+                  relances, signature électronique, accès à l'espace locataire) — il doit donc
+                  exister comme fiche locataire, pas comme simple texte sur le bail. */}
+              <p className="text-[0.7rem] text-amber-700">
+                {activeTenants.filter((t) => t.id !== form.tenant_id).length === 0
+                  ? "Aucune autre fiche locataire disponible — "
+                  : "La bonne personne n’apparaît pas dans la liste ? "}
+                <button
+                  type="button"
+                  onClick={() => onNavigateDeep?.("locataires", { openCreate: true })}
+                  className="font-semibold underline underline-offset-2 hover:text-amber-900"
+                >
+                  crée une fiche locataire
+                </button>
+                .
+              </p>
+              {form.co_tenant_id && !form.co_tenant_email ? (
+                <p className="text-[0.7rem] text-amber-700">
+                  Ce locataire n’a pas d’email : il apparaîtra sur le bail mais ne pourra pas signer, recevoir ses
+                  documents ou accéder à l’espace locataire tant qu’un email n’est pas ajouté à sa fiche.
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -3112,8 +3163,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
             <p>
               <strong>{editingOriginalLease?.co_tenant_name || "Ce colocataire"}</strong> a déjà signé une version de ce bail (toujours
-              consultable dans l'historique). Le retirer ici n'annule pas cette signature — si le colocataire quitte réellement le
-              logement, formalisez son départ par un avenant signé plutôt que de simplement supprimer cette information.
+              consultable dans l'historique). Le retirer ici n'annule pas cette signature.{" "}
+              {form.lease_kind === "professional" ? (
+                <>Son départ ne prend juridiquement effet que par un avenant signé par toutes les parties (sa solidarité continue sinon de courir).</>
+              ) : (
+                <>
+                  Le départ d'un colocataire se formalise par un congé de sa part au bailleur : sa solidarité (et celle de sa caution
+                  éventuelle) cesse alors automatiquement 6 mois après la date d'effet de ce congé, sauf remplacement plus rapide (art.
+                  8-1 IV, loi du 6 juillet 1989). Si un nouveau colocataire le remplace, ajoutez-le par un avenant signé.
+                </>
+              )}
             </p>
             <button
               type="button"

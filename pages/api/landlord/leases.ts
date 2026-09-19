@@ -50,15 +50,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(400).json({ error: "Bien, locataire et date de début requis." });
     }
 
-    const [{ data: property, error: propertyError }, { data: tenant, error: tenantError }] = await Promise.all([
+    if (leasePayload.co_tenant_id && leasePayload.co_tenant_id === leasePayload.tenant_id) {
+      return res.status(400).json({ error: "Le co-locataire doit être une fiche locataire différente du locataire." });
+    }
+
+    const [{ data: property, error: propertyError }, { data: tenant, error: tenantError }, { data: coTenant, error: coTenantError }] = await Promise.all([
       supabaseAdmin.from("properties").select("id,user_id,type").eq("id", leasePayload.property_id).eq("user_id", userId).maybeSingle(),
       supabaseAdmin.from("tenants").select("id,user_id").eq("id", leasePayload.tenant_id).eq("user_id", userId).maybeSingle(),
+      leasePayload.co_tenant_id
+        ? supabaseAdmin.from("tenants").select("id,user_id").eq("id", leasePayload.co_tenant_id).eq("user_id", userId).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
     if (propertyError) return res.status(500).json({ error: propertyError.message });
     if (tenantError) return res.status(500).json({ error: tenantError.message });
+    if (coTenantError) return res.status(500).json({ error: coTenantError.message });
     if (!property) return res.status(403).json({ error: "Bien introuvable ou non autorisé." });
     if (!tenant) return res.status(403).json({ error: "Locataire introuvable ou non autorisé." });
+    if (leasePayload.co_tenant_id && !coTenant) return res.status(403).json({ error: "Co-locataire introuvable ou non autorisé." });
 
     // Un immeuble à lots doit toujours préciser le lot loué — cette règle est déjà
     // appliquée côté client (SectionBaux.tsx) mais doit aussi l'être ici, seule
