@@ -285,7 +285,7 @@ export const assistantTools: AssistantTool[] = [
       let query = admin
         .from("leases")
         .select(
-          "id,status,property_id,lot_id,tenant_id,rent_amount,charges_amount,start_date,end_date,deposit_amount,deposit_paid_at,deposit_paid_amount,deposit_returned_at,deposit_returned_amount,deposit_retained_amount,deposit_retained_reason,receipts_disabled"
+          "id,status,property_id,lot_id,tenant_id,co_tenant_id,co_tenant_name,co_tenant_email,rent_amount,charges_amount,start_date,end_date,deposit_amount,deposit_paid_at,deposit_paid_amount,deposit_returned_at,deposit_returned_amount,deposit_retained_amount,deposit_retained_reason,receipts_disabled"
         )
         .eq("user_id", ctx.userId)
         .order("created_at", { ascending: false });
@@ -293,7 +293,9 @@ export const assistantTools: AssistantTool[] = [
       const { data: leases, error } = await query;
       if (error) throw new Error(error.message);
       const propertyIds = Array.from(new Set((leases || []).map((l: any) => l.property_id).filter(Boolean)));
-      const tenantIds = Array.from(new Set((leases || []).map((l: any) => l.tenant_id).filter(Boolean)));
+      const tenantIds = Array.from(
+        new Set((leases || []).flatMap((l: any) => [l.tenant_id, l.co_tenant_id]).filter(Boolean))
+      );
       const [{ data: properties }, { data: tenants }] = await Promise.all([
         propertyIds.length
           ? admin.from("properties").select("id,label").eq("user_id", ctx.userId).in("id", propertyIds)
@@ -309,6 +311,7 @@ export const assistantTools: AssistantTool[] = [
           ...l,
           property_label: propertyById.get(l.property_id) || null,
           tenant_name: tenantById.get(l.tenant_id) || null,
+          co_tenant_name: l.co_tenant_id ? tenantById.get(l.co_tenant_id) || l.co_tenant_name || null : null,
         })),
       };
     },
@@ -711,7 +714,15 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
     mutates: true,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
-      const { count } = await admin.from("leases").select("id", { count: "exact", head: true }).eq("tenant_id", args.tenant_id).eq("user_id", ctx.userId);
+      // Un colocataire est rattaché via co_tenant_id, pas tenant_id — sans ce
+      // deuxième filtre, sa fiche paraîtrait supprimable alors qu'elle est
+      // référencée par un bail (la contrainte FK bloquerait la suppression avec
+      // une erreur SQL brute au lieu de ce message clair).
+      const { count } = await admin
+        .from("leases")
+        .select("id", { count: "exact", head: true })
+        .or(`tenant_id.eq.${args.tenant_id},co_tenant_id.eq.${args.tenant_id}`)
+        .eq("user_id", ctx.userId);
       if ((count || 0) > 0) {
         throw new Error("Suppression impossible : ce locataire a un historique de bail (même terminé). Les données (quittances, comptabilité) doivent être conservées — le bail archivé suffit à le masquer du cockpit actif.");
       }

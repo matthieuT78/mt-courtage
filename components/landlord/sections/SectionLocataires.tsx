@@ -49,6 +49,7 @@ export type Lease = {
   property_id: string;
   lot_id?: string | null;
   tenant_id: string;
+  co_tenant_id?: string | null;
   start_date: string;
   end_date: string | null;
   status: string | null;
@@ -438,16 +439,21 @@ export function SectionLocataires({
     return m;
   }, [safePropertyLots]);
 
+  // Un colocataire est rattaché à la Location via co_tenant_id, pas tenant_id —
+  // sans le vérifier aussi, sa fiche paraît "sans bail" alors qu'il en a un.
+  const isTenantOnLease = (l: Lease | null | undefined, tenantId: string) =>
+    !!l && (l.tenant_id === tenantId || l.co_tenant_id === tenantId);
+
   const activeLeaseForTenant = (tenantId: string) => {
     const now = new Date();
     return (
       safeLeases.find((l) => {
-        if (!l || l.tenant_id !== tenantId) return false;
+        if (!isTenantOnLease(l, tenantId)) return false;
 
-        const startOk = l.start_date ? new Date(l.start_date) <= now : false;
-        const notEnded = !l.end_date || new Date(l.end_date) >= now;
+        const startOk = l!.start_date ? new Date(l!.start_date) <= now : false;
+        const notEnded = !l!.end_date || new Date(l!.end_date) >= now;
 
-        if ((l.status || "").toLowerCase() === "active") return true;
+        if ((l!.status || "").toLowerCase() === "active") return true;
         return startOk && notEnded;
       }) || null
     );
@@ -467,11 +473,11 @@ export function SectionLocataires({
     return lotById.get(lease.lot_id) || null;
   };
 
-  const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => l?.tenant_id === tenantId);
+  const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => isTenantOnLease(l, tenantId));
   const hasActiveLeaseForTenant = (tenantId: string) =>
-    safeLeases.some((l) => l?.tenant_id === tenantId && !["archived", "ended"].includes(String(l.status || "").toLowerCase()));
+    safeLeases.some((l) => isTenantOnLease(l, tenantId) && !["archived", "ended"].includes(String(l!.status || "").toLowerCase()));
 
-  const leasesForTenant = (tenantId: string) => safeLeases.filter((l) => l?.tenant_id === tenantId).slice(0, 12);
+  const leasesForTenant = (tenantId: string) => safeLeases.filter((l) => isTenantOnLease(l, tenantId)).slice(0, 12);
 
   const safeRefresh = async () => {
     try {

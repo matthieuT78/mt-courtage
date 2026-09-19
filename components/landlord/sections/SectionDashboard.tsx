@@ -603,7 +603,9 @@ export function SectionDashboard({
 
   const linkSuggestions = useMemo(() => {
     const activeLeasedTenantIds = new Set(
-      (leases || []).filter(l => String(l.status || "").toLowerCase() === "active").map(l => l.tenant_id)
+      (leases || [])
+        .filter(l => String(l.status || "").toLowerCase() === "active")
+        .flatMap(l => [l.tenant_id, (l as any).co_tenant_id].filter(Boolean))
     );
     const freeTenants = Array.from(tenantById.values()).filter(
       t => !(t as any).archived_at && !activeLeasedTenantIds.has(t.id)
