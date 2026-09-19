@@ -1806,6 +1806,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             renewalSchemaSkipped = true;
           }
         }
+        let coTenantArchivedOnRemoval = false;
         if (removingCoTenantOnSave && originalLeaseForSave?.co_tenant_id) {
           // Le bail continue sous le même id : sans ce plafond, l'ancien colocataire
           // (accès conservé à vie sur ce bail, voir data.ts) verrait les quittances
@@ -1821,6 +1822,33 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           } catch {
             // Non bloquant.
           }
+
+          // Archive automatiquement la fiche du colocataire retiré — pas d'action
+          // manuelle en plus pour ce cas courant, "Restaurer" (section Locataires)
+          // sert de filet en cas d'erreur. Sauf s'il est encore locataire ou
+          // colocataire sur un autre bail actif : il ne "part" pas dans ce cas.
+          const stillLinkedElsewhere = safeLeases.some(
+            (l) =>
+              l.id !== editingId &&
+              String(l.status || "").toLowerCase() === "active" &&
+              (l.tenant_id === originalLeaseForSave.co_tenant_id || (l as any).co_tenant_id === originalLeaseForSave.co_tenant_id)
+          );
+          if (!stillLinkedElsewhere) {
+            try {
+              const propertyLabel = propertyById.get(originalLeaseForSave.property_id)?.label || "ce logement";
+              await supabase
+                .from("tenants")
+                .update({
+                  archived_at: new Date().toISOString(),
+                  archived_reason: `Retiré du bail (${propertyLabel})`,
+                })
+                .eq("id", originalLeaseForSave.co_tenant_id)
+                .eq("user_id", userId);
+              coTenantArchivedOnRemoval = true;
+            } catch {
+              // Non bloquant.
+            }
+          }
         }
 
         setOk(
@@ -1829,7 +1857,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             : justEnded
             ? "Bail marqué terminé ✅ Quittances et relances auto désactivées. Pense à archiver la fiche du locataire depuis la section Locataires si ce n'est pas déjà fait."
             : removingCoTenantOnSave
-            ? `Bail mis à jour ✅ Le bail déjà signé reste valable tel quel, aucun avenant n'est nécessaire pour ce départ — c'est le congé donné par ${originalLeaseForSave?.co_tenant_name || "le colocataire"} au bailleur qui compte : sa solidarité cesse automatiquement 6 mois après sa date d'effet. Garde une trace écrite de ce congé (date reçue). Un avenant ne sera utile que si un nouveau colocataire le remplace.`
+            ? `Bail mis à jour ✅ Le bail déjà signé reste valable tel quel, aucun avenant n'est nécessaire pour ce départ — c'est le congé donné par ${originalLeaseForSave?.co_tenant_name || "le colocataire"} au bailleur qui compte : sa solidarité cesse automatiquement 6 mois après sa date d'effet. Garde une trace écrite de ce congé (date reçue). Un avenant ne sera utile que si un nouveau colocataire le remplace.${coTenantArchivedOnRemoval ? " Sa fiche a été archivée automatiquement — restaure-la depuis Locataires si besoin." : ""}`
             : "Bail mis à jour ✅"
         );
         setExpandedId(editingId);

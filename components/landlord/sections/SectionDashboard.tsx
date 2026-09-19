@@ -1987,6 +1987,19 @@ export function SectionDashboard({
         </div>
       )}
 
+      {/* ── Logements en transition (juste sous la mise en route, avant les alertes) ── */}
+      {userId && showTransitionPanel && (
+        <TransitionPanel
+          leases={leases}
+          propertyById={propertyById}
+          tenantById={tenantById}
+          userId={userId}
+          plan={plan}
+          onGo={(k, link) => { if (link) { onNavigateDeep?.(k, link as any); } else { onGo(k); } }}
+          onRefresh={onRefresh || (async () => {})}
+        />
+      )}
+
       {/* ── Alertes (déplacées juste au-dessus de la météo : c'est le cœur du cockpit) ── */}
       {priorityActionGroups.length > 0 && (
         <div className="space-y-2">
@@ -2215,19 +2228,6 @@ export function SectionDashboard({
             </button>
           ))}
         </div>
-      )}
-
-      {/* ── Logements en transition ────────────────────────────────────────── */}
-      {userId && showTransitionPanel && (
-        <TransitionPanel
-          leases={leases}
-          propertyById={propertyById}
-          tenantById={tenantById}
-          userId={userId}
-          plan={plan}
-          onGo={(k, link) => { if (link) { onNavigateDeep?.(k, link as any); } else { onGo(k); } }}
-          onRefresh={onRefresh || (async () => {})}
-        />
       )}
 
       {/* ═══════════════════════════════════════════════════
