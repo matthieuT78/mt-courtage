@@ -266,6 +266,8 @@ export function DashboardShell(props: any) {
   const alerts = props?.alerts;
   const activeLeases = Array.isArray(props?.activeLeases) ? props.activeLeases : [];
   const leaseIdsWithContract = props?.leaseIdsWithContract instanceof Set ? props.leaseIdsWithContract : new Set();
+  const leaseContractGeneratedAtByLease =
+    props?.leaseContractGeneratedAtByLease instanceof Map ? props.leaseContractGeneratedAtByLease : new Map();
 
   const healthScore = Number(props?.healthScore || 0);
   const overLimit = !!props?.overLimit;
@@ -505,34 +507,20 @@ export function DashboardShell(props: any) {
     setPromotingCoTenant(true);
     setDepartureChoiceError(null);
     try {
-      const oldName = tenantById.get(lease.tenant_id)?.full_name || (lease as any).tenant_name || "L'ancien locataire";
-      const newName = tenantById.get(lease.co_tenant_id)?.full_name || (lease as any).co_tenant_name || "Le colocataire";
-      const { error } = await supabase
-        .from("leases")
-        .update({
-          tenant_id: lease.co_tenant_id,
-          co_tenant_id: null,
-          co_tenant_name: null,
-          co_tenant_email: null,
-          tenant_receipt_email: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", leaseId)
-        .eq("user_id", userId);
-      if (error) throw error;
-      // Le bail continue sous le même id : sans ce plafond, l'ancien locataire
-      // (accès conservé à vie sur ce bail) verrait les quittances et documents
-      // générés après son départ — y compris pour un éventuel futur colocataire.
-      try {
-        await supabase
-          .from("tenant_portal_access")
-          .update({ access_until: new Date().toISOString(), updated_at: new Date().toISOString() })
-          .eq("tenant_id", lease.tenant_id)
-          .eq("lease_id", leaseId)
-          .in("status", ["invited", "active"]);
-      } catch {
-        // Non bloquant.
-      }
+      // Traité côté serveur (pas un simple .update() client) pour pouvoir aussi
+      // envoyer l'email de trace immédiate avec le client admin, sans exposer la
+      // clé Resend au navigateur — voir pages/api/landlord/promote-co-tenant.ts.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Session expirée. Reconnecte-toi.");
+      const res = await fetch("/api/landlord/promote-co-tenant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, leaseId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Promotion impossible.");
+
       await refresh?.();
       setDepartureChoiceLeaseId(null);
       // Ne passe pas par departureTenantId/"locataires" : ce déclencheur suppose un
@@ -540,7 +528,7 @@ export function DashboardShell(props: any) {
       // bail actif après la promotion, il archiverait sa fiche instantanément et
       // sans explication — correct pour un départ classique, surprenant ici.
       navigateDeep("baux", { leaseId });
-      setPromotionSuccess({ oldName, newName });
+      setPromotionSuccess({ oldName: json.oldName, newName: json.newName });
     } catch (e: any) {
       setDepartureChoiceError(e?.message || "Impossible de mettre à jour le bail.");
     } finally {
@@ -833,6 +821,7 @@ export function DashboardShell(props: any) {
             payments={payments}
             receipts={receipts}
             leaseIdsWithContract={leaseIdsWithContract}
+            leaseContractGeneratedAtByLease={leaseContractGeneratedAtByLease}
             propertyById={propertyById}
             tenantById={tenantById}
             profile={profile}

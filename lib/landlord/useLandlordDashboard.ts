@@ -91,6 +91,7 @@ export function useLandlordDashboard() {
   const [payments, setPayments] = useState<RentPayment[]>([]);
   const [receipts, setReceipts] = useState<RentReceipt[]>([]);
   const [leaseIdsWithContract, setLeaseIdsWithContract] = useState<Set<string>>(new Set());
+  const [leaseContractGeneratedAtByLease, setLeaseContractGeneratedAtByLease] = useState<Map<string, string>>(new Map());
   const [receiptSnoozeKeys, setReceiptSnoozeKeys] = useState<Set<string>>(new Set());
 
   // --- Auth (client side)
@@ -237,6 +238,7 @@ export function useLandlordDashboard() {
         setPayments([]);
         setReceipts([]);
         setLeaseIdsWithContract(new Set());
+        setLeaseContractGeneratedAtByLease(new Map());
         return;
       }
 
@@ -259,7 +261,7 @@ export function useLandlordDashboard() {
           .limit(200),
         supabase
           .from("lease_contract_documents")
-          .select("lease_id")
+          .select("lease_id,generated_at")
           .in("lease_id", leaseIds),
       ]);
 
@@ -270,6 +272,15 @@ export function useLandlordDashboard() {
       setPayments(((payData as any) ?? []) as RentPayment[]);
       setReceipts(((rData as any) ?? []) as RentReceipt[]);
       setLeaseIdsWithContract(new Set(((cData as any) ?? []).map((row: any) => row.lease_id)));
+      // Le plus récent generated_at par bail — sert à détecter un bail encore
+      // signé avec les anciennes parties après une promotion de colocataire
+      // (voir co_tenant_promoted_at sur leases).
+      const latestGeneratedAt = new Map<string, string>();
+      for (const row of (cData as any) ?? []) {
+        const prev = latestGeneratedAt.get(row.lease_id);
+        if (row.generated_at && (!prev || row.generated_at > prev)) latestGeneratedAt.set(row.lease_id, row.generated_at);
+      }
+      setLeaseContractGeneratedAtByLease(latestGeneratedAt);
     } catch (e: any) {
       setError(
         e?.message ||
@@ -713,6 +724,7 @@ export function useLandlordDashboard() {
     payments,
     receipts,
     leaseIdsWithContract,
+    leaseContractGeneratedAtByLease,
 
     propertyById,
     tenantById,

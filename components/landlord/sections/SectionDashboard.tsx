@@ -178,6 +178,7 @@ export function SectionDashboard({
   payments,
   receipts,
   leaseIdsWithContract,
+  leaseContractGeneratedAtByLease,
   propertyById,
   tenantById,
   properties,
@@ -209,6 +210,7 @@ export function SectionDashboard({
   payments: RentPayment[];
   receipts: RentReceipt[];
   leaseIdsWithContract?: Set<string>;
+  leaseContractGeneratedAtByLease?: Map<string, string>;
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
   properties: Property[];
@@ -1121,6 +1123,31 @@ export function SectionDashboard({
       });
     }
 
+    // Après une promotion de colocataire, le bail signé garde les anciennes
+    // parties tant qu'il n'est pas régénéré — se résout tout seul dès que le
+    // document est régénéré (generated_at devient postérieur à la promotion),
+    // pas besoin de recalculer/effacer un drapeau à la main.
+    const leasesNeedingAvenant = activeLeases.filter((lease) => {
+      const promotedAt = (lease as any).co_tenant_promoted_at;
+      if (!promotedAt) return false;
+      const generatedAt = leaseContractGeneratedAtByLease?.get(lease.id);
+      return !generatedAt || generatedAt < promotedAt;
+    });
+    for (const lease of leasesNeedingAvenant) {
+      const tenant = tenantById.get(lease.tenant_id);
+      const propertyLabel = leasePropertyLabel(lease);
+      const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
+      actions.push({
+        id: `avenant-pending-${lease.id}`,
+        tone: "amber",
+        title: "Avenant à faire signer",
+        desc: `${propertyLabel} · ${tenantName} : le bail signé mentionne encore l'ancien locataire suite à une promotion de colocataire — régénère-le et fais-le signer.`,
+        onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id, openContract: true }),
+        cta: "Ouvrir le bail",
+        leaseId: lease.id,
+      });
+    }
+
     if (lateCount > 0) {
       const lateCards = leaseCards.filter((card) => card.paymentStatus === "En retard");
       const lateDetails = lateCards
@@ -1357,6 +1384,7 @@ export function SectionDashboard({
     lateCount,
     leaseCards,
     leaseIdsWithContract,
+    leaseContractGeneratedAtByLease,
     loanRenegotiationOpportunities,
     monthlyExpected,
     onNavigateDeep,

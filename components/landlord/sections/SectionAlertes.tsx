@@ -130,6 +130,14 @@ const ALERTS: AlertConfig[] = [
     group: "Données manquantes",
     level: "À compléter",
   },
+  {
+    key: "avenant_pending",
+    title: "Avenant à faire signer",
+    desc: "Après une promotion de colocataire en locataire principal, le bail signé mentionne encore l'ancien locataire tant qu'il n'est pas régénéré et signé à nouveau.",
+    schedule: "Chaque semaine jusqu'à correction",
+    group: "Baux et documents",
+    level: "À compléter",
+  },
 ];
 
 const GROUP_META: Record<AlertConfig["group"], { icon: ReactNode; desc: string }> = {

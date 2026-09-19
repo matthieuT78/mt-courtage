@@ -158,6 +158,7 @@ const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, DelegatedSer
   // plutôt qu'une catégorie de délégation séparée.
   deposit_not_collected:   "bail_edl",
   deposit_return_overdue:  "bail_edl",
+  avenant_pending:         "bail_edl",
 };
 
 function isServiceDelegated(propertyId: string | undefined, preferenceKey: LandlordAlertPreferenceKey, propertiesById: Map<string, any>): boolean {
@@ -200,6 +201,10 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
   co_tenant_email_missing: {
     why: "Le co-locataire a les mêmes droits que le locataire (quittances, relances, signature électronique, accès à l'espace locataire) mais sans email, il ne reçoit rien de tout ça et ne peut pas être invité à signer le bail.",
     how: "Ajoutez l'adresse email du co-locataire depuis sa fiche locataire.",
+  },
+  avenant_pending: {
+    why: "Après une promotion de colocataire, le bail signé mentionne encore l'ancien locataire — le document ne reflète plus qui occupe réellement le logement.",
+    how: "Régénère le bail depuis \"Bail\" sur cette location et fais-le signer par toutes les parties.",
   },
   entry_inventory_missing: {
     why: "Sans état des lieux d'entrée, impossible de prouver l'état du logement à l'arrivée du locataire — en cas de litige au départ, vous n'avez aucune référence pour justifier une retenue sur le dépôt de garantie.",
@@ -374,6 +379,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: receipts, error: receiptsError },
       { data: reports, error: reportsError },
       { data: preferences, error: preferencesError },
+      { data: contractDocs, error: contractDocsError },
     ] = await Promise.all([
       supabaseAdmin.from("leases").select("*"),
       supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status,delegated_services"),
@@ -382,6 +388,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       supabaseAdmin.from("rent_receipts").select("id,lease_id,period_start,period_end,pdf_url,sent_at,status"),
       supabaseAdmin.from("inventory_reports").select("id,user_id,lease_id,report_type,status,performed_at"),
       supabaseAdmin.from("landlord_alert_preferences").select("*"),
+      supabaseAdmin.from("lease_contract_documents").select("lease_id,generated_at"),
     ]);
 
     if (leasesError) throw leasesError;
@@ -391,10 +398,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (receiptsError) throw receiptsError;
     if (reportsError) throw reportsError;
     if (preferencesError) throw preferencesError;
+    if (contractDocsError) throw contractDocsError;
 
     const leasesList = (leases || []) as LeaseRow[];
     const propertiesById = new Map((properties || []).map((p: any) => [p.id, p]));
     const tenantsById = new Map((tenants || []).map((t: any) => [t.id, t]));
+    // Le plus récent generated_at par bail — voir avenant_pending plus bas.
+    const latestContractGeneratedAtByLease = new Map<string, string>();
+    for (const doc of (contractDocs || []) as any[]) {
+      const prev = latestContractGeneratedAtByLease.get(doc.lease_id);
+      if (doc.generated_at && (!prev || doc.generated_at > prev)) latestContractGeneratedAtByLease.set(doc.lease_id, doc.generated_at);
+    }
     const reportsByLease = new Map<string, any[]>();
     const preferencesByUserId = new Map<string, LandlordAlertPreferences>(
       (preferences || []).map((preference: any) => [preference.user_id, normalizeLandlordAlertPreferences(preference)])
@@ -553,6 +567,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               href: "/espace-bailleur",
               propertyId: lease.property_id,
             });
+          }
+
+          if (lease.co_tenant_promoted_at) {
+            const generatedAt = latestContractGeneratedAtByLease.get(lease.id);
+            if (!generatedAt || generatedAt < lease.co_tenant_promoted_at) {
+              alerts.push({
+                key: weeklyScheduleKey(`avenant-pending:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
+                preferenceKey: "avenant_pending",
+                tone: "amber",
+                title: `Avenant à faire signer - ${labels.property}`,
+                detail: `Le bail signé mentionne encore l'ancien locataire suite à une promotion de colocataire — régénère-le et fais-le signer par ${labels.tenant} et le bailleur.`,
+                href: "/espace-bailleur",
+                propertyId: lease.property_id,
+              });
+            }
           }
 
           if (!lease.reminder_email) {

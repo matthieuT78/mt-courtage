@@ -1393,9 +1393,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   // global suffisant pour piloter le dépli du bloc co-locataire, remis à
   // zéro à chaque ouverture (openCreate/openEdit/resetForm).
   const [coTenantFieldsOpen, setCoTenantFieldsOpen] = useState(false);
-  // Confirmation explicite requise avant de retirer un colocataire qui a déjà
-  // signé une version du bail — voir needsCoTenantRemovalConfirm plus bas.
-  const [confirmedCoTenantRemoval, setConfirmedCoTenantRemoval] = useState(false);
+  // Confirmation localisée juste à côté du champ colocataire (pas un bandeau
+  // perdu en bas d'un long formulaire) : "Retirer" ouvre ce dialogue, qui vide
+  // le champ et enregistre le bail directement au clic sur "Confirmer".
+  const [confirmingCoTenantRemoval, setConfirmingCoTenantRemoval] = useState(false);
+  // setForm() est asynchrone : on ne peut pas enchaîner saveLease() juste
+  // après avoir vidé le colocataire dans le même clic, il lirait encore
+  // l'ancienne valeur. Ce drapeau déclenche l'enregistrement via un effet,
+  // une fois le nouvel état du formulaire réellement appliqué.
+  const [pendingCoTenantRemovalSave, setPendingCoTenantRemovalSave] = useState(false);
 
   const selectableProps = useMemo(
     () => includeSelected(activeProps, safeProps, form.property_id),
@@ -1435,6 +1441,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     }
   }, [form.tenant_id]);
 
+  // Se déclenche juste après que le retrait du colocataire a été confirmé —
+  // à ce stade form.co_tenant_id est déjà vide (l'effet ne court qu'une fois
+  // le nouvel état réellement appliqué), donc saveLease() enregistre la bonne
+  // valeur au lieu de l'ancienne.
+  useEffect(() => {
+    if (!pendingCoTenantRemovalSave) return;
+    setPendingCoTenantRemovalSave(false);
+    saveLease();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCoTenantRemovalSave]);
+
   // Si le bien sélectionné délègue la gestion courante (quittances/révision IRL), le workflow
   // du bail ne peut pas rester sur Auto/Manuel — que ce soit à la création, à l'ouverture d'un
   // bail existant créé avant la délégation, ou après un changement de bien dans le formulaire.
@@ -1463,7 +1480,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const resetForm = () => {
     setForm(defaultFormValues());
     setCoTenantFieldsOpen(false);
-    setConfirmedCoTenantRemoval(false);
+    setConfirmingCoTenantRemoval(false);
   };
 
   const openCreate = () => {
@@ -1497,7 +1514,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true } : {}),
     });
     setCoTenantFieldsOpen(false);
-    setConfirmedCoTenantRemoval(false);
+    setConfirmingCoTenantRemoval(false);
     // Si le locataire vient d'être créé et n'est pas encore dans la liste, on rafraîchit
     if (prefillTenantId && !tenants?.some((t) => t.id === prefillTenantId)) {
       onRefresh();
@@ -1548,7 +1565,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
       co_tenant_email: (lease.co_tenant_id && getTenantEmail(tenantById.get(lease.co_tenant_id))) || lease.co_tenant_email || "",
     });
     setCoTenantFieldsOpen(!!lease.co_tenant_id);
-    setConfirmedCoTenantRemoval(false);
+    setConfirmingCoTenantRemoval(false);
   };
 
   const cancelEdit = () => {
@@ -2553,14 +2570,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const renderLeaseForm = () => {
     // Retirer un colocataire qui a déjà signé une version du bail (actuelle
     // ou archivée) n'efface rien légalement — cette version reste valable et
-    // consultable. Si on régénère ensuite le bail (ex: corriger le loyer), la
-    // nouvelle version ne le mentionnerait plus, comme s'il n'avait jamais
-    // existé : on demande donc une confirmation explicite avant.
-    const editingOriginalLease = mode === "edit" && editingId ? safeLeases.find((l) => l.id === editingId) : null;
-    const hadCoTenant = !!editingOriginalLease?.co_tenant_id;
-    const removingCoTenant = hadCoTenant && !form.co_tenant_id;
+    // consultable, le retrait ici ne fait qu'arrêter la Location de le
+    // considérer comme partie active (quittances, relances, accès portail).
     const coTenantHasSignedHistory = editingId ? !!contractDocByLease.get(editingId)?.hasSignedHistory : false;
-    const needsCoTenantRemovalConfirm = removingCoTenant && coTenantHasSignedHistory && !confirmedCoTenantRemoval;
 
     const isGestionDelegated = (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante");
     const selectedTenant = tenantById.get(form.tenant_id) || null;
@@ -2709,24 +2721,38 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1 sm:col-span-2">
               <label className="text-[0.7rem] text-slate-700">Co-locataire</label>
-              <NiceSelect
-                icon={UserIcon}
-                value={form.co_tenant_id}
-                onChange={(coTenantId) => {
-                  const nextCoTenant = tenantById.get(coTenantId);
-                  setForm((s) => ({
-                    ...s,
-                    co_tenant_id: coTenantId,
-                    co_tenant_name: nextCoTenant?.full_name || "",
-                    co_tenant_email: getTenantEmail(nextCoTenant),
-                  }));
-                }}
-                options={selectableCoTenants.map((t) => ({
-                  value: t.id,
-                  label: t.full_name || "Locataire",
-                  subtitle: t.email || undefined,
-                }))}
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <NiceSelect
+                    icon={UserIcon}
+                    value={form.co_tenant_id}
+                    allowClear={false}
+                    onChange={(coTenantId) => {
+                      const nextCoTenant = tenantById.get(coTenantId);
+                      setForm((s) => ({
+                        ...s,
+                        co_tenant_id: coTenantId,
+                        co_tenant_name: nextCoTenant?.full_name || "",
+                        co_tenant_email: getTenantEmail(nextCoTenant),
+                      }));
+                    }}
+                    options={selectableCoTenants.map((t) => ({
+                      value: t.id,
+                      label: t.full_name || "Locataire",
+                      subtitle: t.email || undefined,
+                    }))}
+                  />
+                </div>
+                {form.co_tenant_id ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingCoTenantRemoval(true)}
+                    className="shrink-0 rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    Retirer
+                  </button>
+                ) : null}
+              </div>
               {/* Le co-locataire est un locataire à part entière (mêmes droits : quittances,
                   relances, signature électronique, accès à l'espace locataire) — il doit donc
                   exister comme fiche locataire, pas comme simple texte sur le bail. */}
@@ -2748,6 +2774,51 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                   Ce locataire n’a pas d’email : il apparaîtra sur le bail mais ne pourra pas signer, recevoir ses
                   documents ou accéder à l’espace locataire tant qu’un email n’est pas ajouté à sa fiche.
                 </p>
+              ) : null}
+              {confirmingCoTenantRemoval ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                  <p>
+                    Retirer <strong>{form.co_tenant_name || "ce colocataire"}</strong> de cette location ?{" "}
+                    {coTenantHasSignedHistory ? (
+                      <>
+                        Il a déjà signé une version de ce bail (toujours consultable dans l'historique) — le retirer ici n'annule pas
+                        cette signature.{" "}
+                      </>
+                    ) : null}
+                    {form.lease_kind === "professional" ? (
+                      <>Son départ ne prend juridiquement effet que par un avenant signé par toutes les parties (sa solidarité continue sinon de courir).</>
+                    ) : (
+                      <>
+                        Le départ d'un colocataire se formalise par un congé de sa part au bailleur : sa solidarité (et celle de sa
+                        caution éventuelle) cesse alors automatiquement 6 mois après la date d'effet de ce congé, sauf remplacement plus
+                        rapide (art. 8-1 IV, loi du 6 juillet 1989). Si un nouveau colocataire le remplace, ajoutez-le par un avenant
+                        signé.
+                      </>
+                    )}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setForm((s) => ({ ...s, co_tenant_id: "", co_tenant_name: "", co_tenant_email: "" }));
+                        setConfirmingCoTenantRemoval(false);
+                        setPendingCoTenantRemovalSave(true);
+                      }}
+                      className="rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-950 disabled:opacity-60"
+                    >
+                      {loading ? "Enregistrement…" : "Confirmer et enregistrer"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setConfirmingCoTenantRemoval(false)}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
               ) : null}
             </div>
           </div>
@@ -3191,31 +3262,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           </div>
         </details>
 
-        {needsCoTenantRemovalConfirm ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-            <p>
-              <strong>{editingOriginalLease?.co_tenant_name || "Ce colocataire"}</strong> a déjà signé une version de ce bail (toujours
-              consultable dans l'historique). Le retirer ici n'annule pas cette signature.{" "}
-              {form.lease_kind === "professional" ? (
-                <>Son départ ne prend juridiquement effet que par un avenant signé par toutes les parties (sa solidarité continue sinon de courir).</>
-              ) : (
-                <>
-                  Le départ d'un colocataire se formalise par un congé de sa part au bailleur : sa solidarité (et celle de sa caution
-                  éventuelle) cesse alors automatiquement 6 mois après la date d'effet de ce congé, sauf remplacement plus rapide (art.
-                  8-1 IV, loi du 6 juillet 1989). Si un nouveau colocataire le remplace, ajoutez-le par un avenant signé.
-                </>
-              )}
-            </p>
-            <button
-              type="button"
-              onClick={() => setConfirmedCoTenantRemoval(true)}
-              className="mt-2 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-950"
-            >
-              Je confirme vouloir retirer le colocataire
-            </button>
-          </div>
-        ) : null}
-
         {/* Sur mobile, la nav du bas est fixed et z-50 : un simple "bottom-3" plaçait
             ce bandeau (donc le bouton "Créer") littéralement dessous, invisible et
             inatteignable. On lui laisse la même marge que le panneau "Plus" du shell. */}
@@ -3262,7 +3308,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               <ActionButton
                 icon={CheckCircleIcon}
                 tone="success"
-                disabled={loading || needsCoTenantRemovalConfirm}
+                disabled={loading}
                 onClick={(e) => {
                   stop(e);
                   saveLease();

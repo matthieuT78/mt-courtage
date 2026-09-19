@@ -770,6 +770,10 @@ export function SectionLocataires({
       // de la raison qu'on vient réellement d'enregistrer, donnant l'impression
       // à tort que l'archivage n'a rien fait.
       setEditForms((m) => ({ ...m, [tenantId]: { ...(m[tenantId] || emptyForm), archived_reason: reason || "" } }));
+      // Même logique que pour saveTenant() à la création : referme plutôt que de
+      // rouvrir la fiche fraîchement archivée — elle apparaît comme une tuile
+      // "Archivé" dans la liste, pas de fenêtre à refermer soi-même en plus.
+      setExpandedId(null);
       setOk(message);
       await safeRefresh();
     } catch (e: any) {
@@ -978,6 +982,11 @@ export function SectionLocataires({
       }
 
       setArchiveWorkflow(null);
+      // Sans ça, la fiche du locataire (ouverte par le "Départ" qui a lancé ce
+      // workflow) reste affichée derrière une fois celui-ci refermé — et
+      // réapparaît dans son état archivé, comme un écran parasite non désiré
+      // à la fin d'un départ qui vient de se terminer avec succès.
+      setExpandedId(null);
       setOk(
         coTenantId
           ? "Sortie clôturée : bail terminé, automatisations arrêtées, locataire et colocataire archivés ✅"
