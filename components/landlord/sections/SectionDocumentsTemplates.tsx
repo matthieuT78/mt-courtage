@@ -803,14 +803,14 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               type="button"
               onClick={() => setTab(key)}
               className={cx(
-                "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200",
+                "relative flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 sm:px-4",
                 active
                   ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60"
                   : "text-slate-500 hover:text-slate-700"
               )}
             >
               <Icon className={cx("h-4 w-4 transition-colors shrink-0", active ? "text-indigo-500" : "text-slate-400")} aria-hidden="true" />
-              <span className="truncate">{label}</span>
+              <span className="min-w-0 truncate">{label}</span>
               {count != null && count > 0 && (
                 <span className={cx(
                   "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold shrink-0",
