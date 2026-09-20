@@ -45,12 +45,21 @@ type OccupancyOption = {
   leaseEndDate: string;
 };
 
-function buildOccupancyOptions(properties: PropertyLite[] = [], tenants: TenantLite[] = [], leases: LeaseLite[] = []): OccupancyOption[] {
+function buildOccupancyOptions(properties: PropertyLite[] = [], tenants: TenantLite[] = [], leases: LeaseLite[] = [], kind: AttestationKind): OccupancyOption[] {
   const propertyById = new Map(properties.map((p) => [p.id, p]));
   const tenantById = new Map(tenants.map((t) => [t.id, t]));
 
+  // "Demande d'assurance" et "déclaration d'entrée" ne concernent qu'un
+  // occupant actuel (present dans le texte : "occupe ce logement depuis…").
+  // "Déclaration de départ" et "attestation de fin de bail" concernent au
+  // contraire le plus souvent un locataire déjà parti — les baux terminés
+  // (et donc les locataires archivés) doivent y rester sélectionnables,
+  // c'est même leur cas d'usage principal.
+  const onlyActive = kind === "demande-assurance" || kind === "declaration-entree";
+
   return leases
     .filter((l) => l.tenant_id)
+    .filter((l) => !onlyActive || String(l.status || "").toLowerCase() === "active")
     .map((l) => {
       const tenant = tenantById.get(l.tenant_id!);
       const property = l.property_id ? propertyById.get(l.property_id) : undefined;
@@ -70,7 +79,9 @@ function buildOccupancyOptions(properties: PropertyLite[] = [], tenants: TenantL
         _isActive: isActive,
       };
     })
-    .sort((a, b) => Number(b._isActive) - Number(a._isActive))
+    // Locataires actifs d'abord, sauf pour départ/fin de bail où c'est
+    // justement un locataire déjà parti qu'on cherche en priorité.
+    .sort((a, b) => (onlyActive ? Number(b._isActive) - Number(a._isActive) : Number(a._isActive) - Number(b._isActive)))
     .map(({ _isActive, ...opt }) => opt);
 }
 
@@ -1592,7 +1603,7 @@ function AttestationForm({
   const inp = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
   const lbl = "block space-y-1 text-xs font-semibold text-slate-700";
 
-  const occupancyOptions = useMemo(() => buildOccupancyOptions(properties, tenants, leases), [properties, tenants, leases]);
+  const occupancyOptions = useMemo(() => buildOccupancyOptions(properties, tenants, leases, kind), [properties, tenants, leases, kind]);
 
   // Le bailleur est toujours le même pour ce compte — pré-rempli d'entrée,
   // pas la peine de le resaisir à chaque courrier.
