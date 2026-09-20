@@ -96,7 +96,14 @@ type Props = {
   onDepartureOpened?: () => void;
   onOpenExitInventory?: () => void;
   deepLink?: { key: number; openCreate?: boolean } | null;
-  onNavigateDeep?: (section: string, link?: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string }) => void;
+  onNavigateDeep?: (section: string, link?: { leaseId?: string; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string }) => void;
+  // Un colocataire ne peut jamais lancer le workflow de départ complet depuis
+  // sa propre fiche (voir plus bas) — quand c'est le locataire principal qui
+  // part et qu'un colocataire existe, on doit proposer le même choix à 2 cas
+  // (les deux partent / colocataire promu) que le bouton "Départ" du cockpit,
+  // pas une clôture de bail silencieuse. Ce callback réutilise ce mécanisme
+  // déjà construit dans DashboardShell plutôt que de le dupliquer ici.
+  onPrepareDeparture?: (leaseId: string) => void;
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
@@ -258,6 +265,7 @@ export function SectionLocataires({
   onOpenExitInventory,
   deepLink,
   onNavigateDeep,
+  onPrepareDeparture,
 }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -1865,16 +1873,43 @@ export function SectionLocataires({
                           Annuler
                         </button>
 
-                        {archiveWorkflow?.tenantId !== t.id ? (
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => archiveTenant(t.id)}
-                            className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
-                          >
-                            {activeLease ? "Gérer le départ" : "Archiver"}
-                          </button>
-                        ) : null}
+                        {archiveWorkflow?.tenantId !== t.id ? (() => {
+                          // Le workflow de départ complet (EDL, caution, clôture du bail)
+                          // n'a de sens que pour le locataire principal d'un bail sans
+                          // colocataire — sinon il termine le bail entier depuis la fiche
+                          // d'une seule personne, sans jamais gérer l'autre partie :
+                          // - colocataire : on le retire du bail (pas de clôture) via Baux,
+                          //   même flux que le bouton "Retirer" là-bas.
+                          // - principal avec colocataire présent : on propose le même choix
+                          //   à 2 cas (les deux partent / colocataire promu) que le bouton
+                          //   "Départ" du cockpit, au lieu de clôturer sans lui demander.
+                          const isCoTenantHere = !!activeLease && activeLease.co_tenant_id === t.id;
+                          const hasCoTenantSibling = !!activeLease && !!activeLease.co_tenant_id && activeLease.tenant_id === t.id;
+                          const label = isCoTenantHere ? "Retirer du bail" : activeLease ? "Gérer le départ" : "Archiver";
+                          const handleClick = () => {
+                            if (isCoTenantHere && activeLease) {
+                              if (onNavigateDeep) onNavigateDeep("baux", { leaseId: activeLease.id });
+                              else archiveTenant(t.id);
+                              return;
+                            }
+                            if (hasCoTenantSibling && activeLease) {
+                              if (onPrepareDeparture) onPrepareDeparture(activeLease.id);
+                              else archiveTenant(t.id);
+                              return;
+                            }
+                            archiveTenant(t.id);
+                          };
+                          return (
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={handleClick}
+                              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                            >
+                              {label}
+                            </button>
+                          );
+                        })() : null}
 
                         {!hasLease ? (
                           confirmDeleteTenantId === t.id ? (

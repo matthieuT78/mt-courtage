@@ -849,6 +849,7 @@ export function DashboardShell(props: any) {
             onDepartureOpened={() => setDepartureTenantId(null)}
             onOpenExitInventory={() => onChangeTab("etat_des_lieux")}
             onNavigateDeep={navigateDeep}
+            onPrepareDeparture={handlePrepareDeparture}
             onContactTenant={(tenantId) => {
               setMessagingTenantId(tenantId);
               onChangeTab("messagerie");
