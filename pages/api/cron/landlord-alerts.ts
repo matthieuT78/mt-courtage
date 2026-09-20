@@ -251,12 +251,12 @@ function renderAlertCard(alert: AlertItem) {
       </p>`
     : "";
 
-  // L'état des lieux d'entrée reste géré par le bailleur pour ce bail précis : si l'agence
-  // s'en charge, c'est la délégation du bien (Logements > Services délégués > "Bail & états
-  // des lieux") qui supprime cette alerte via isServiceDelegated ci-dessous — pas un réglage
-  // par bail. Ne rien proposer d'autre ici évite de recréer un mécanisme redondant.
+  // L'état des lieux (entrée ou sortie) reste géré par le bailleur pour ce bail précis : si
+  // l'agence s'en charge, c'est la délégation du bien (Logements > Services délégués > "Bail &
+  // états des lieux") qui supprime cette alerte via isServiceDelegated ci-dessous — pas un
+  // réglage par bail. Ne rien proposer d'autre ici évite de recréer un mécanisme redondant.
   const optOutNote =
-    alert.preferenceKey === "entry_inventory_missing"
+    alert.preferenceKey === "entry_inventory_missing" || alert.preferenceKey === "exit_inventory_to_prepare"
       ? `<p style="margin:8px 0 0;color:#64748b;font-size:12px;line-height:1.45">
           Ce bien est géré par une agence pour le bail et l'état des lieux ? Configurez la délégation sur ce bien (Logements → le bien → « Bail &amp; états des lieux ») pour ne plus recevoir cette alerte sur aucun de ses baux.
         </p>`
