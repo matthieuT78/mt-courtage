@@ -123,9 +123,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    // 3) tenant + property
-    const [tenantRes, propertyRes] = await Promise.all([
+    // 3) tenant + co-tenant + property
+    const [tenantRes, coTenantRes, propertyRes] = await Promise.all([
       supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single(),
+      lease.co_tenant_id
+        ? supabaseAdmin.from("tenants").select("email").eq("id", lease.co_tenant_id).maybeSingle()
+        : Promise.resolve({ data: null }),
       lease.property_id
         ? supabaseAdmin.from("properties").select("city,label").eq("id", lease.property_id).maybeSingle()
         : Promise.resolve({ data: null }),
@@ -138,8 +141,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // Le colocataire est solidaire du paiement au même titre que le locataire
     // principal — il reçoit la quittance en destinataire principal, pas en
-    // simple copie.
-    const coTenantEmail = safeStr(lease.co_tenant_email);
+    // simple copie. Lu en direct sur sa fiche (co_tenant_id), pas sur
+    // lease.co_tenant_email qui n'est qu'un instantané figé à la sélection du
+    // colocataire et ne serait plus à jour si son email est corrigé après coup.
+    const coTenantEmail = safeStr((coTenantRes as any)?.data?.email);
     const toEmails = Array.from(new Set([toEmail, coTenantEmail].filter(Boolean)));
 
     let ccEmail = safeStr(lease.reminder_email) || null;

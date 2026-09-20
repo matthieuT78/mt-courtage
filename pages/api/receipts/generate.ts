@@ -491,6 +491,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (tr.data) tenant = tr.data;
     }
 
+    let coTenant: any = null;
+    if (lease.co_tenant_id) {
+      const ctr = await supabaseAdmin.from("tenants").select("full_name").eq("id", lease.co_tenant_id).maybeSingle();
+      if (ctr.data) coTenant = ctr.data;
+    }
+
     const lr = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle();
     const landlord: any = lr.data || null;
 
@@ -636,8 +642,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const primaryTenantName = safeStr(tenant?.full_name) || safeStr(lease?.tenant_name) || "Locataire";
     // Le colocataire est solidaire du paiement au même titre que le locataire
     // principal — la quittance doit nommer les deux, pas seulement celui
-    // enregistré comme tenant_id sur le bail.
-    const coTenantName = safeStr(lease?.co_tenant_name);
+    // enregistré comme tenant_id sur le bail. Lu en direct sur sa fiche
+    // (co_tenant_id), pas sur lease.co_tenant_name qui n'est qu'un instantané
+    // figé à sa sélection et ne serait plus à jour après un renommage.
+    const coTenantName = safeStr(coTenant?.full_name) || safeStr(lease?.co_tenant_name);
     const tenantName = coTenantName ? `${primaryTenantName} et ${coTenantName}` : primaryTenantName;
     const tenantEmail = safeStr(tenant?.email) || "";
 

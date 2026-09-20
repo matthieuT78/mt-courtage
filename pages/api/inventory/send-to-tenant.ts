@@ -68,11 +68,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Le colocataire est cosignataire de l'état des lieux au même titre que le
     // locataire principal — il reçoit le document en destinataire principal.
+    // Lu en direct sur sa fiche (co_tenant_id), pas sur lease.co_tenant_email
+    // qui n'est qu'un instantané figé à la sélection du colocataire.
     let toEmails = [email];
     if (report.lease_id) {
-      const { data: lease } = await supabaseAdmin.from("leases").select("co_tenant_email").eq("id", report.lease_id).maybeSingle();
-      const coTenantEmail = safeStr(lease?.co_tenant_email).toLowerCase();
-      if (coTenantEmail && coTenantEmail.includes("@")) toEmails = Array.from(new Set([email, coTenantEmail]));
+      const { data: lease } = await supabaseAdmin.from("leases").select("co_tenant_id").eq("id", report.lease_id).maybeSingle();
+      if (lease?.co_tenant_id) {
+        const { data: coTenant } = await supabaseAdmin.from("tenants").select("email").eq("id", lease.co_tenant_id).maybeSingle();
+        const coTenantEmail = safeStr(coTenant?.email).toLowerCase();
+        if (coTenantEmail && coTenantEmail.includes("@")) toEmails = Array.from(new Set([email, coTenantEmail]));
+      }
     }
 
     const raw = String(report.pdf_url);

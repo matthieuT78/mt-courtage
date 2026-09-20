@@ -937,6 +937,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     let lease: any = null;
     let property: any = null;
     let tenant: any = null;
+    let coTenant: any = null;
     let landlord: any = null;
 
     if (report.lease_id) {
@@ -952,6 +953,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const r = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle();
         tenant = r.data || null;
       }
+      if (lease?.co_tenant_id) {
+        const r = await supabaseAdmin.from("tenants").select("full_name").eq("id", lease.co_tenant_id).maybeSingle();
+        coTenant = r.data || null;
+      }
     }
     const [rLand, rProfile] = await Promise.all([
       supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
@@ -966,7 +971,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const primaryTenantName = safeStr(tenant?.full_name) || safeStr(report.occupant_label) || "Occupant";
     // Le colocataire est cosignataire du bail et de l'état des lieux au même
     // titre que le locataire principal — le document doit nommer les deux.
-    const coTenantName = safeStr(lease?.co_tenant_name);
+    // Lu en direct sur sa fiche (co_tenant_id), pas sur lease.co_tenant_name
+    // qui n'est qu'un instantané figé à sa sélection.
+    const coTenantName = safeStr(coTenant?.full_name) || safeStr(lease?.co_tenant_name);
     const tenantName = coTenantName ? `${primaryTenantName} et ${coTenantName}` : primaryTenantName;
     const propertyLabel = safeStr(property?.label) || safeStr(report.property_label) || "Logement";
     const propertyAddress =

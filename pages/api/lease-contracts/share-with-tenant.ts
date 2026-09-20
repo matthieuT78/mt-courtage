@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch lease → tenant
     const { data: lease } = await supabaseAdmin
       .from("leases")
-      .select("id,tenant_id,property_id,co_tenant_email")
+      .select("id,tenant_id,property_id,co_tenant_id")
       .eq("id", doc.lease_id)
       .maybeSingle();
     if (!lease) return res.status(404).json({ ok: false, error: "Bail introuvable." });
@@ -60,8 +60,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!tenant?.email) return res.status(400).json({ ok: false, error: "Email du locataire manquant." });
 
     // Le colocataire est cosignataire du bail au même titre que le locataire
-    // principal — il reçoit le document en destinataire principal.
-    const coTenantEmail = String(lease.co_tenant_email || "").trim();
+    // principal — il reçoit le document en destinataire principal. Lu en
+    // direct sur sa fiche (co_tenant_id), pas sur un champ recopié sur le
+    // bail qui ne serait plus à jour si son email est corrigé après coup.
+    let coTenantEmail = "";
+    if (lease.co_tenant_id) {
+      const { data: coTenant } = await supabaseAdmin.from("tenants").select("email").eq("id", lease.co_tenant_id).maybeSingle();
+      coTenantEmail = String(coTenant?.email || "").trim();
+    }
     const toEmails = Array.from(new Set([tenant.email, coTenantEmail].filter(Boolean)));
 
     // Fetch property for label/address

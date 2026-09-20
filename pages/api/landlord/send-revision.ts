@@ -68,9 +68,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (leaseErr || !lease) return res.status(404).json({ error: "Bail introuvable." });
   if (lease.user_id !== auth.userId) return res.status(403).json({ error: "Accès refusé." });
 
-  // Fetch tenant + property in parallel
-  const [tenantRes, propertyRes] = await Promise.all([
+  // Fetch tenant + co-tenant + property in parallel
+  const [tenantRes, coTenantRes, propertyRes] = await Promise.all([
     supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single(),
+    lease.co_tenant_id
+      ? supabaseAdmin.from("tenants").select("email").eq("id", lease.co_tenant_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     lease.property_id
       ? supabaseAdmin.from("properties").select("label, address_line1, postal_code, city").eq("id", lease.property_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -84,8 +87,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Le colocataire est solidaire du bail au même titre que le locataire
   // principal — il reçoit la notification de révision en destinataire
-  // principal, pas en copie.
-  const coTenantEmail = String(lease.co_tenant_email || "").trim();
+  // principal, pas en copie. Lu en direct sur sa fiche (co_tenant_id), pas
+  // sur lease.co_tenant_email qui n'est qu'un instantané figé à sa sélection.
+  const coTenantEmail = String((coTenantRes as any)?.data?.email || "").trim();
   const toEmails = Array.from(new Set([toEmail, coTenantEmail].filter(Boolean)));
 
   // Compute IRL revision (lecture DB avec fallback statique)
