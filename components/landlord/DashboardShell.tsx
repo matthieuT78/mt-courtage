@@ -1143,7 +1143,7 @@ export function DashboardShell(props: any) {
         const tenantName = tenantById.get(lease.tenant_id)?.full_name || (lease as any).tenant_name || "Le locataire";
         const coTenantName = tenantById.get((lease as any).co_tenant_id)?.full_name || (lease as any).co_tenant_name || "Le colocataire";
         return (
-          <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+          <div className="fixed inset-0 z-[220] flex items-end justify-center p-4 sm:items-center">
             <button
               type="button"
               className="absolute inset-0 bg-slate-950/30"
