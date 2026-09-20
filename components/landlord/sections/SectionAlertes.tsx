@@ -177,10 +177,49 @@ function Toggle({ checked, disabled, label, onChange }: { checked: boolean; disa
   );
 }
 
+// L'icône porte le sens (agir maintenant / anticiper / compléter une info),
+// la couleur seule ne fait que le doubler — pas de barre décorative à côté.
 function LevelPill({ level }: { level: AlertConfig["level"] }) {
-  if (level === "Urgent") return <Pill tone="red">Urgent</Pill>;
-  if (level === "Anticipation") return <Pill tone="amber">Anticipation</Pill>;
-  return <Pill tone="slate">À compléter</Pill>;
+  if (level === "Urgent")
+    return (
+      <Pill tone="red">
+        <ExclamationTriangleIcon className="mr-1 h-3 w-3" aria-hidden="true" />
+        Urgent
+      </Pill>
+    );
+  if (level === "Anticipation")
+    return (
+      <Pill tone="amber">
+        <ClockIcon className="mr-1 h-3 w-3" aria-hidden="true" />
+        Anticipation
+      </Pill>
+    );
+  return (
+    <Pill tone="slate">
+      <InformationCircleIcon className="mr-1 h-3 w-3" aria-hidden="true" />
+      À compléter
+    </Pill>
+  );
+}
+
+// La planification d'une alerte est une séquence de rappels dans le temps —
+// une mini frise (jalons reliés par un trait) le montre plus directement
+// qu'un badge de texte, et sans reprendre le motif "barre colorée à gauche".
+function ScheduleTimeline({ schedule }: { schedule: string }) {
+  const steps = schedule.split("·").map((s) => s.trim()).filter(Boolean);
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-0">
+      {steps.map((step, i) => (
+        <div key={i} className="flex items-center">
+          {i > 0 && <span className="mx-1.5 h-px w-3 bg-slate-300" aria-hidden="true" />}
+          <span className="flex items-center gap-1 text-[0.68rem] font-medium text-slate-500">
+            <span className="h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden="true" />
+            {step}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function SectionAlertes({ userId, plan }: Props) {
@@ -271,40 +310,58 @@ export function SectionAlertes({ userId, plan }: Props) {
       {groups.map((group) => {
         const meta = GROUP_META[group];
         const groupAlerts = ALERTS.filter((alert) => alert.group === group);
+        // Quand tout le groupe est verrouillé, répéter "Débloquer avec
+        // lokt·one" sur chaque ligne n'apporte rien — un seul bandeau en tête
+        // de groupe suffit, et les lignes en dessous restent lisibles.
+        const allLocked = groupAlerts.every((alert) => !planAllowsLandlordAlert(plan, alert.key));
         return (
           <div key={group} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0">{meta.icon}</div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-950">{group}</h3>
-                <p className="mt-0.5 text-xs text-slate-500">{meta.desc}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 shrink-0">{meta.icon}</div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-950">{group}</h3>
+                  <p className="mt-0.5 text-xs text-slate-500">{meta.desc}</p>
+                </div>
               </div>
+              {allLocked ? (
+                <Link
+                  href="/tarifs?source=alertes"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#635bff]/10 px-3 py-1.5 text-xs font-semibold text-[#4f46e5] hover:bg-[#635bff]/15"
+                >
+                  <LockClosedIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                  Débloquer avec lokt·one
+                </Link>
+              ) : null}
             </div>
 
-            <div className="mt-4 divide-y divide-slate-100">
+            <div className="mt-1 divide-y divide-slate-100">
               {groupAlerts.map((alert) => {
                 const allowed = planAllowsLandlordAlert(plan, alert.key);
                 return (
-                  <div key={alert.key} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                  <div
+                    key={alert.key}
+                    className={`flex items-start justify-between gap-4 py-4 first:pt-3 last:pb-0 ${!allowed ? "opacity-70" : ""}`}
+                  >
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-sm font-bold tracking-tight text-slate-950">{alert.title}</p>
                         <LevelPill level={alert.level} />
-                        {!allowed ? (
+                        {!allowed && !allLocked ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2 py-0.5 text-[0.65rem] font-semibold text-[#4f46e5]">
                             <LockClosedIcon className="h-3 w-3" aria-hidden="true" />
                             lokt·one
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">{alert.desc}</p>
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <ClockIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
-                        <p className="text-xs text-slate-500">{alert.schedule}</p>
-                      </div>
-                      {!allowed ? (
-                        <Link href="/tarifs?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
-                          Débloquer avec lokt·one
+                      <p className="mt-1 text-xs leading-5 text-slate-500">{alert.desc}</p>
+                      <ScheduleTimeline schedule={alert.schedule} />
+                      {!allowed && !allLocked ? (
+                        <Link
+                          href="/tarifs?source=alertes"
+                          className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-[#4f46e5] hover:underline"
+                        >
+                          Débloquer avec lokt·one →
                         </Link>
                       ) : null}
                     </div>
