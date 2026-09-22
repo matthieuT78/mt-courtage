@@ -99,7 +99,7 @@ export default function PretRelaisPage() {
 
   const title = "Simulateur prêt relais 2026 : calcul gratuit | lokt.fr";
   const description =
-    "Combien pouvez-vous emprunter avec un prêt relais ? Calculez en 30 secondes : montant du relais, intérêts intercalaires et budget max pour votre prochain bien. Prêt relais sec ou adossé — formules détaillées, sans inscription.";
+    "Combien pouvez-vous emprunter avec un prêt relais ? Montant, intérêts intercalaires et budget d'achat calculés en 30 secondes. Sec ou adossé, sans inscription.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;

@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 import {
   ArchiveBoxIcon,
@@ -19,7 +20,7 @@ const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
 const title = "Gestion locative LMNP 2026 : bail meublé gratuit | lokt.fr";
 const description =
-  "Gérez votre LMNP sans tableur : bail meublé, inventaire, quittances PDF, suivi des loyers et bilan financier propriétaire. Gratuit pour un logement actif, sans carte bancaire.";
+  "Gérez votre LMNP sans tableur : bail meublé, inventaire, quittances, loyers et bilan financier. Gratuit pour un logement actif, sans carte bancaire.";
 
 const features = [
   {
@@ -315,13 +316,14 @@ export default function GestionLocativeLmnpPage() {
               </div>
 
               <div className="relative">
-                <img
+                <Image
                   src="/cockpit-bailleur-lokt-v3.webp"
                   alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
                   width={1536}
                   height={1024}
+                  sizes="(min-width: 1024px) 640px, 100vw"
                   className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(15,23,42,0.25)]"
-                  loading="eager"
+                  priority
                 />
               </div>
             </div>

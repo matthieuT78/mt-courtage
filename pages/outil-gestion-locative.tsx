@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { type ComponentType, type SVGProps } from "react";
 import {
   ArchiveBoxIcon,
@@ -178,6 +179,22 @@ export default function OutilGestionLocativePage() {
   const jsonLdItems = [
     {
       "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: title,
+      headline: "Logiciel de gestion locative gratuit",
+      url: pageUrl,
+      description,
+      inLanguage: "fr-FR",
+      image: ogImage,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "lokt.fr",
+        url: siteUrl,
+      },
+      about: ["logiciel de gestion locative", "outil de gestion locative", "gestion locative gratuite", "quittances de loyer", "révision de loyer IRL"],
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       name: "lokt.fr - Logiciel de gestion locative",
       applicationCategory: "BusinessApplication",
@@ -212,6 +229,7 @@ export default function OutilGestionLocativePage() {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
+      inLanguage: "fr-FR",
       mainEntity: faq.map((item) => ({
         "@type": "Question",
         name: item.q,
@@ -336,13 +354,14 @@ export default function OutilGestionLocativePage() {
 
               <div>
                 <div className="relative">
-                  <img
+                  <Image
                     src="/cockpit-bailleur-lokt-v3.webp"
                     alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
                     width={1536}
                     height={1024}
+                    sizes="(min-width: 1024px) 640px, 100vw"
                     className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(15,23,42,0.25)]"
-                    loading="eager"
+                    priority
                   />
                   {/* Badge flottant */}
                   <div className="absolute bottom-6 right-2 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-lg sm:bottom-8 sm:right-4">
