@@ -143,8 +143,13 @@ export default function ConfidentialitePage() {
                     associés (base de données et fichiers stockés), à l’exception des données de facturation conservées pour obligation légale (voir ci-dessous).
                   </li>
                   <li>
-                    <strong>Données bailleur et documents :</strong> tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur. Les données
-                    relatives aux locataires et baux peuvent être conservées jusqu’à 3 ans après la fin du bail à des fins de preuve.
+                    <strong>Données bailleur et documents :</strong> tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur. Après la fin
+                    d’un bail, le bailleur peut conserver les données du locataire et les documents associés jusqu’à 3 ans à des fins de preuve (délai de
+                    prescription applicable aux litiges locatifs) — cette durée est un plafond justifié par son intérêt légitime, pas une suppression
+                    automatique. Indépendamment de ce délai, le locataire conserve l’accès à ses propres documents (quittances, bail, état des lieux) depuis
+                    son espace locataire tant qu’il le souhaite. Un locataire (ou le bailleur en son nom) peut à tout moment demander la suppression ou
+                    l’anonymisation des données personnelles d’un locataire en écrivant à{" "}
+                    <a href="mailto:contact@lokt.fr" className="underline">contact@lokt.fr</a>.
                   </li>
                   <li>
                     <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés ou en liste d’attente sont supprimés par le bailleur à la clôture de l’annonce, et automatiquement au plus tard 60 jours après la décision si l’annonce n’a pas été clôturée entre-temps. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
