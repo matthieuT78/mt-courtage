@@ -132,13 +132,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const landlord_email = auth.email;
   if (!landlord_email) return res.status(400).json({ error: "Email bailleur introuvable sur le compte." });
 
-  // Même email reproduit pour deux rôles (ex : co-locataire = locataire par erreur
-  // de saisie) : la personne recevrait deux liens distincts pour "signer deux fois"
-  // sans que ce soit jamais signalé — mieux vaut le refuser à la création.
+  // Le bailleur signe depuis sa session déjà authentifiée (pas via un lien
+  // emailé comme locataire/co-locataire) : partager son email avec une des
+  // parties locataires créerait une vraie ambiguïté sur qui a signé quoi.
+  // En revanche, locataire et co-locataire peuvent légitimement partager la
+  // même adresse (ex. un couple avec une seule boîte mail) — chacun reçoit
+  // son propre lien de signature (tenant_token / co_tenant_token) sur cette
+  // même boîte, ce n'est pas bloquant.
   if (hasCoTenant) {
-    const emails = [landlord_email.toLowerCase(), tenant_email.toLowerCase(), co_tenant_email.toLowerCase()];
-    if (new Set(emails).size !== emails.length) {
-      return res.status(400).json({ error: "Le bailleur, le locataire et le co-locataire doivent avoir trois emails différents." });
+    if (landlord_email.toLowerCase() === tenant_email.toLowerCase() || landlord_email.toLowerCase() === co_tenant_email.toLowerCase()) {
+      return res.status(400).json({ error: "Le bailleur doit avoir un email différent de celui du locataire et du co-locataire." });
     }
   }
 

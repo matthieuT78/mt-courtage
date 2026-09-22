@@ -358,10 +358,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       setSigError("L'email du co-locataire n'a pas un format valide.");
       return;
     }
-    if (form.co_tenant_email && form.co_tenant_email.toLowerCase() === String(form.tenant_email).toLowerCase()) {
-      setSigError("Le co-locataire doit avoir un email différent de celui du locataire.");
-      return;
-    }
     setSigLoading(true); setSigError(null);
     try {
       const { data: sessionData } = await supabase!.auth.getSession();

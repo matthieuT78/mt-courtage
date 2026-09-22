@@ -694,6 +694,11 @@ export function OnboardingWizard({
       return setErr("Prénom et nom du locataire sont obligatoires.");
     }
     if (tenantEmail.trim() && !isEmailLike(tenantEmail)) return setErr("Email locataire invalide.");
+    // Même raison que pour le colocataire plus bas : la demande de signature
+    // électronique refuse deux rôles avec le même email (cf. /api/signatures/create).
+    if (tenantEmail.trim() && userEmail && tenantEmail.trim().toLowerCase() === userEmail.trim().toLowerCase()) {
+      return setErr("Le locataire ne peut pas avoir le même email que le bailleur.");
+    }
     if (!supabase) return setErr("Supabase non initialisé.");
     setSaving(true);
     setErr(null);
@@ -741,6 +746,15 @@ export function OnboardingWizard({
       return setErr("Prénom et nom du colocataire sont obligatoires.");
     }
     if (coTenantEmail.trim() && !isEmailLike(coTenantEmail)) return setErr("Email colocataire invalide.");
+    // Le bailleur signe depuis sa session déjà authentifiée (pas via un lien
+    // emailé comme locataire/co-locataire) : partager son email créerait une
+    // vraie ambiguïté sur qui a signé quoi (cf. /api/signatures/create).
+    // Locataire et co-locataire, eux, peuvent légitimement partager une même
+    // adresse (ex. un couple avec une seule boîte mail) — pas de blocage ici.
+    const coEmailNorm = coTenantEmail.trim().toLowerCase();
+    if (coEmailNorm && userEmail && coEmailNorm === userEmail.trim().toLowerCase()) {
+      return setErr("Le colocataire ne peut pas avoir le même email que le bailleur.");
+    }
     if (!supabase) return setErr("Supabase non initialisé.");
     setSavingCoTenant(true);
     setErr(null);
