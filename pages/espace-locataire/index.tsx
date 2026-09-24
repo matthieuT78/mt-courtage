@@ -56,6 +56,8 @@ export default function EspaceLocatairePage() {
   const [err, setErr] = useState<string | null>(null);
   const [acknowledging, setAcknowledging] = useState<Set<string>>(new Set());
   const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set());
+  const [deletionState, setDeletionState] = useState<"idle" | "confirm" | "sending" | "sent" | "error">("idle");
+  const [deletionError, setDeletionError] = useState<string | null>(null);
 
   const thread = data?.threads?.[0] || null;
   const tenant = data?.tenants?.[0] || null;
@@ -156,6 +158,23 @@ export default function EspaceLocatairePage() {
       // non-bloquant — l'UX reste ok
     } finally {
       setAcknowledging((prev) => { const s = new Set(prev); s.delete(documentId); return s; });
+    }
+  };
+
+  const requestDeletion = async () => {
+    setDeletionState("sending");
+    setDeletionError(null);
+    try {
+      const response = await fetch("/api/tenant-portal/request-deletion", {
+        method: "POST",
+        headers: await authHeaders(),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok) throw new Error(json?.error || "Envoi impossible.");
+      setDeletionState("sent");
+    } catch (e: any) {
+      setDeletionError(e?.message || "Envoi impossible.");
+      setDeletionState("error");
     }
   };
 
@@ -330,6 +349,43 @@ export default function EspaceLocatairePage() {
                 >
                   Se deconnecter
                 </button>
+                {deletionState === "sent" ? (
+                  <p className="px-3 pb-1 pt-1 text-xs text-emerald-700">Demande envoyée à votre bailleur.</p>
+                ) : deletionState === "confirm" || deletionState === "sending" || deletionState === "error" ? (
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2.5">
+                    <p className="text-xs text-slate-600">
+                      Votre bailleur sera notifié (avec copie à contact@lokt.fr) de votre demande de suppression de vos données
+                      personnelles.
+                    </p>
+                    {deletionError ? <p className="mt-1 text-xs text-red-600">{deletionError}</p> : null}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={requestDeletion}
+                        disabled={deletionState === "sending"}
+                        className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                      >
+                        {deletionState === "sending" ? "Envoi..." : "Confirmer"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletionState("idle")}
+                        disabled={deletionState === "sending"}
+                        className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDeletionState("confirm")}
+                    className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-xs font-semibold text-slate-400 transition hover:bg-slate-50 hover:text-slate-600"
+                  >
+                    Demander la suppression de mes données
+                  </button>
+                )}
               </div>
             </nav>
 
