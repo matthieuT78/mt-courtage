@@ -26,6 +26,7 @@ export type Tenant = {
   notes: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
+  anonymized_at?: string | null;
   is_company?: boolean | null;
   company_name?: string | null;
   siret?: string | null;
@@ -299,6 +300,8 @@ export function SectionLocataires({
   const [ok, setOk] = useState<string | null>(null);
   const [archiveWorkflow, setArchiveWorkflow] = useState<ArchiveWorkflow | null>(null);
   const [confirmDeleteTenantId, setConfirmDeleteTenantId] = useState<string | null>(null);
+  const [confirmAnonymizeTenantId, setConfirmAnonymizeTenantId] = useState<string | null>(null);
+  const [anonymizing, setAnonymizing] = useState(false);
   const [departureStep, setDepartureStep] = useState<1 | 2 | 3>(1);
 
   // Portail locataire
@@ -1077,6 +1080,29 @@ export function SectionLocataires({
     }
   };
 
+  const anonymizeTenant = async (tenantId: string) => {
+    setAnonymizing(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const headers = await portalAuthHeaders();
+      const res = await fetch("/api/tenants/anonymize", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ tenantId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Anonymisation impossible.");
+      setOk("Locataire anonymisé ✅");
+      await safeRefresh();
+    } catch (e: any) {
+      console.error("[anonymizeTenant] error:", e);
+      setErr(e?.message || "Anonymisation impossible.");
+    } finally {
+      setAnonymizing(false);
+    }
+  };
+
   const departureTenant = archiveWorkflow ? safeTenants.find((tenant) => tenant.id === archiveWorkflow.tenantId) || null : null;
   const departureLease = archiveWorkflow ? safeLeases.find((lease) => lease.id === archiveWorkflow.leaseId) || null : null;
   const departureCoTenant = archiveWorkflow?.alsoArchiveCoTenantId
@@ -1577,14 +1603,18 @@ export function SectionLocataires({
                       </button>
                     ) : null}
 
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => restoreTenant(activeTenant.id)}
-                      className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                    >
-                      Restaurer
-                    </button>
+                    {activeTenant.anonymized_at ? (
+                      <span className="text-[0.75rem] text-slate-500">Restauration impossible : données anonymisées.</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => restoreTenant(activeTenant.id)}
+                        className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        Restaurer
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -1624,13 +1654,41 @@ export function SectionLocataires({
                           Supprimer
                         </button>
                       )
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
-                        Supprimez d&apos;abord le bail
-                        {onNavigateDeep ? (
-                          <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
-                        ) : null}
+                    ) : activeTenant.anonymized_at ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[0.75rem] font-medium text-slate-500">
+                        Anonymisé le {new Date(activeTenant.anonymized_at).toLocaleDateString("fr-FR")}
                       </span>
+                    ) : confirmAnonymizeTenantId === activeTenant.id ? (
+                      <span className="inline-flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                        <span className="max-w-xs text-xs font-medium text-red-700">
+                          Irréversible : nom, email, téléphone et infos du garant seront effacés. Si ce locataire a encore accès à son
+                          espace, il le perdra. Les quittances et données comptables restent conservées.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => { void anonymizeTenant(activeTenant.id); setConfirmAnonymizeTenantId(null); }}
+                          disabled={anonymizing}
+                          className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                        >
+                          Anonymiser
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmAnonymizeTenantId(null)}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Retour
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={anonymizing}
+                        onClick={() => setConfirmAnonymizeTenantId(activeTenant.id)}
+                        className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                      >
+                        Anonymiser
+                      </button>
                     )}
                   </div>
                 </>
