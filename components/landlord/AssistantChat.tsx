@@ -53,6 +53,19 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   create_listing: "Publier cette annonce",
 };
 
+const TERMINATE_LEASE_SCOPE_LABEL: Record<string, string> = {
+  primary_only: "Promouvoir le colocataire en locataire principal",
+  co_tenant_only: "Retirer le colocataire du bail",
+};
+
+function actionLabelFor(toolName: string, args: Record<string, any>): string {
+  if (toolName === "terminate_lease") {
+    const scoped = TERMINATE_LEASE_SCOPE_LABEL[String(args?.departure_scope || "")];
+    if (scoped) return scoped;
+  }
+  return TOOL_ACTION_LABEL[toolName] || "Confirmer cette action";
+}
+
 function textOf(content: string | ContentBlock[]): string {
   if (typeof content === "string") return content;
   return content
@@ -382,7 +395,7 @@ export default function AssistantChat({
           {pendingAction && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 shadow-sm">
-                <p className="font-semibold">{TOOL_ACTION_LABEL[pendingAction.toolName] || "Confirmer cette action"} ?</p>
+                <p className="font-semibold">{actionLabelFor(pendingAction.toolName, pendingAction.args)} ?</p>
                 {Array.isArray(pendingAction.summary) && pendingAction.summary.length > 0 && (
                   <div className="mt-2 space-y-1 rounded-xl bg-white/60 px-2.5 py-2">
                     {pendingAction.summary.map((row, i) => (

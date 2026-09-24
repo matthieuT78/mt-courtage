@@ -1153,27 +1153,61 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
   },
   {
     name: "terminate_lease",
-    description: "Résilie un bail : fixe la date de sortie, passe le bail en 'terminé', arrête les relances/quittances automatiques et archive la fiche locataire. Action significative et peu réversible : à utiliser seulement quand l'utilisateur confirme clairement vouloir mettre fin au bail (ex. 'résilie le bail de Julien', 'il part le 30/09'), jamais pour une simple question sur la date de fin.",
+    description: "Gère le départ d'un locataire sur un bail. Un bail SANS colocataire n'a qu'un seul dénouement : le bail se termine (exit_date requis). Un bail AVEC colocataire (co_tenant_id renvoyé par list_leases) a 3 dénouements possibles — il faut fournir departure_scope pour préciser lequel, jamais le deviner : 'both' (les deux partent, le bail se termine, exit_date requis), 'primary_only' (seul le locataire principal part, le colocataire devient locataire principal du même bail qui continue, pas d'exit_date), 'co_tenant_only' (seul le colocataire part, le bail continue avec le même locataire principal, pas d'exit_date). Action significative et peu réversible : à utiliser seulement quand l'utilisateur confirme clairement qui part (ex. 'résilie le bail de Julien', 'le colocataire de Julien part mais lui reste'), jamais sur une simple question du type 'quelle est la date de fin de ce bail ?'. Si le bail a un colocataire et que l'utilisateur ne précise pas qui part, demande-le avant d'appeler l'outil.",
     input_schema: {
       type: "object",
       properties: {
         lease_id: { type: "string" },
-        exit_date: { type: "string", description: "Date de sortie effective, YYYY-MM-DD." },
+        departure_scope: {
+          type: "string",
+          enum: ["both", "primary_only", "co_tenant_only"],
+          description: "Requis seulement si le bail a un colocataire. 'both' = les deux partent (bail résilié). 'primary_only' = le principal part, le colocataire devient principal (bail continue). 'co_tenant_only' = le colocataire part seul (bail continue).",
+        },
+        exit_date: { type: "string", description: "Date de sortie effective, YYYY-MM-DD. Requis seulement quand le bail se termine (pas de colocataire, ou departure_scope='both')." },
         reason: { type: "string", description: "Motif du départ (optionnel)." },
       },
-      required: ["lease_id", "exit_date"],
+      required: ["lease_id"],
     },
     mutates: true,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
       const { data: lease } = await admin
         .from("leases")
-        .select("id,tenant_id,start_date,status")
+        .select("id,tenant_id,co_tenant_id,start_date,status")
         .eq("id", args.lease_id)
         .eq("user_id", ctx.userId)
         .maybeSingle();
       if (!lease) throw new Error("Bail introuvable ou non autorisé.");
       if (lease.status === "ended") throw new Error("Ce bail est déjà terminé.");
+
+      const hasCoTenant = !!lease.co_tenant_id;
+      const scope = hasCoTenant ? String(args.departure_scope || "") : "both";
+      if (hasCoTenant && !["both", "primary_only", "co_tenant_only"].includes(scope)) {
+        throw new Error(
+          "Ce bail a un colocataire : précise departure_scope ('both' si les deux partent, 'primary_only' si seul le principal part et le colocataire devient principal, 'co_tenant_only' si seul le colocataire part)."
+        );
+      }
+
+      if (scope === "primary_only") {
+        const data = await callInternalApi(ctx, "/api/landlord/promote-co-tenant", { userId: ctx.userId, leaseId: args.lease_id });
+        return {
+          ok: true,
+          ...data,
+          next_steps: [{ section: "baux", link: { leaseId: args.lease_id }, label: "Régénérer et faire signer l'avenant" }],
+        };
+      }
+
+      if (scope === "co_tenant_only") {
+        const data = await callInternalApi(ctx, "/api/landlord/remove-co-tenant", { userId: ctx.userId, leaseId: args.lease_id });
+        return {
+          ok: true,
+          ...data,
+          next_steps: [{ section: "baux", link: { leaseId: args.lease_id }, label: "Régénérer et faire signer l'avenant" }],
+        };
+      }
+
+      // scope === "both" : le bail se termine, tenant_id ET co_tenant_id (s'il existe) sont archivés.
+      if (!args.exit_date) throw new Error("exit_date requis pour mettre fin au bail.");
       const exitDate = String(args.exit_date);
       if (exitDate < lease.start_date) throw new Error("La date de sortie doit être postérieure au début du bail.");
 
@@ -1185,10 +1219,12 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
         .eq("user_id", ctx.userId);
       if (leaseErr) throw new Error(leaseErr.message);
 
+      const archivedReason = args.reason ? String(args.reason) : "Départ du locataire";
+      const tenantIdsToArchive = [lease.tenant_id, lease.co_tenant_id].filter(Boolean) as string[];
       const { error: tenantErr } = await admin
         .from("tenants")
-        .update({ archived_at: now, archived_reason: args.reason ? String(args.reason) : "Départ du locataire" })
-        .eq("id", lease.tenant_id)
+        .update({ archived_at: now, archived_reason: archivedReason })
+        .in("id", tenantIdsToArchive)
         .eq("user_id", ctx.userId);
       if (tenantErr) throw new Error(tenantErr.message);
 
@@ -1199,14 +1235,30 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
     },
     summarize: async (ctx, args) => {
       const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("tenant_id,co_tenant_id")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
       const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const coTenantName = lease?.co_tenant_id ? await resolveTenantName(admin, ctx.userId, lease.co_tenant_id) : null;
       const rows: Array<{ label: string; value: string }> = [];
       if (leaseInfo) {
         rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
-        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+        rows.push({ label: "Locataire principal", value: leaseInfo.tenantName });
       }
-      rows.push({ label: "Date de sortie", value: String(args.exit_date || "—") });
-      rows.push({ label: "Conséquence", value: "Bail clôturé, locataire archivé, quittances/relances automatiques arrêtées" });
+      if (coTenantName) rows.push({ label: "Colocataire", value: coTenantName });
+
+      const scope = lease?.co_tenant_id ? String(args.departure_scope || "") : "both";
+      if (scope === "primary_only") {
+        rows.push({ label: "Conséquence", value: `${coTenantName || "Le colocataire"} devient locataire principal, le bail continue, ${leaseInfo?.tenantName || "l'ancien principal"} est archivé` });
+      } else if (scope === "co_tenant_only") {
+        rows.push({ label: "Conséquence", value: `${coTenantName || "Le colocataire"} quitte le bail qui continue, sa fiche est archivée` });
+      } else {
+        rows.push({ label: "Date de sortie", value: String(args.exit_date || "—") });
+        rows.push({ label: "Conséquence", value: "Bail clôturé, locataire(s) archivé(s), quittances/relances automatiques arrêtées" });
+      }
       return rows;
     },
   },
