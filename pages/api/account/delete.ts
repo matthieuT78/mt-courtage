@@ -5,16 +5,20 @@
 //   1. Résiliation immédiate de l'abonnement Stripe actif (si existant)
 //   2. Mise à jour du statut subscription en base → "canceled"
 //   3. Anonymisation des leads liés (conserve les stats métier, efface les PII)
-//   4. Suppression de tous les fichiers de storage (quittances, baux, EDL, DPE,
+//   4. Archivage des données comptables de l'abonnement (billing_retention_archive) —
+//      subscriptions.user_id est la clé primaire de la table et cascade avec
+//      auth.users, donc la ligne disparaîtrait avec le compte alors qu'elle est
+//      soumise à une obligation légale de conservation de 10 ans (Code de
+//      commerce art. L.123-22). On en garde une copie sans lien vers auth.users.
+//   5. Suppression de tous les fichiers de storage (quittances, baux, EDL, DPE,
 //      photos, pièces de candidature) — best-effort, ne bloque pas la suite :
 //      les lignes DB (properties/tenants/leases/rent_receipts...) cascadent déjà
 //      correctement via les FK vers auth.users, mais rien ne nettoyait jusqu'ici
 //      les fichiers Storage associés, qui restaient orphelins indéfiniment malgré
 //      la politique de confidentialité promettant un effacement sous 30 jours.
-//   5. Suppression du profil
-//   6. Suppression de l'utilisateur auth Supabase
-//   7. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
-// Les lignes de facturation (subscriptions) sont conservées (obligation légale 10 ans).
+//   6. Suppression du profil
+//   7. Suppression de l'utilisateur auth Supabase (cascade la ligne subscriptions)
+//   8. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser } from "../../../lib/apiAuth";
@@ -151,7 +155,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // 4. Supprimer tous les fichiers de storage (best-effort)
+  // 4. Archiver les données comptables de l'abonnement avant que le cascade
+  // auth.users → subscriptions ne l'efface (voir commentaire d'en-tête).
+  const { data: subscriptionToArchive } = await supabaseAdmin
+    .from("subscriptions")
+    .select("plan, status, price_cents, interval, billing_interval, started_at, ends_at, stripe_customer_id, stripe_subscription_id, stripe_price_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (subscriptionToArchive) {
+    const { error: archiveError } = await supabaseAdmin.from("billing_retention_archive").insert({
+      original_user_id: userId,
+      ...subscriptionToArchive,
+    });
+    if (archiveError) {
+      console.error("[account/delete] billing archive error:", archiveError.message);
+    }
+  }
+
+  // 5. Supprimer tous les fichiers de storage (best-effort)
   try {
     const { removed, errors } = await deleteUserStorage(userId);
     if (errors.length > 0) {
@@ -163,10 +185,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("[account/delete] storage cleanup error:", e?.message || e);
   }
 
-  // 5. Supprimer le profil
+  // 6. Supprimer le profil
   await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
-  // 6. Supprimer l'utilisateur auth Supabase
+  // 7. Supprimer l'utilisateur auth Supabase
   const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
   if (deleteError) {
     console.error("[account/delete] deleteUser error:", deleteError);
@@ -175,7 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
 
-  // 7. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
+  // 8. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
   // ne doit pas faire échouer la requête (rien à annuler côté suppression).
   if (recipientEmail) {
     const payload = { fullName: recipientName, stripeCanceled: !!stripeSubId };
