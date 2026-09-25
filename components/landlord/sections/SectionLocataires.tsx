@@ -86,6 +86,7 @@ type ArchiveWorkflow = {
 
 type Props = {
   userId: string;
+  userEmail?: string | null;
   tenants?: Tenant[];
   leases?: Lease[];
   properties?: PropertyLite[];
@@ -106,6 +107,10 @@ type Props = {
   // déjà construit dans DashboardShell plutôt que de le dupliquer ici.
   onPrepareDeparture?: (leaseId: string) => void;
 };
+
+function isEmailLike(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
 
 const fmt = (v?: string | null) => (v ? v : "—");
 const isNew = (createdAt?: string | null) =>
@@ -254,6 +259,7 @@ function formatDateFR(dateStr?: string | null): string {
 
 export function SectionLocataires({
   userId,
+  userEmail,
   tenants,
   leases,
   properties,
@@ -636,6 +642,19 @@ export function SectionLocataires({
       const isEdit = !!tenantId;
       const form = isEdit ? editForms[tenantId!] : createForm;
       if (!form) throw new Error("Formulaire introuvable.");
+
+      if (form.is_company) {
+        if (!form.company_name?.trim()) throw new Error("La raison sociale du locataire est obligatoire.");
+      } else if (!form.first_name?.trim() || !form.last_name?.trim()) {
+        throw new Error("Prénom et nom du locataire sont obligatoires.");
+      }
+      if (form.email?.trim() && !isEmailLike(form.email)) throw new Error("Email locataire invalide.");
+      // Le bailleur signe depuis sa session déjà authentifiée (pas via un lien
+      // emailé comme locataire/co-locataire) : partager son email créerait une
+      // vraie ambiguïté sur qui a signé quoi (cf. /api/signatures/create).
+      if (form.email?.trim() && userEmail && form.email.trim().toLowerCase() === userEmail.trim().toLowerCase()) {
+        throw new Error("Le locataire ne peut pas avoir le même email que le bailleur.");
+      }
 
       const full_name = form.is_company
         ? form.company_name?.trim() || "Locataire professionnel"

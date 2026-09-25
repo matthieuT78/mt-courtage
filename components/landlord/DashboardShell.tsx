@@ -838,6 +838,7 @@ export function DashboardShell(props: any) {
         return (
           <SectionLocataires
             userId={userId}
+            userEmail={userEmail}
             tenants={tenants}
             leases={leases}
             properties={properties}
