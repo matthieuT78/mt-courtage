@@ -374,6 +374,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [
       { data: leases, error: leasesError },
       { data: properties, error: propertiesError },
+      { data: lots, error: lotsError },
       { data: tenants, error: tenantsError },
       { data: payments, error: paymentsError },
       { data: receipts, error: receiptsError },
@@ -382,7 +383,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: contractDocs, error: contractDocsError },
     ] = await Promise.all([
       supabaseAdmin.from("leases").select("*"),
-      supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status,delegated_services"),
+      supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status,delegated_services,energy_class"),
+      supabaseAdmin.from("property_lots").select("id,energy_class"),
       supabaseAdmin.from("tenants").select("id,user_id,full_name,first_name,last_name,email,archived_at"),
       supabaseAdmin.from("rent_payments").select("id,lease_id,period_start,period_end,paid_at,total_amount"),
       supabaseAdmin.from("rent_receipts").select("id,lease_id,period_start,period_end,pdf_url,sent_at,status"),
@@ -393,6 +395,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (leasesError) throw leasesError;
     if (propertiesError) throw propertiesError;
+    if (lotsError) throw lotsError;
     if (tenantsError) throw tenantsError;
     if (paymentsError) throw paymentsError;
     if (receiptsError) throw receiptsError;
@@ -402,6 +405,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const leasesList = (leases || []) as LeaseRow[];
     const propertiesById = new Map((properties || []).map((p: any) => [p.id, p]));
+    const lotsById = new Map((lots || []).map((l: any) => [l.id, l]));
     const tenantsById = new Map((tenants || []).map((t: any) => [t.id, t]));
     // Le plus récent generated_at par bail — voir avenant_pending plus bas.
     const latestContractGeneratedAtByLease = new Map<string, string>();
@@ -592,6 +596,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Email bailleur manquant - ${labels.property}`,
               detail: "Ajoutez un email de notification pour recevoir les confirmations de paiement en un clic et leurs relances automatiques (les autres notifications continuent d'arriver sur l'email de votre compte).",
               href: "/espace-bailleur",
+              propertyId: lease.property_id,
+            });
+          }
+
+          // Obligation légale (art. 7g loi du 6 juillet 1989) pour une location à
+          // usage de résidence principale, nue ou meublée, y compris bail
+          // mobilité — pas pour un bail professionnel ou "autre".
+          const insuranceEligibleKind = ["furnished_primary", "furnished_student", "mobility", "empty_primary"].includes(
+            String(lease.lease_kind || "furnished_primary")
+          );
+          if (insuranceEligibleKind) {
+            const receivedAt = parseISODate(lease.insurance_certificate_received_at);
+            const insuranceExpired = !!receivedAt && daysBetween(receivedAt, today) > 365;
+            if (!receivedAt || insuranceExpired) {
+              alerts.push({
+                key: weeklyScheduleKey(`insurance-certificate:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
+                preferenceKey: "insurance_certificate_missing",
+                tone: "amber",
+                title: `Attestation d'assurance ${insuranceExpired ? "à renouveler" : "manquante"} - ${labels.property}`,
+                detail: insuranceExpired
+                  ? `L'attestation d'assurance habitation de ${labels.tenant} date de plus d'un an — demandez la version à jour.`
+                  : `Aucune attestation d'assurance habitation enregistrée pour ${labels.tenant}.`,
+                href: "/espace-bailleur?tab=baux",
+                propertyId: lease.property_id,
+              });
+            }
+          }
+
+          // DPE obligatoire, annexé au bail — pas de date de référence en base
+          // (contrairement à l'assurance) donc on ne détecte que l'absence, pas
+          // la péremption à 10 ans.
+          const dpeProperty = propertiesById.get(lease.property_id);
+          const dpeLot = lease.lot_id ? lotsById.get(lease.lot_id) : null;
+          const effectiveEnergyClass = (dpeLot as any)?.energy_class || (dpeProperty as any)?.energy_class || null;
+          if (!effectiveEnergyClass) {
+            alerts.push({
+              key: weeklyScheduleKey(`dpe-missing:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
+              preferenceKey: "dpe_missing",
+              tone: "amber",
+              title: `DPE manquant - ${labels.property}`,
+              detail: `Aucune classe énergétique (DPE) renseignée pour ce logement — obligatoire en annexe du bail.`,
+              href: "/espace-bailleur?tab=biens",
               propertyId: lease.property_id,
             });
           }

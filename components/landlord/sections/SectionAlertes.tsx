@@ -138,6 +138,22 @@ const ALERTS: AlertConfig[] = [
     group: "Baux et documents",
     level: "À compléter",
   },
+  {
+    key: "insurance_certificate_missing",
+    title: "Attestation d'assurance manquante ou à renouveler",
+    desc: "Aucune attestation d'assurance habitation enregistrée sur ce bail, ou celle enregistrée date de plus d'un an (obligation légale pour une résidence principale, nue ou meublée).",
+    schedule: "Chaque semaine tant que manquante ou périmée",
+    group: "Baux et documents",
+    level: "À compléter",
+  },
+  {
+    key: "dpe_missing",
+    title: "DPE manquant",
+    desc: "Aucune classe énergétique (DPE) renseignée pour ce logement — obligatoire en annexe du bail.",
+    schedule: "Chaque semaine jusqu'à correction",
+    group: "Baux et documents",
+    level: "À compléter",
+  },
 ];
 
 const GROUP_META: Record<AlertConfig["group"], { icon: ReactNode; desc: string }> = {

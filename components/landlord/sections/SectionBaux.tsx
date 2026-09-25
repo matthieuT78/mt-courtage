@@ -92,6 +92,7 @@ export type Lease = {
   co_tenant_id?: string | null;
   co_tenant_name?: string | null;
   co_tenant_email?: string | null;
+  insurance_certificate_received_at?: string | null;
 };
 
 export type PropertyLite = {
@@ -972,6 +973,35 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   const [damageItemsByLease, setDamageItemsByLease] = useState<Record<string, DamageItem[]>>({});
   const [unpaidLoadingByLease, setUnpaidLoadingByLease] = useState<Record<string, boolean>>({});
   const [unpaidAfterReturnByLease, setUnpaidAfterReturnByLease] = useState<Record<string, any[] | null>>({});
+
+  // Attestation d'assurance habitation — un booléen seul ne suffit pas : elle
+  // doit être renouvelée chaque année, donc on stocke une date (comme
+  // deposit_paid_at) plutôt qu'un simple "reçu: oui/non" qui resterait vrai
+  // indéfiniment après péremption.
+  const [insuranceEditByLease, setInsuranceEditByLease] = useState<Record<string, boolean>>({});
+  const [insuranceDraftByLease, setInsuranceDraftByLease] = useState<Record<string, string>>({});
+  const [insuranceLoadingByLease, setInsuranceLoadingByLease] = useState<Record<string, boolean>>({});
+  const [insuranceErrByLease, setInsuranceErrByLease] = useState<Record<string, string | null>>({});
+
+  const saveInsuranceReceivedAt = async (leaseId: string, dateOrNull: string | null) => {
+    if (!supabase) return;
+    setInsuranceLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+    setInsuranceErrByLease((p) => ({ ...p, [leaseId]: null }));
+    try {
+      const { error } = await supabase
+        .from("leases")
+        .update({ insurance_certificate_received_at: dateOrNull, updated_at: new Date().toISOString() })
+        .eq("id", leaseId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      setInsuranceEditByLease((p) => ({ ...p, [leaseId]: false }));
+      await onRefresh();
+    } catch (e: any) {
+      setInsuranceErrByLease((p) => ({ ...p, [leaseId]: e?.message || "Enregistrement impossible." }));
+    } finally {
+      setInsuranceLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+    }
+  };
 
   const openDepositForm = async (leaseId: string, action: DepositAction, lease: Lease) => {
     const today = todayISO();
@@ -2512,6 +2542,96 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             </div>
           );
         })()}
+
+        {/* ===== Attestation d'assurance habitation ===== */}
+        {/* Obligation légale (art. 7g loi du 6 juillet 1989) pour une location à
+            usage de résidence principale, nue ou meublée, y compris bail
+            mobilité — pas pour un bail professionnel ou "autre". */}
+        {(["furnished_primary", "furnished_student", "mobility", "empty_primary"] as const).includes(
+          (l.lease_kind as any) || "furnished_primary"
+        ) &&
+          (() => {
+            const receivedAt = l.insurance_certificate_received_at || null;
+            const receivedDate = receivedAt ? parseISODateLocal(receivedAt) : null;
+            const ageDays = receivedDate ? Math.floor((Date.now() - receivedDate.getTime()) / 86400000) : null;
+            const expired = ageDays != null && ageDays > 365;
+            const isEditing = !!insuranceEditByLease[l.id];
+            const draft = insuranceDraftByLease[l.id] ?? receivedAt ?? todayISO();
+            const loading = !!insuranceLoadingByLease[l.id];
+            const err = insuranceErrByLease[l.id] ?? null;
+
+            return (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Attestation d&apos;assurance habitation</p>
+                  {!isEditing ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInsuranceDraftByLease((p) => ({ ...p, [l.id]: todayISO() }));
+                        setInsuranceEditByLease((p) => ({ ...p, [l.id]: true }));
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      {receivedAt ? "Modifier la date" : "Marquer comme reçue"}
+                    </button>
+                  ) : null}
+                </div>
+
+                {!isEditing ? (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {!receivedAt ? (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">Manquante</span>
+                    ) : expired ? (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">
+                        À renouveler — reçue le {fmtDateShortFR(receivedAt)}
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">
+                        À jour — reçue le {fmtDateShortFR(receivedAt)}
+                      </span>
+                    )}
+                    {receivedAt ? (
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => saveInsuranceReceivedAt(l.id, null)}
+                        className="font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-700 disabled:opacity-40"
+                      >
+                        Retirer
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="date"
+                      value={draft}
+                      max={todayISO()}
+                      onChange={(e) => setInsuranceDraftByLease((p) => ({ ...p, [l.id]: e.target.value }))}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => saveInsuranceReceivedAt(l.id, draft)}
+                      className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {loading ? "Enregistrement..." : "Enregistrer"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInsuranceEditByLease((p) => ({ ...p, [l.id]: false }))}
+                      className="rounded-lg border px-3 py-2 text-xs font-semibold"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                )}
+                {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{err}</p> : null}
+              </div>
+            );
+          })()}
 
         <IrlRevisionPanel
           lease={l}

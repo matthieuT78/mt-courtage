@@ -222,7 +222,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; financeTab?: "finance" | "declaration" }) => void;
   onPrepareDeparture?: (leaseId: string) => void;
   onRefresh?: () => Promise<void>;
   onOpenAssistant?: (presetMessage?: string) => void;
@@ -1122,6 +1122,56 @@ export function SectionDashboard({
         desc: `${propertyLabel} · ${tenantName} : ${coTenantName} n'a pas d'email — il ne reçoit ni quittances ni invitation à signer le bail.`,
         onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id }),
         cta: "Ouvrir la location",
+        leaseId: lease.id,
+      });
+    }
+
+    // Obligation légale (art. 7g loi du 6 juillet 1989) pour une résidence
+    // principale, nue ou meublée, y compris bail mobilité. Une date (pas un
+    // simple booléen) : l'attestation doit être renouvelée chaque année.
+    const leasesMissingInsurance = activeLeases.filter((lease) => {
+      const kind = String((lease as any).lease_kind || "furnished_primary");
+      if (!["furnished_primary", "furnished_student", "mobility", "empty_primary"].includes(kind)) return false;
+      const receivedAt = (lease as any).insurance_certificate_received_at as string | null | undefined;
+      if (!receivedAt) return true;
+      const [y, m, d] = receivedAt.slice(0, 10).split("-").map(Number);
+      if (!y || !m || !d) return true;
+      return daysBetween(new Date(y, m - 1, d), new Date()) > 365;
+    });
+    for (const lease of leasesMissingInsurance) {
+      const tenant = tenantById.get(lease.tenant_id);
+      const propertyLabel = leasePropertyLabel(lease);
+      const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
+      const expired = !!(lease as any).insurance_certificate_received_at;
+      actions.push({
+        id: `insurance-certificate-${lease.id}`,
+        tone: "amber",
+        title: expired ? "Attestation d'assurance à renouveler" : "Attestation d'assurance manquante",
+        desc: `${propertyLabel} · ${tenantName} : ${expired ? "l'attestation d'assurance habitation date de plus d'un an" : "aucune attestation d'assurance habitation enregistrée"}.`,
+        onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id }),
+        cta: "Ouvrir la location",
+        leaseId: lease.id,
+      });
+    }
+
+    // DPE obligatoire, annexé au bail — pas de date de référence en base
+    // (contrairement à l'assurance) donc on ne détecte que l'absence, pas la
+    // péremption à 10 ans. energy_class du lot prime sur celle du bien.
+    const leasesMissingDpe = activeLeases.filter((lease) => {
+      const property = propertyById.get(lease.property_id);
+      const lot = (lease as any).lot_id ? lotById.get((lease as any).lot_id) : null;
+      const effectiveEnergyClass = (lot as any)?.energy_class || (property as any)?.energy_class || null;
+      return !effectiveEnergyClass;
+    });
+    for (const lease of leasesMissingDpe) {
+      const propertyLabel = leasePropertyLabel(lease);
+      actions.push({
+        id: `dpe-missing-${lease.id}`,
+        tone: "amber",
+        title: "DPE manquant",
+        desc: `${propertyLabel} : aucune classe énergétique (DPE) renseignée pour ce logement — obligatoire en annexe du bail.`,
+        onClick: () => onNavigateDeep?.("biens", { propertyId: lease.property_id }),
+        cta: "Renseigner le DPE",
         leaseId: lease.id,
       });
     }

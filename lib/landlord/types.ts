@@ -34,6 +34,7 @@ export type Property = {
   delegated_services?: string[];
   delegation_agency_name?: string | null;
   type?: string | null;
+  energy_class?: string | null;
 };
 
 // Lot au sein d'un bien de type "building" (immeuble en monopropriété) : un seul
