@@ -3,19 +3,29 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { sendTelegramMessage } from "../../../lib/telegram";
 
-const WINDOW_MINUTES = 11; // légèrement > intervalle cron (10 min) pour éviter les trous
+const FALLBACK_WINDOW_MINUTES = 11; // légèrement > intervalle cron (10 min), utilisé seulement au tout premier passage (curseur absent)
+const CURSOR_KEY = "telegram_alerts_last_run";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!hasValidCronSecret(req)) return res.status(401).json({ ok: false, error: "Unauthorized" });
   if (!supabaseAdmin) return res.status(500).json({ ok: false, error: "Supabase admin non configuré." });
 
-  const since = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
+  // Curseur (et non une fenêtre glissante "depuis N minutes") : une fenêtre de
+  // 11 min avec un cron toutes les 10 min se recoupe d'1 minute d'un passage à
+  // l'autre, et rien ne mémorisait qui avait déjà été notifié — un compte/lead/
+  // abonnement créé dans cette minute de recoupement partait donc en double.
+  // Capturé avant les requêtes pour ne jamais rater un événement survenu
+  // pendant le traitement de ce passage.
+  const runStartedAt = new Date().toISOString();
+  const { data: cursorRow } = await supabaseAdmin.from("app_settings").select("value_json").eq("key", CURSOR_KEY).maybeSingle();
+  const since = (cursorRow?.value_json as any)?.since || new Date(Date.now() - FALLBACK_WINDOW_MINUTES * 60 * 1000).toISOString();
+
   const messages: string[] = [];
 
   // ── Nouveaux comptes ──────────────────────────────────────────────────────
   try {
     const { data: { users } = { users: [] } } = await supabaseAdmin.auth.admin.listUsers();
-    const newUsers = (users || []).filter((u) => u.created_at && u.created_at >= since);
+    const newUsers = (users || []).filter((u) => u.created_at && u.created_at > since);
     for (const u of newUsers) {
       const provider = (u.app_metadata?.provider as string) || "email";
       const confirmed = u.email_confirmed_at ? "✓ confirmé" : "⏳ non confirmé";
@@ -28,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: leads } = await supabaseAdmin
       .from("leads")
       .select("tool,email,city,postal_code,phone,consent_contact,created_at")
-      .gte("created_at", since)
+      .gt("created_at", since)
       .order("created_at", { ascending: false });
 
     for (const l of leads || []) {
@@ -44,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: subs } = await supabaseAdmin
       .from("subscriptions")
       .select("user_id,plan,status,billing_interval,updated_at")
-      .gte("updated_at", since)
+      .gt("updated_at", since)
       .eq("status", "active")
       .not("plan", "eq", "calc_full"); // ignorer le plan gratuit
 
@@ -58,6 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   for (const msg of messages) {
     await sendTelegramMessage(msg);
   }
+
+  await supabaseAdmin.from("app_settings").upsert({ key: CURSOR_KEY, value_json: { since: runStartedAt } }, { onConflict: "key" });
 
   return res.status(200).json({ ok: true, sent: messages.length, since });
 }
