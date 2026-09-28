@@ -159,9 +159,11 @@ const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, DelegatedSer
   deposit_not_collected:   "bail_edl",
   deposit_return_overdue:  "bail_edl",
   avenant_pending:         "bail_edl",
-  // Attestation d'assurance : réclamée chaque année au locataire, même
-  // logique récurrente que les quittances/relances -> gestion_courante.
-  insurance_certificate_missing: "gestion_courante",
+  // Attestation d'assurance : document de conformité mentionné à la
+  // signature du bail et à la remise des clés, comme le dépôt de garantie
+  // et l'EDL -> bail_edl (pas gestion_courante : ce n'est pas un flux
+  // financier comme les loyers/quittances/IRL).
+  insurance_certificate_missing: "bail_edl",
   // DPE : préparé avec le bail (dossier de diagnostic technique) -> bail_edl.
   dpe_missing:             "bail_edl",
 };

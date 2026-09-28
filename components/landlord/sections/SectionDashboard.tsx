@@ -1132,10 +1132,12 @@ export function SectionDashboard({
     const leasesMissingInsurance = activeLeases.filter((lease) => {
       const kind = String((lease as any).lease_kind || "furnished_primary");
       if (!["furnished_primary", "furnished_student", "mobility", "empty_primary"].includes(kind)) return false;
-      // Gestion courante déléguée : c'est l'agence qui réclame l'attestation, pas le bailleur depuis lokt.
+      // Bail & état des lieux délégués : c'est l'agence qui réclame l'attestation
+      // (document de conformité, comme le dépôt de garantie et l'EDL), pas le
+      // bailleur depuis lokt.
       const property = propertyById.get(lease.property_id);
       const delegated = Array.isArray((property as any)?.delegated_services) ? (property as any).delegated_services : [];
-      if (delegated.includes("gestion_courante")) return false;
+      if (delegated.includes("bail_edl")) return false;
       const receivedAt = (lease as any).insurance_certificate_received_at as string | null | undefined;
       if (!receivedAt) return true;
       const [y, m, d] = receivedAt.slice(0, 10).split("-").map(Number);
