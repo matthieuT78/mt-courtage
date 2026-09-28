@@ -526,9 +526,14 @@ export default function ComparatifPage() {
             <p className="mt-2 text-[0.82rem] leading-relaxed text-slate-600">
               Chaque annonce génère un lien unique à partager. Les candidats remplissent leur dossier pièce par pièce, sans créer de compte. Vous recevez un scoring automatique par critère — ratio loyer/revenu, type de contrat, garant — pour choisir le meilleur profil objectivement. Les données des candidats non retenus sont supprimées automatiquement à la clôture : conformité RGPD sans effort.
             </p>
-            <Link href="/espace-bailleur" className="mt-3 inline-flex items-center gap-1 text-[0.82rem] font-semibold text-[#635bff] hover:text-[#4f46e5]">
-              Créer mon premier dossier de candidature →
-            </Link>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+              <Link href="/espace-bailleur" className="inline-flex items-center gap-1 text-[0.82rem] font-semibold text-[#635bff] hover:text-[#4f46e5]">
+                Créer mon premier dossier de candidature →
+              </Link>
+              <Link href="/guides/choisir-son-locataire" className="inline-flex items-center gap-1 text-[0.82rem] font-semibold text-[#635bff] hover:text-[#4f46e5]">
+                Guide : quels critères pour choisir son locataire →
+              </Link>
+            </div>
           </div>
         </section>
 
