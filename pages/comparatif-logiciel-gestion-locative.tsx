@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import { CheckIcon, XMarkIcon, MinusIcon } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -7,9 +8,10 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const metaTitle = "Comparatif logiciels gestion locative 2026 | lokt.fr";
 const metaDesc =
-  "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii et lokt.fr. Tableau de fonctionnalités, tarifs, workflow de mise en location et dossiers de candidature — pour les bailleurs indépendants.";
+  "Comparatif logiciels de gestion locative 2026 : lokt.fr vs Rentila, BailFacile, Smovin, Gererseul, Homii — fonctionnalités, tarifs et assistant IA.";
 const pageUrl = `${siteUrl}/comparatif-logiciel-gestion-locative`;
-const updatedAt = "Août 2026";
+const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
+const updatedAt = "Septembre 2026";
 
 type Mark = "yes" | "no" | "partial";
 
@@ -21,6 +23,7 @@ const criteria: { label: string; marks: Mark[] }[] = [
   { label: "Suivi des paiements et retards",                     marks: ["partial", "yes",     "yes",     "partial", "partial", "yes",     "yes"]     },
   { label: "Alertes bailleur (retard, IRL, rappels)",            marks: ["no",      "no",      "partial", "partial", "no",      "partial", "yes"]     },
   { label: "Relances locataires automatiques",                   marks: ["no",      "partial", "yes",     "no",      "no",      "partial", "yes"]     },
+  { label: "Assistant IA (Loky) qui exécute les actions",                      marks: ["no", "no", "no", "no", "no", "no", "yes"]     },
   { label: "Baux et documents stockés",                          marks: ["no",      "yes",     "yes",     "yes",     "partial", "yes",     "yes"]     },
   { label: "Révision IRL automatique",                           marks: ["no",      "partial", "yes",     "partial", "no",      "yes",     "yes"]     },
   { label: "Dossier de candidature en ligne (lien, scoring, RGPD)", marks: ["no",  "no",      "no",      "no",      "no",      "no",      "yes"]     },
@@ -45,7 +48,8 @@ function MarkIcon({ mark, lokt }: { mark: Mark; lokt: boolean }) {
 const tools = [
   {
     name: "Tableur Excel / Google Sheets",
-    icon: "📊",
+    mono: "XL",
+    monoColor: "bg-emerald-100 text-emerald-700",
     price: "Gratuit",
     ideal: "Propriétaire d'un seul bien, à l'aise avec les formules",
     pros: ["Aucun coût", "Entière liberté de personnalisation", "Pas de dépendance à un éditeur"],
@@ -59,7 +63,8 @@ const tools = [
   },
   {
     name: "Rentila",
-    icon: "🏠",
+    mono: "Re",
+    monoColor: "bg-sky-100 text-sky-700",
     price: "Gratuit (1 lot) · 4,90 €/mois (2-5 biens) · 9,90 €/mois (illimité)",
     ideal: "Bailleur débutant souhaitant un outil simple et gratuit",
     pros: [
@@ -81,7 +86,8 @@ const tools = [
   },
   {
     name: "Smovin",
-    icon: "💼",
+    mono: "Sm",
+    monoColor: "bg-violet-100 text-violet-700",
     price: "À partir de ~15 €/mois · Pas d'offre gratuite",
     ideal: "Propriétaire de 3 biens et plus cherchant un outil professionnel complet",
     pros: [
@@ -102,7 +108,8 @@ const tools = [
   },
   {
     name: "BailFacile",
-    icon: "📄",
+    mono: "BF",
+    monoColor: "bg-amber-100 text-amber-700",
     price: "7 jours d'essai gratuit · Abonnement mensuel, trimestriel ou annuel selon le nombre de biens (pas d'offre gratuite permanente)",
     ideal: "Bailleur cherchant un outil simple pour générer baux et quittances, prêt à s'abonner dès le premier bien",
     pros: [
@@ -123,7 +130,8 @@ const tools = [
   },
   {
     name: "Gererseul",
-    icon: "🏘️",
+    mono: "Gs",
+    monoColor: "bg-teal-100 text-teal-700",
     price: "Gratuit (partiel) · Abonnement selon les options",
     ideal: "Bailleur expérimenté, déjà utilisateur, acceptant une interface vieillissante",
     pros: [
@@ -143,7 +151,8 @@ const tools = [
   },
   {
     name: "Homii",
-    icon: "🏡",
+    mono: "Ho",
+    monoColor: "bg-rose-100 text-rose-700",
     price: "À partir de ~8 €/mois · Pas d'offre entièrement gratuite",
     ideal: "Bailleur cherchant une interface moderne avec les fonctionnalités essentielles",
     pros: [
@@ -163,10 +172,12 @@ const tools = [
   },
   {
     name: "lokt.fr",
-    icon: "🔑",
+    mono: null,
+    monoColor: "",
     price: "Gratuit (1 logement) · 6,90 €/mois (lokt·one, 2 logements) · 11,90 €/mois (lokt·plus, 15 logements)",
     ideal: "Bailleur particulier avec 1 à 15 biens cherchant gestion, sélection locataire et simulateurs dans un seul outil",
     pros: [
+      "Seul outil du comparatif avec un assistant IA (Loky) qui exécute directement les actions courantes — créer un bail, confirmer un loyer, renvoyer une quittance, relancer un locataire — à partir d'une phrase, avec confirmation avant chaque action",
       "Seul outil du comparatif avec dossiers de candidature en ligne (lien, scoring automatique, RGPD)",
       "Simulateurs immobiliers intégrés (rentabilité, capacité d'emprunt, prêt relais, plus-value)",
       "LMNP complet : inventaire obligatoire, charges meublées, suivi des recettes",
@@ -180,7 +191,7 @@ const tools = [
       "Pas d'import automatique depuis un autre outil : la migration se fait manuellement, bien par bien",
       "Signature électronique et portail locataire réservés aux offres payantes",
     ],
-    verdict: "Le choix le plus complet pour un bailleur particulier qui veut piloter tout le cycle — candidature, gestion, investissement — sans multiplier les outils. Si vous cherchez avant tout une application mobile native ou l'historique d'un éditeur installé depuis longtemps, Rentila ou Smovin restent des alternatives valables.",
+    verdict: "Le choix le plus complet pour un bailleur particulier qui veut piloter tout le cycle — candidature, gestion, investissement — sans multiplier les outils, avec un assistant IA qui exécute les actions plutôt que de se contenter d'y répondre. Si vous cherchez avant tout une application mobile native ou l'historique d'un éditeur installé depuis longtemps, Rentila ou Smovin restent des alternatives valables.",
   },
 ];
 
@@ -250,6 +261,10 @@ const faq = [
     a: "Gererseul reste fonctionnel pour les utilisateurs déjà en place, mais accuse son âge : interface vieillissante, pas d'alertes automatiques, pas de relances, pas de dossiers de candidature. Pour un nouveau bailleur démarrant en 2026, des outils plus récents comme lokt.fr ou BailFacile offrent une meilleure expérience dès le départ.",
   },
   {
+    q: "Est-ce que lokt.fr a un assistant IA ?",
+    a: "Oui, il s'appelle Loky et il est intégré au cockpit bailleur (inclus dès l'offre lokt·one, 6,90 €/mois). Contrairement à un chatbot qui se contente de répondre, Loky exécute directement les actions à partir d'une phrase — créer un bail, confirmer un paiement, générer et envoyer une quittance, relancer un locataire en retard — et demande toujours une confirmation avant d'écrire quoi que ce soit. Aucun des autres outils de ce comparatif (Rentila, Smovin, BailFacile, Gererseul, Homii) ne propose d'assistant équivalent.",
+  },
+  {
     q: "Quelle est la différence entre un logiciel de gestion locative et un tableur ?",
     a: "Un tableur vous donne une feuille vierge — à vous de construire les formules, de générer les quittances manuellement et de gérer les relances à la main. Un logiciel dédié comme lokt.fr automatise tout ça : les quittances PDF sont générées en un clic, les retards de paiement déclenchent des alertes, et les documents sont stockés et accessibles à tout moment.",
   },
@@ -262,7 +277,10 @@ const schemas = [
     name: metaTitle,
     description: metaDesc,
     url: pageUrl,
-    dateModified: "2026-08-13",
+    inLanguage: "fr-FR",
+    dateModified: "2026-09-28",
+    isPartOf: { "@type": "WebSite", name: "lokt.fr", url: siteUrl },
+    about: ["logiciel de gestion locative", "comparatif gestion locative", "Rentila", "BailFacile", "Smovin", "assistant IA gestion locative"],
   },
   {
     "@context": "https://schema.org",
@@ -270,7 +288,7 @@ const schemas = [
     name: "lokt.fr",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
-    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant avec simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
+    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant, avec assistant IA (Loky) qui exécute les actions courantes, simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
     url: siteUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
   },
@@ -285,6 +303,7 @@ const schemas = [
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    inLanguage: "fr-FR",
     mainEntity: faq.map(({ q, a }) => ({
       "@type": "Question",
       name: q,
@@ -300,10 +319,19 @@ export default function ComparatifPage() {
         <title>{metaTitle}</title>
         <meta name="description" content={metaDesc} />
         <link rel="canonical" href={pageUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:type" content="website" />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:alt" content="Cockpit bailleur lokt.fr" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={metaTitle} />
+        <meta name="twitter:description" content={metaDesc} />
+        <meta name="twitter:image" content={ogImage} />
         <meta name="robots" content="index, follow" />
         {schemas.map((s, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
@@ -340,7 +368,7 @@ export default function ComparatifPage() {
           <div className="mt-6 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 p-5">
             <p className="text-sm font-semibold text-slate-900">En résumé</p>
             <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>BailFacile</strong> propose un essai de 7 jours mais aucune offre gratuite permanente. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
+              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, assistant IA qui exécute les actions (Loky), simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>BailFacile</strong> propose un essai de 7 jours mais aucune offre gratuite permanente. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
             </p>
           </div>
         </header>
@@ -405,12 +433,20 @@ export default function ComparatifPage() {
         <section className="mb-14">
           <h2 className="mb-6 text-2xl font-bold text-slate-950">Analyse détaillée de chaque outil</h2>
           <div className="space-y-5">
-            {tools.map(({ name, icon, price, ideal, pros, cons, verdict }) => {
+            {tools.map(({ name, mono, monoColor, price, ideal, pros, cons, verdict }) => {
               const isLoktCard = name === "lokt.fr";
               return (
               <div key={name} className={"overflow-hidden rounded-2xl border bg-white shadow-sm " + (isLoktCard ? "border-[#635bff]/30 ring-1 ring-[#635bff]/10" : "border-slate-200")}>
                 <div className={"flex flex-wrap items-start gap-4 border-b px-6 py-5 " + (isLoktCard ? "border-[#635bff]/10 bg-[#635bff]/5" : "border-slate-100")}>
-                  <span className="text-3xl">{icon}</span>
+                  {mono ? (
+                    <span className={"flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold " + monoColor}>
+                      {mono}
+                    </span>
+                  ) : (
+                    <span className="flex h-11 w-20 shrink-0 items-center">
+                      <Image src="/lokt-logo-transparent.png" alt="lokt.fr" width={780} height={230} className="h-auto w-full object-contain" />
+                    </span>
+                  )}
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-bold text-slate-900">{name}</h3>
@@ -504,6 +540,7 @@ export default function ComparatifPage() {
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              { title: "Un assistant IA qui agit, pas juste un chatbot", body: "Loky crée un bail, confirme un loyer, renvoie une quittance ou relance un locataire à partir d'une phrase — avec confirmation avant chaque action. Aucun autre outil de ce comparatif ne propose d'assistant capable d'exécuter directement les actions de gestion.", href: "/loky-assistant-ia", cta: "Découvrir Loky" },
               { title: "Dossiers de candidature en ligne", body: "Un lien unique par annonce. Les candidats remplissent leur dossier sans créer de compte. Scoring automatique (revenus, stabilité pro, garant) pour comparer objectivement. Données supprimées à la clôture — RGPD inclus.", href: "/espace-bailleur", cta: "Voir le module candidature" },
               { title: "Simulateurs intégrés", body: "Rentabilité nette, capacité d'emprunt, prêt relais, plus-value — pour décider d'investir avec les bons chiffres, sans quitter la plateforme.", href: "/calculettes", cta: "Voir les simulateurs" },
               { title: "Alertes bailleur automatiques", body: "lokt.fr vous alerte dès qu'un loyer est en retard, avant chaque échéance de révision IRL et lors de chaque quittance à envoyer. Plus rien ne passe entre les mailles.", href: "/outil-gestion-locative", cta: "Voir les alertes" },
