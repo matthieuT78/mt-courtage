@@ -2546,10 +2546,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         {/* ===== Attestation d'assurance habitation ===== */}
         {/* Obligation légale (art. 7g loi du 6 juillet 1989) pour une location à
             usage de résidence principale, nue ou meublée, y compris bail
-            mobilité — pas pour un bail professionnel ou "autre". */}
+            mobilité — pas pour un bail professionnel ou "autre". Masqué si la
+            gestion courante est déléguée à une agence : c'est elle qui
+            réclame et suit l'attestation, pas le bailleur depuis lokt. */}
         {(["furnished_primary", "furnished_student", "mobility", "empty_primary"] as const).includes(
           (l.lease_kind as any) || "furnished_primary"
         ) &&
+          !(p?.delegated_services || []).includes("gestion_courante") &&
           (() => {
             const receivedAt = l.insurance_certificate_received_at || null;
             const receivedDate = receivedAt ? parseISODateLocal(receivedAt) : null;

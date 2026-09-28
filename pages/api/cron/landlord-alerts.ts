@@ -159,6 +159,11 @@ const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, DelegatedSer
   deposit_not_collected:   "bail_edl",
   deposit_return_overdue:  "bail_edl",
   avenant_pending:         "bail_edl",
+  // Attestation d'assurance : réclamée chaque année au locataire, même
+  // logique récurrente que les quittances/relances -> gestion_courante.
+  insurance_certificate_missing: "gestion_courante",
+  // DPE : préparé avec le bail (dossier de diagnostic technique) -> bail_edl.
+  dpe_missing:             "bail_edl",
 };
 
 function isServiceDelegated(propertyId: string | undefined, preferenceKey: LandlordAlertPreferenceKey, propertiesById: Map<string, any>): boolean {
