@@ -68,7 +68,7 @@ Rendement net avant fiscalité : **4,4 %**
 
 ## La fiscalité : un facteur déterminant
 
-Les deux modèles relèvent du régime LMNP (si meublés), mais avec des seuils différents.
+Les deux modèles relèvent du [régime LMNP](/blog/lmnp-guide-complet-2026) (si meublés), mais avec des seuils différents.
 
 ### Location longue durée meublée (LMNP classique)
 

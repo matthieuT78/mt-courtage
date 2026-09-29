@@ -147,7 +147,7 @@ Idéal pour les premières années d'un bien avec des travaux importants.
 
 ### Location meublée — LMNP au réel
 
-C'est souvent le régime le plus avantageux à long terme. Vous déduisez les charges ET **amortissez comptablement le bien** (sur 25-30 ans). Résultat : vos revenus locatifs sont nuls fiscalement pendant 10 à 15 ans.
+C'est souvent le [régime](/blog/lmnp-guide-complet-2026) le plus avantageux à long terme. Vous déduisez les charges ET **amortissez comptablement le bien** (sur 25-30 ans). Résultat : vos revenus locatifs sont nuls fiscalement pendant 10 à 15 ans.
 
 **Exemple sur notre bien :**
 - Amortissement annuel du bien (30 ans) : 180 000 / 30 = **6 000 €/an**
