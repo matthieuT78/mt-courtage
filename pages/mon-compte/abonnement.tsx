@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
+import { ReferralCard } from "../../components/landlord/ReferralCard";
 import { supabase } from "../../lib/supabaseClient";
 import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
@@ -31,114 +32,6 @@ type BillingInvoice = {
   stripe_created_at: string | null;
   created_at: string | null;
 };
-
-function ReferralSection({ userId, referralCode: codeOverride }: { userId: string; referralCode?: string }) {
-  const referralCode = codeOverride || userId.replace(/-/g, "").slice(0, 8).toUpperCase();
-  const referralLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin}?ref=${referralCode}`
-      : `https://lokt.fr?ref=${referralCode}`;
-  const [copied, setCopied] = useState(false);
-  const [filleulCount, setFilleulCount] = useState<number | null>(null);
-  const [rewarded, setRewarded] = useState(false);
-
-  useEffect(() => {
-    const load = async () => {
-      if (!supabase) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, referral_rewarded_at")
-        .eq("referred_by", referralCode);
-      if (data) {
-        setFilleulCount(data.length);
-        setRewarded(data.some((r: any) => !!r.referral_rewarded_at));
-      }
-    };
-    load();
-  }, [referralCode]);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(referralLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {}
-  };
-
-  return (
-    <div className="rounded-3xl border border-[#635bff]/20 bg-gradient-to-br from-[#f6f9fc] to-white shadow-sm px-6 py-6 sm:px-8">
-      <div className="flex gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#635bff]/10 text-[#635bff]">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <polyline points="20 12 20 22 4 22 4 12" />
-            <rect x="2" y="7" width="20" height="5" />
-            <line x1="12" y1="22" x2="12" y2="7" />
-            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-          </svg>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">Parrainez un bailleur — 3 mois à −50 % pour vous deux</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Invitez un propriétaire à rejoindre lokt.fr avec votre lien. Dès qu'il souscrit,{" "}
-            <strong className="font-semibold text-slate-900">vous bénéficiez tous les deux de 3 mois à moitié prix</strong>{" "}
-            — appliqués automatiquement sur vos abonnements respectifs.
-          </p>
-
-          <div className="mt-4">
-            <p className="text-xs font-semibold text-slate-700 mb-2">Votre lien de parrainage</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
-                <p className="truncate font-mono text-xs text-slate-700">{referralLink}</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopy}
-                className={
-                  "shrink-0 rounded-xl border px-4 py-2.5 text-xs font-semibold transition " +
-                  (copied
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                    : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50")
-                }
-              >
-                {copied ? "Copié ✓" : "Copier"}
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-center">
-              <p className="text-lg font-semibold text-slate-900">{filleulCount ?? "…"}</p>
-              <p className="text-xs text-slate-500">filleul{(filleulCount ?? 0) > 1 ? "s" : ""}</p>
-            </div>
-            {rewarded ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
-                <p className="text-xs font-semibold text-emerald-700">Récompense appliquée ✓</p>
-                <p className="text-xs text-emerald-600">3 mois à −50 % activés sur votre abonnement</p>
-              </div>
-            ) : (filleulCount ?? 0) > 0 ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
-                <p className="text-xs font-semibold text-amber-700">En attente de souscription</p>
-                <p className="text-xs text-amber-600">La récompense s'active dès que votre filleul souscrit</p>
-              </div>
-            ) : null}
-          </div>
-
-          <p className="mt-3 text-xs text-slate-500">
-            Code personnel :{" "}
-            <span className="font-mono font-semibold text-slate-700">{referralCode}</span>
-            {" "}· Votre filleul peut aussi le mentionner à{" "}
-            <a href="mailto:contact@lokt.fr?subject=Parrainage%20lokt.fr" className="underline hover:text-slate-700">
-              contact@lokt.fr
-            </a>
-            .
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function formatInvoiceAmount(amount: number | null | undefined, currency: string | null | undefined) {
   const value = Number(amount || 0) / 100;
@@ -501,7 +394,7 @@ export default function MonCompteAbonnementPage() {
             </div>
           </div>
 
-          {user?.id ? <ReferralSection userId={user.id} /> : null}
+          {user?.id ? <ReferralCard userId={user.id} /> : null}
 
           <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8 flex flex-wrap items-center justify-between gap-3">
             <div>

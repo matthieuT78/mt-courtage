@@ -238,6 +238,14 @@ async function applyReferralReward(filleulUserId: string, filleulSubscriptionId:
 
   if ((parrainSub as any)?.stripe_subscription_id) {
     try { await stripePost(`/subscriptions/${(parrainSub as any).stripe_subscription_id}`, { coupon: couponId }); } catch {}
+  } else {
+    // Parrain sans abonnement actif (cas courant : il est encore en gratuit) —
+    // on mémorise la récompense due, appliquée dès qu'il souscrit lui-même
+    // (voir applyPendingParrainReward, appelé sur chaque checkout complété).
+    await supabaseAdmin
+      .from("profiles")
+      .update({ referral_reward_pending_since: new Date().toISOString() })
+      .eq("id", parrain.id);
   }
 
   // Marquer comme récompensé (idempotent)
@@ -245,6 +253,30 @@ async function applyReferralReward(filleulUserId: string, filleulSubscriptionId:
     .from("profiles")
     .update({ referral_rewarded_at: new Date().toISOString() })
     .eq("id", filleulUserId);
+}
+
+// Contrepartie de la branche "pending" ci-dessus : à chaque souscription
+// réussie, vérifie si CET utilisateur (en tant que parrain, pas filleul) a
+// une récompense en attente faute d'avoir eu un abonnement actif au bon
+// moment — et l'applique maintenant sur son nouvel abonnement.
+async function applyPendingParrainReward(userId: string, subscriptionId: string | null) {
+  if (!supabaseAdmin || !subscriptionId) return;
+
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("referral_reward_pending_since")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profile?.referral_reward_pending_since) return;
+
+  const couponId = await ensureReferralCoupon();
+  try { await stripePost(`/subscriptions/${subscriptionId}`, { coupon: couponId }); } catch {}
+
+  await supabaseAdmin
+    .from("profiles")
+    .update({ referral_reward_pending_since: null })
+    .eq("id", userId);
 }
 
 function firstSubscriptionItem(subscription: any) {
@@ -289,9 +321,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         currentPeriodEnd: subscription?.current_period_end || null,
       });
 
-      // Récompense parrainage (non bloquant)
+      // Récompense parrainage (non bloquant) — côté filleul (on vient de
+      // s'abonner, quelqu'un nous a peut-être parrainé) et côté parrain (on
+      // vient de s'abonner, une récompense en attente nous est peut-être due).
       if (userId && subscriptionId) {
         applyReferralReward(userId, subscriptionId).catch(() => {});
+        applyPendingParrainReward(userId, subscriptionId).catch(() => {});
       }
     }
 

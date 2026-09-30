@@ -16,6 +16,7 @@ import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
 import type { Plan } from "../../../lib/permissions";
 import { TransitionPanel } from "./TransitionPanel";
+import { ReferralBanner } from "../ReferralBanner";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -2566,6 +2567,12 @@ export function SectionDashboard({
           </div>
         )}
       </section>
+
+      {/* ── Parrainage ─────────────────────────────────────────────────── */}
+      {/* Bannière discrète : le lien/stats/récompense restent dans Mon
+          Compte > Abonnement (ReferralCard), ici juste de quoi capter
+          l'attention et renvoyer vers /parrainage pour le détail. */}
+      <ReferralBanner />
 
       {/* ── Modal alertes masquées ─────────────────────────────────────── */}
       {showSnoozedModal && (
