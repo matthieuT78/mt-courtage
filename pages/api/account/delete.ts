@@ -18,13 +18,23 @@
 //      la politique de confidentialité promettant un effacement sous 30 jours.
 //   6. Suppression du profil
 //   7. Suppression de l'utilisateur auth Supabase (cascade la ligne subscriptions)
-//   8. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
+//   8. Alerte Telegram (best-effort) avec la raison de suppression indiquée par l'utilisateur
+//   9. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser } from "../../../lib/apiAuth";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { buildCompteSupprimeEmailHtml, buildCompteSupprimeEmailText } from "../../../lib/emails/compte-supprime";
 import { deleteUserStorage } from "../../../lib/deleteUserStorage";
+import { sendTelegramMessage } from "../../../lib/telegram";
+
+function escHtml(s: string) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function budgetBucket(amount: number | null): string | null {
   if (!amount || amount <= 0) return null;
@@ -74,6 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const userId = auth.userId;
   const now = new Date().toISOString();
   const recipientEmail = auth.email || null;
+  const deleteReason = typeof (req.body || {}).reason === "string" ? (req.body as any).reason.trim() : "";
 
   // Capturé avant suppression du profil (étape 4) pour personnaliser l'email de confirmation.
   const { data: profileForEmail } = await supabaseAdmin
@@ -197,7 +208,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
 
-  // 8. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
+  // 8. Alerte Telegram — best-effort, ne doit pas affecter le résultat de la
+  // suppression (déjà effectuée à ce stade). Restitue la raison indiquée par
+  // l'utilisateur dans la modale de suppression, en plus du contexte abonnement.
+  try {
+    const nameLine = recipientName ? `${escHtml(recipientName)} (${escHtml(recipientEmail || "email inconnu")})` : escHtml(recipientEmail || "email inconnu");
+    const reasonLine = deleteReason ? escHtml(deleteReason) : "Non renseignée";
+    await sendTelegramMessage(
+      `🗑️ <b>lokt.fr — Compte supprimé</b>\n` +
+        `${nameLine}\n` +
+        `Abonnement : ${stripeSubId ? "actif, résilié" : "aucun"}\n` +
+        `Raison : ${reasonLine}`
+    );
+  } catch (e: any) {
+    console.error("[account/delete] telegram alert error:", e?.message || e);
+  }
+
+  // 9. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
   // ne doit pas faire échouer la requête (rien à annuler côté suppression).
   if (recipientEmail) {
     const payload = { fullName: recipientName, stripeCanceled: !!stripeSubId };

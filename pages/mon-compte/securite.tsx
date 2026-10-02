@@ -34,7 +34,17 @@ export default function MonCompteSecuritePage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteReasonOther, setDeleteReasonOther] = useState("");
   const deleteInputRef = useRef<HTMLInputElement>(null);
+
+  const DELETE_REASONS = [
+    "Je ne loue plus / j'ai vendu mon bien",
+    "Je n'utilise pas assez l'outil",
+    "Je suis passé à un autre outil ou une agence",
+    "Problème technique ou bug",
+    "Autre",
+  ];
 
   const isLoggedIn = !!user?.email;
   const isGoogleUser =
@@ -117,6 +127,12 @@ export default function MonCompteSecuritePage() {
 
   const handleDeleteAccount = async () => {
     if (!supabase) return setDeleteError("Auth indisponible.");
+    if (!deleteReason) {
+      return setDeleteError("Merci d'indiquer pourquoi vous supprimez votre compte.");
+    }
+    if (deleteReason === "Autre" && !deleteReasonOther.trim()) {
+      return setDeleteError("Merci de préciser la raison.");
+    }
     if (deleteConfirm.trim().toLowerCase() !== "supprimer") {
       return setDeleteError("Tapez exactement « supprimer » pour confirmer.");
     }
@@ -139,9 +155,11 @@ export default function MonCompteSecuritePage() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error("Session expirée, reconnectez-vous.");
+      const reason = deleteReason === "Autre" ? deleteReasonOther.trim() : deleteReason;
       const res = await fetch("/api/account/delete", {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || "Erreur lors de la suppression.");
@@ -340,7 +358,7 @@ export default function MonCompteSecuritePage() {
             </p>
             <button
               type="button"
-              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(""); setDeletePassword(""); setDeleteError(null); }}
+              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(""); setDeletePassword(""); setDeleteError(null); setDeleteReason(""); setDeleteReasonOther(""); }}
               className="mt-4 rounded-full border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors"
             >
               Supprimer mon compte
@@ -362,6 +380,35 @@ export default function MonCompteSecuritePage() {
               Votre compte, vos données et votre abonnement Stripe seront supprimés définitivement.
               Les données de facturation sont conservées pour obligation légale.
             </p>
+
+            <div className="mt-5 space-y-2">
+              <label className="block text-sm font-medium text-slate-700">Pourquoi supprimez-vous votre compte ?</label>
+              <div className="space-y-1.5">
+                {DELETE_REASONS.map((reason) => (
+                  <label key={reason} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="delete-reason"
+                      value={reason}
+                      checked={deleteReason === reason}
+                      onChange={(e) => setDeleteReason(e.target.value)}
+                      className="h-3.5 w-3.5 border-slate-300 text-red-600 focus:ring-red-500/30"
+                    />
+                    {reason}
+                  </label>
+                ))}
+              </div>
+              {deleteReason === "Autre" && (
+                <input
+                  type="text"
+                  value={deleteReasonOther}
+                  onChange={(e) => setDeleteReasonOther(e.target.value)}
+                  placeholder="Précisez…"
+                  className={inputCls + " focus:ring-red-500/20"}
+                  autoFocus
+                />
+              )}
+            </div>
 
             <div className="mt-5 space-y-2">
               <label className="block text-sm font-medium text-slate-700">
@@ -411,7 +458,13 @@ export default function MonCompteSecuritePage() {
               <button
                 type="button"
                 onClick={handleDeleteAccount}
-                disabled={deleteLoading || deleteConfirm.trim().toLowerCase() !== "supprimer" || (!isGoogleUser && !deletePassword)}
+                disabled={
+                  deleteLoading ||
+                  !deleteReason ||
+                  (deleteReason === "Autre" && !deleteReasonOther.trim()) ||
+                  deleteConfirm.trim().toLowerCase() !== "supprimer" ||
+                  (!isGoogleUser && !deletePassword)
+                }
                 className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40 transition-colors"
               >
                 {deleteLoading ? "Suppression…" : "Supprimer"}
