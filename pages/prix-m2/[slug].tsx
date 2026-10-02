@@ -510,7 +510,13 @@ export default function PrixM2City({
       <Head>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDesc} />
-        <meta name="robots" content="index, follow" />
+        {/* Sous 5 transactions sur la dernière année, le prix médian n'est plus un
+            signal fiable (cf. reliabilityLevel) et la page n'a quasiment aucune
+            demande de recherche réelle (audit GSC 2026-10 : ces pages pèsent 9%
+            des impressions du cluster /prix-m2 pour 47% des pages) — noindex pour
+            concentrer le budget de crawl, mais "follow" pour laisser circuler le
+            lien interne vers les communes voisines. */}
+        <meta name="robots" content={latestNTransactions == null || latestNTransactions < 5 ? "noindex, follow" : "index, follow"} />
         <link rel="canonical" href={pageUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="lokt.fr" />
