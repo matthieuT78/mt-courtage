@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const [tenantRes, coTenantRes, propertyRes] = await Promise.all([
       supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single(),
       lease.co_tenant_id
-        ? supabaseAdmin.from("tenants").select("email").eq("id", lease.co_tenant_id).maybeSingle()
+        ? supabaseAdmin.from("tenants").select("email,full_name").eq("id", lease.co_tenant_id).maybeSingle()
         : Promise.resolve({ data: null }),
       lease.property_id
         ? supabaseAdmin.from("properties").select("city,label").eq("id", lease.property_id).maybeSingle()
@@ -169,7 +169,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const pdfBuf = Buffer.from(await pdfResp.arrayBuffer());
 
     const yyyymm = String(receipt.period_start || "").slice(0, 7) || "quittance";
-    const tenantName = safeStr(tenant?.full_name);
+    // Le colocataire est solidaire au même titre que le locataire principal
+    // (cf. plus haut) — le sujet de l'email doit aussi le nommer, sinon il ne
+    // mentionne que tenant_id alors que le PDF joint et le corps du texte
+    // nomment déjà les deux.
+    const coTenantName = safeStr((coTenantRes as any)?.data?.full_name);
+    const primaryTenantName = safeStr(tenant?.full_name);
+    const tenantName = coTenantName ? `${primaryTenantName} et ${coTenantName}` : primaryTenantName;
     const city = safeStr(property?.city) || safeStr(property?.label);
     const monthLong = yyyymm
       ? new Date(Number(yyyymm.slice(0, 4)), Number(yyyymm.slice(5, 7)) - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
