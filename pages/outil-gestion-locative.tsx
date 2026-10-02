@@ -346,9 +346,9 @@ export default function OutilGestionLocativePage() {
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                 >
-                  <TrustpilotStars rating={4.3} size={15} />
-                  <span className="font-semibold text-slate-950">4,3</span>
-                  <span className="text-slate-500">sur Trustpilot</span>
+                  <TrustpilotStars rating={4.4} size={15} />
+                  <span className="font-semibold text-slate-950">4,4</span>
+                  <span className="text-slate-500">· 12 avis sur Trustpilot</span>
                 </a>
               </div>
 

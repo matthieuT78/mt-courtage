@@ -6,6 +6,8 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
 import CalculatorHero from "../components/calculators/CalculatorHero";
+import TrustpilotStars from "../components/TrustpilotStars";
+import ReviewsSection from "../components/ReviewsSection";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 import { useScrollReveal } from "../hooks/useScrollReveal";
@@ -344,6 +346,17 @@ export default function PretRelaisPage() {
 
           {/* Calculette */}
           <PretRelaisWizard showSaveButton={isLoggedIn} />
+
+          <a
+            href="https://fr.trustpilot.com/review/lokt.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <TrustpilotStars rating={4.4} size={15} />
+            <span className="font-semibold text-slate-950">4,4</span>
+            <span className="text-slate-500">· 12 avis sur Trustpilot</span>
+          </a>
 
           {/* ── Section 1 : définition + formule ── */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-5">
@@ -686,6 +699,8 @@ export default function PretRelaisPage() {
               </Link>
             </div>
           </section>
+
+          <ReviewsSection />
 
           {/* FAQ */}
           <section id="faq" className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">

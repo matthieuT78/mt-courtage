@@ -923,9 +923,9 @@ export default function Home() {
                   rel="noopener noreferrer"
                   className="anim-fadeUp d-3 mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-xs font-medium text-white/90 ring-1 ring-white/15 backdrop-blur transition hover:bg-white/15"
                 >
-                  <TrustpilotStars rating={4.3} size={15} />
-                  <span className="font-semibold text-white">4,3</span>
-                  <span className="text-white/70">sur Trustpilot</span>
+                  <TrustpilotStars rating={4.4} size={15} />
+                  <span className="font-semibold text-white">4,4</span>
+                  <span className="text-white/70">· 12 avis sur Trustpilot</span>
                 </a>
               </div>
 

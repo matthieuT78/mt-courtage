@@ -4,6 +4,8 @@ import Image from "next/image";
 import { CheckIcon, XMarkIcon, MinusIcon } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import TrustpilotStars from "../components/TrustpilotStars";
+import ReviewsSection from "../components/ReviewsSection";
 
 const siteUrl = "https://lokt.fr";
 const metaTitle = "Comparatif logiciels gestion locative 2026 | lokt.fr";
@@ -371,6 +373,17 @@ export default function ComparatifPage() {
               Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, assistant IA qui exécute les actions (Loky), simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>BailFacile</strong> propose un essai de 7 jours mais aucune offre gratuite permanente. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
             </p>
           </div>
+
+          <a
+            href="https://fr.trustpilot.com/review/lokt.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <TrustpilotStars rating={4.4} size={15} />
+            <span className="font-semibold text-slate-950">4,4</span>
+            <span className="text-slate-500">· 12 avis sur Trustpilot</span>
+          </a>
         </header>
 
         {/* Tableau comparatif */}
@@ -582,6 +595,8 @@ export default function ComparatifPage() {
             </Link>
           </div>
         </section>
+
+        <ReviewsSection />
 
         {/* FAQ */}
         <section className="mb-12">
