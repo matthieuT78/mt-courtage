@@ -31,6 +31,7 @@ import {
   getCityPriceData,
   getCityExternalKpis,
   getTopCitySlugs,
+  getAreaCommunes,
   parseCitySlug,
   type CityPriceData,
   type CityExternalKpis,
@@ -335,7 +336,17 @@ const PROPERTY_TYPE_LABELS: Record<"tous" | "maison" | "appartement", string> = 
   appartement: "Appartement",
 };
 
-export default function PrixM2City({ city, externalKpis }: { city: CityPriceData; externalKpis: CityExternalKpis | null }) {
+type NearbyCommune = { slug: string; cityName: string; postalCode: string; priceM2: number | null };
+
+export default function PrixM2City({
+  city,
+  externalKpis,
+  nearbyCommunes,
+}: {
+  city: CityPriceData;
+  externalKpis: CityExternalKpis | null;
+  nearbyCommunes: NearbyCommune[];
+}) {
   const [propertyTypeView, setPropertyTypeView] = useState<"tous" | "maison" | "appartement">("tous");
   const pageUrl = `${SITE_URL}/prix-m2/${citySlug(city.cityName, city.inseeCode)}`;
 
@@ -901,6 +912,29 @@ export default function PrixM2City({ city, externalKpis }: { city: CityPriceData
             </div>
           </section>
 
+          {nearbyCommunes.length > 0 && (
+            <section>
+              <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+                Communes comparables dans le {city.departmentName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Prix au m² le plus proche de celui de {city.cityName} dans le même département.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {nearbyCommunes.map((c) => (
+                  <Link
+                    key={c.slug}
+                    href={`/prix-m2/${c.slug}`}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm hover:border-[#635bff]/40 hover:bg-[#635bff]/5"
+                  >
+                    <span className="block truncate font-medium text-slate-900">{c.cityName}</span>
+                    <span className="block text-xs text-slate-500">{formatEur(c.priceM2)}/m²</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400 leading-5">
             Prix calculés à partir des DVF (Demandes de Valeurs Foncières, DGFiP), mises à jour semestriellement — des ventes réellement actées, pas des prix d'annonce, ce qui explique un niveau généralement inférieur aux estimations d'agences (SeLoger, MeilleursAgents...). {rentIsOfficial ? "Le loyer provient de la Carte des loyers (DGALN/ANIL)." : "Le loyer est une estimation par heuristique de rendement, pas une donnée observée."} Revenu médian et population : INSEE (recensement, Filosofi). Part de logements F/G : ADEME (base DPE). Taxe foncière : DGFiP. Gare la plus proche : SNCF. Ces données sont indicatives et ne constituent pas un conseil en investissement.
           </div>
@@ -949,5 +983,18 @@ export async function getStaticProps({ params }: { params: { slug: string } }) {
 
   const externalKpis = await getCityExternalKpis(inseeCode, city.priceM2);
 
-  return { props: { city, externalKpis }, revalidate: 60 * 60 * 24 * 7 };
+  // Maillage interne entre communes d'un même département : sans ça, chaque
+  // page ville ne linke que vers sa page département et l'index /prix-m2,
+  // ce qui laisse les ~29k pages communes sans lien entre elles (cf. audit
+  // GSC — seules ~600 génèrent une impression sur 90j). On réutilise
+  // getAreaCommunes (déjà utilisé par la page département) plutôt que
+  // d'ajouter une source de données : les plus proches en prix sont retenues
+  // comme "voisines", faute de coordonnées géographiques en base.
+  const departmentCommunes = await getAreaCommunes("departement", city.departmentCode);
+  const nearbyCommunes = departmentCommunes
+    .filter((c) => c.slug !== canonicalSlug && c.priceM2 != null)
+    .sort((a, b) => Math.abs(a.priceM2! - city.priceM2!) - Math.abs(b.priceM2! - city.priceM2!))
+    .slice(0, 8);
+
+  return { props: { city, externalKpis, nearbyCommunes }, revalidate: 60 * 60 * 24 * 7 };
 }
