@@ -208,9 +208,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
 
-  // 8. Alerte Telegram — best-effort, ne doit pas affecter le résultat de la
-  // suppression (déjà effectuée à ce stade). Restitue la raison indiquée par
-  // l'utilisateur dans la modale de suppression, en plus du contexte abonnement.
+  // 8. Alerte Telegram + archivage du motif — best-effort, ne doit pas affecter
+  // le résultat de la suppression (déjà effectuée à ce stade). La table
+  // account_deletion_feedback n'a pas de FK vers auth.users (le compte est
+  // déjà supprimé) et ne garde que ce qui sert des stats de churn, pas de PII.
   try {
     const nameLine = recipientName ? `${escHtml(recipientName)} (${escHtml(recipientEmail || "email inconnu")})` : escHtml(recipientEmail || "email inconnu");
     const reasonLine = deleteReason ? escHtml(deleteReason) : "Non renseignée";
@@ -222,6 +223,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
   } catch (e: any) {
     console.error("[account/delete] telegram alert error:", e?.message || e);
+  }
+
+  try {
+    await supabaseAdmin.from("account_deletion_feedback").insert({
+      original_user_id: userId,
+      reason: deleteReason || null,
+      had_subscription: !!stripeSubId,
+    });
+  } catch (e: any) {
+    console.error("[account/delete] deletion feedback archive error:", e?.message || e);
   }
 
   // 9. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
