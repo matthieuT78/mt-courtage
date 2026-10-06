@@ -4,6 +4,7 @@ import matter from "gray-matter";
 import { remark } from "remark";
 import html from "remark-html";
 import remarkGfm from "remark-gfm";
+import { getDonneesImmo, computeCapaciteEmpruntPourSalaire } from "./donnees-service";
 
 export type BlogFrontmatter = {
   title: string;
@@ -16,7 +17,85 @@ export type BlogFrontmatter = {
   relatedCalculators?: string[]; // e.g. ["capacite", "investissement"]
   coverImage?: string | null;
   faq?: Array<{ q: string; a: string }>;
+  // Si renseigné, {{TOKENS}} dans le corps, la description et la FAQ sont
+  // remplacés au build par les vrais chiffres de capacité d'emprunt pour ce
+  // salaire (mêmes taux live que /donnees, cf. lib/donnees-service.ts) —
+  // évite que ces pages se désynchronisent de la donnée officielle au
+  // prochain changement de taux trimestriel. Voir combien-emprunter-3000.md
+  // pour la liste des tokens disponibles.
+  capaciteEmpruntSalaire?: number;
+  // Variante multi-tranches pour une page pilier qui couvre plusieurs
+  // salaires (cf. combien-emprunter-salaire.md) : génère des tokens suffixés
+  // par salaire, ex. {{CAPITAL_20_1500}}, {{BUDGET_25_3000}}.
+  capaciteEmpruntSalaires?: number[];
 };
+
+function fmtEuro(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function tokensForSalaire(
+  cap: ReturnType<typeof computeCapaciteEmpruntPourSalaire>,
+  suffix: string
+): Record<string, string> {
+  return {
+    [`MENSUALITE${suffix}`]: fmtEuro(cap.mensualite),
+    [`CAPITAL_15${suffix}`]: fmtEuro(cap.capital15),
+    [`CAPITAL_20${suffix}`]: fmtEuro(cap.capital20),
+    [`CAPITAL_25${suffix}`]: fmtEuro(cap.capital25),
+    [`BUDGET_20${suffix}`]: fmtEuro(cap.budget20),
+    [`APPORT_20${suffix}`]: fmtEuro(cap.apport20),
+    [`BUDGET_25${suffix}`]: fmtEuro(cap.budget25),
+    [`APPORT_25${suffix}`]: fmtEuro(cap.apport25),
+    [`TAUX_15${suffix}`]: cap.taux15.toLocaleString("fr-FR", { minimumFractionDigits: 2 }),
+    [`TAUX_20${suffix}`]: cap.taux20.toLocaleString("fr-FR", { minimumFractionDigits: 2 }),
+    [`TAUX_25${suffix}`]: cap.taux25.toLocaleString("fr-FR", { minimumFractionDigits: 2 }),
+    [`CREDIT150_DISPO${suffix}`]: fmtEuro(Math.max(cap.mensualite - 150, 0)),
+    [`CREDIT300_DISPO${suffix}`]: fmtEuro(Math.max(cap.mensualite - 300, 0)),
+    [`CREDIT500_DISPO${suffix}`]: fmtEuro(Math.max(cap.mensualite - 500, 0)),
+    [`CREDIT150_CAPITAL${suffix}`]: fmtEuro(cap.capitalApresCredit20(150)),
+    [`CREDIT300_CAPITAL${suffix}`]: fmtEuro(cap.capitalApresCredit20(300)),
+    [`CREDIT500_CAPITAL${suffix}`]: fmtEuro(cap.capitalApresCredit20(500)),
+    [`INTERETS_15${suffix}`]: fmtEuro(cap.mensualite * 15 * 12 - cap.capital15),
+    [`INTERETS_20${suffix}`]: fmtEuro(cap.mensualite * 20 * 12 - cap.capital20),
+    [`INTERETS_25${suffix}`]: fmtEuro(cap.mensualite * 25 * 12 - cap.capital25),
+  };
+}
+
+async function applyCapaciteEmpruntTokens<T>(
+  value: T,
+  salaire: number | undefined,
+  salaires: number[] | undefined
+): Promise<T> {
+  if (!salaire && !salaires?.length) return value;
+  const donnees = await getDonneesImmo();
+
+  let tokens: Record<string, string> = {};
+  if (salaire) {
+    const cap = computeCapaciteEmpruntPourSalaire(salaire, donnees.taux_credit_immobilier);
+    tokens = { ...tokens, ...tokensForSalaire(cap, "") };
+  }
+  for (const s of salaires || []) {
+    const cap = computeCapaciteEmpruntPourSalaire(s, donnees.taux_credit_immobilier);
+    tokens = { ...tokens, ...tokensForSalaire(cap, `_${s}`) };
+  }
+
+  const replaceTokens = (s: string) =>
+    s.replace(/\{\{(\w+)\}\}/g, (match, key) => (key in tokens ? tokens[key] : match));
+
+  const walk = (v: any): any => {
+    if (typeof v === "string") return replaceTokens(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === "object") {
+      const out: any = {};
+      for (const k of Object.keys(v)) out[k] = walk(v[k]);
+      return out;
+    }
+    return v;
+  };
+
+  return walk(value);
+}
 
 export type TocEntry = { id: string; text: string; level: number };
 
@@ -76,22 +155,38 @@ export function getAllBlogSlugs(): string[] {
     .map((f) => f.replace(/\.md$/, ""));
 }
 
-export function getAllPostsMeta(): Array<{ slug: string; frontmatter: BlogFrontmatter; readingTime: number }> {
+// Async car certains articles (cf. capaciteEmpruntSalaire(s) en frontmatter)
+// ont une description générée avec des {{TOKENS}} à résoudre contre la
+// donnée live — sans ça, les cartes "à lire aussi", l'index /blog et le flux
+// /api/content/lokt-feed afficheraient les tokens bruts au lieu du chiffre.
+export async function getAllPostsMeta(): Promise<Array<{ slug: string; frontmatter: BlogFrontmatter; readingTime: number }>> {
   const slugs = getAllBlogSlugs();
-  return slugs
-    .map((slug) => {
+  const posts = await Promise.all(
+    slugs.map(async (slug) => {
       const filePath = path.join(BLOG_DIR, `${slug}.md`);
       const file = fs.readFileSync(filePath, "utf8");
       const { data, content } = matter(file);
-      return { slug, frontmatter: resolveFrontmatter(data as BlogFrontmatter), readingTime: computeReadingTime(content) };
+      const fm = data as BlogFrontmatter;
+      const frontmatter = await applyCapaciteEmpruntTokens(
+        resolveFrontmatter(fm),
+        fm.capaciteEmpruntSalaire,
+        fm.capaciteEmpruntSalaires
+      );
+      return { slug, frontmatter, readingTime: computeReadingTime(content) };
     })
-    .sort((a, b) => (b.frontmatter.date || "").localeCompare(a.frontmatter.date || ""));
+  );
+  return posts.sort((a, b) => (b.frontmatter.date || "").localeCompare(a.frontmatter.date || ""));
 }
 
 export async function getPostBySlug(slug: string): Promise<BlogPost> {
   const filePath = path.join(BLOG_DIR, `${slug}.md`);
   const file = fs.readFileSync(filePath, "utf8");
-  const { data, content } = matter(file);
+  const { data, content: rawContent } = matter(file);
+
+  const salaire = (data as BlogFrontmatter).capaciteEmpruntSalaire;
+  const salaires = (data as BlogFrontmatter).capaciteEmpruntSalaires;
+  const content = await applyCapaciteEmpruntTokens(rawContent, salaire, salaires);
+  const frontmatterResolved = await applyCapaciteEmpruntTokens(resolveFrontmatter((data || {}) as BlogFrontmatter), salaire, salaires);
 
   const processed = await remark().use(remarkGfm).use(html, { sanitize: false }).process(content);
   const rawHtml = processed.toString().replace(/^<h1[^>]*>.*?<\/h1>\s*/i, "");
@@ -101,7 +196,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
 
   return {
     slug,
-    frontmatter: resolveFrontmatter((data || {}) as BlogFrontmatter),
+    frontmatter: frontmatterResolved,
     contentHtml,
     readingTime,
     toc,

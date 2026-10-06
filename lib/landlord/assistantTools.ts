@@ -2390,7 +2390,7 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       const { GUIDES } = await import("../guides");
       const { getAllPostsMeta } = await import("../blog");
       const guides = GUIDES.map((g) => ({ title: g.title, url: `/guides/${g.slug}`, category: g.category }));
-      const articles = getAllPostsMeta().map((p) => ({
+      const articles = (await getAllPostsMeta()).map((p) => ({
         title: p.frontmatter.title,
         url: `/blog/${p.slug}`,
         category: p.frontmatter.category || null,

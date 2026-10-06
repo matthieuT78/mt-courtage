@@ -488,7 +488,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 export const getStaticProps: GetStaticProps<Props> = async (ctx) => {
   const slug = String(ctx.params?.slug || "");
   const post = await getPostBySlug(slug);
-  const allMeta = getAllPostsMeta();
+  const allMeta = await getAllPostsMeta();
 
   const related = allMeta
     .filter((p) => p.slug !== slug)
@@ -501,5 +501,12 @@ export const getStaticProps: GetStaticProps<Props> = async (ctx) => {
     )
     .slice(0, 2);
 
-  return { props: { post, slug, related } };
+  // Revalidation hebdomadaire sur tout le blog, pas seulement les pages
+  // combien-emprunter-* elles-mêmes : un article sans rapport (ex. frais de
+  // notaire) peut afficher une de ces pages en "à lire aussi" avec sa
+  // description générée depuis /donnees — sans revalidate ici aussi, cette
+  // carte resterait figée avec un chiffre obsolète même après correction de
+  // la page source. Le coût d'une régénération ISR hebdo sur du contenu par
+  // ailleurs inchangé est négligeable.
+  return { props: { post, slug, related }, revalidate: 60 * 60 * 24 * 7 };
 };

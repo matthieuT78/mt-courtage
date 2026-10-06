@@ -1,33 +1,34 @@
 ---
 title: "Emprunter avec 3 000 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 3 000 € par mois ?"
-description: "Avec 3 000 € nets/mois : capacité d'emprunt entre 146 000 et 200 000 € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles en 2026."
+description: "Avec 3 000 € nets/mois : capacité d'emprunt entre {{CAPITAL_15}} et {{CAPITAL_25}} € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles en 2026."
 date: "2026-10-06"
 updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "3000 euros", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
 coverImage: "/blog/combien-emprunter-3000.jpg"
+capaciteEmpruntSalaire: 3000
 faq:
   - q: "Peut-on acheter seul avec 3 000 € de revenus par mois ?"
-    a: "Oui, dans la plupart des villes moyennes françaises hors Paris et grandes métropoles. À 3 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ 222 000 €, suffisant pour un T2 dans beaucoup de marchés."
+    a: "Oui, dans la plupart des villes moyennes françaises hors Paris et grandes métropoles. À 3 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ {{BUDGET_25}} €, suffisant pour un T2 dans beaucoup de marchés."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. Pour un primo-accédant achetant sa résidence principale avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37-38 % d'endettement."
   - q: "Mon salaire variable est-il pris en compte dans la capacité d'emprunt ?"
     a: "Les primes contractuelles régulières sur 3 ans ou plus sont parfois intégrées partiellement. Les bonus discrétionnaires ne le sont généralement pas. Les commissions sur un poste commercial peuvent être prises en compte si elles sont documentées sur plusieurs années."
   - q: "Faut-il consulter plusieurs banques pour son crédit immobilier ?"
-    a: "Oui, systématiquement. L'écart de taux entre la meilleure et la moins bonne offre peut atteindre 0,30 à 0,40 % sur un même profil. Sur 177 000 € sur 20 ans, c'est plusieurs milliers d'euros d'intérêts de différence."
+    a: "Oui, systématiquement. L'écart de taux entre la meilleure et la moins bonne offre peut atteindre 0,30 à 0,40 % sur un même profil, soit plusieurs milliers d'euros d'intérêts de différence sur 20 ans."
 ---
 
 # Combien puis-je emprunter avec 3 000 € par mois ?
 
-Avec 3 000 € nets par mois, votre capacité d'emprunt se situe entre **146 000 € et 200 000 €** selon la durée et le taux. C'est un profil qui permet d'accéder à la propriété dans la majorité des villes moyennes françaises — à condition d'optimiser la durée, l'apport et les crédits en cours.
+Avec 3 000 € nets par mois, votre capacité d'emprunt se situe entre **{{CAPITAL_15}} € et {{CAPITAL_25}} €** selon la durée et le taux. C'est un profil qui permet d'accéder à la propriété dans la majorité des villes moyennes françaises — à condition d'optimiser la durée, l'apport et les crédits en cours.
 
 ---
 
 ## Mensualité maximale à 3 000 €/mois
 
-> **Mensualité max = 3 000 × 35 % = 1 050 €/mois**
+> **Mensualité max = 3 000 × 35 % = {{MENSUALITE}} €/mois**
 
 C'est votre enveloppe crédit totale (assurance incluse, tous crédits confondus). Si vous avez déjà un crédit en cours, il vient s'imputer directement sur cette enveloppe.
 
@@ -35,26 +36,26 @@ C'est votre enveloppe crédit totale (assurance incluse, tous crédits confondus
 
 ## Tableau de capacité par durée (sans crédit en cours)
 
-Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
+Taux actuels (Observatoire Crédit Logement/CSA, mis à jour chaque semaine sur [/donnees](/donnees)), assurance incluse dans la mensualité.
 
 | Durée | Taux moyen constaté | Capital emprunté | Total intérêts |
 |-------|---------------|-----------------|----------------|
-| 15 ans | 3,20 % | ~146 000 € | ~37 000 € |
-| 20 ans | 3,40 % | ~177 000 € | ~75 000 € |
-| 25 ans | 3,60 % | ~200 000 € | ~115 000 € |
+| 15 ans | {{TAUX_15}} % | ~{{CAPITAL_15}} € | ~{{INTERETS_15}} € |
+| 20 ans | {{TAUX_20}} % | ~{{CAPITAL_20}} € | ~{{INTERETS_20}} € |
+| 25 ans | {{TAUX_25}} % | ~{{CAPITAL_25}} € | ~{{INTERETS_25}} € |
 
 ### Budget total avec apport de 10 %
 
 | Durée | Capital | Apport 10 % | **Budget total** |
 |-------|---------|-------------|-----------------|
-| 20 ans | 177 000 € | 20 000 € | **~197 000 €** |
-| 25 ans | 200 000 € | 22 000 € | **~222 000 €** |
+| 20 ans | {{CAPITAL_20}} € | {{APPORT_20}} € | **~{{BUDGET_20}} €** |
+| 25 ans | {{CAPITAL_25}} € | {{APPORT_25}} € | **~{{BUDGET_25}} €** |
 
 ---
 
 ## Ce que vous pouvez acheter à 3 000 €/mois
 
-| Marché | Budget ~197 000 € | Budget ~222 000 € |
+| Marché | Budget ~{{BUDGET_20}} € | Budget ~{{BUDGET_25}} € |
 |--------|-----------------|-----------------|
 | Paris intramuros | Hors de portée | Hors de portée |
 | Île-de-France périphérie | Studio en grande couronne | Studio/F1 en grande couronne |
@@ -70,12 +71,12 @@ Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la
 
 | Crédits en cours | Mensualité immo dispo | Capital (20 ans) |
 |-----------------|----------------------|-----------------|
-| 0 € | 1 050 € | ~177 000 € |
-| 150 €/mois | 900 € | ~152 000 € |
-| 300 €/mois | 750 € | ~126 000 € |
-| 500 €/mois | 550 € | ~93 000 € |
+| 0 € | {{MENSUALITE}} € | ~{{CAPITAL_20}} € |
+| 150 €/mois | {{CREDIT150_DISPO}} € | ~{{CREDIT150_CAPITAL}} € |
+| 300 €/mois | {{CREDIT300_DISPO}} € | ~{{CREDIT300_CAPITAL}} € |
+| 500 €/mois | {{CREDIT500_DISPO}} € | ~{{CREDIT500_CAPITAL}} € |
 
-Un crédit voiture à 300 €/mois ampute votre budget immobilier de **~51 000 €**. Solder les crédits consommation avant de demander un prêt immobilier est souvent la meilleure stratégie d'optimisation.
+Un crédit voiture à 300 €/mois ampute sensiblement votre budget immobilier. Solder les crédits consommation avant de demander un prêt immobilier est souvent la meilleure stratégie d'optimisation.
 
 ---
 
@@ -110,7 +111,7 @@ Le **reste à vivre** est aussi scruté : pour un couple, les banques appliquent
 
 ### 1. Allonger la durée à 25 ans
 
-Passer de 20 à 25 ans augmente le capital empruntable de ~23 000 € pour la même mensualité. Contrepartie : plusieurs dizaines de milliers d'euros d'intérêts supplémentaires sur la durée totale.
+Passer de 20 à 25 ans augmente sensiblement le capital empruntable pour la même mensualité. Contrepartie : plusieurs dizaines de milliers d'euros d'intérêts supplémentaires sur la durée totale.
 
 ### 2. Solder les crédits consommation avant le dépôt
 
@@ -118,7 +119,7 @@ Rembourser un crédit auto à 250 €/mois libère un budget immobilier supplém
 
 ### 3. Optimiser votre assurance emprunteur
 
-La délégation d'assurance (assurance externe à la banque) permet d'économiser 0,10 à 0,30 % par an. Sur un prêt de 177 000 € sur 20 ans, cela représente plusieurs milliers d'euros d'économies — et réduit la mensualité d'assurance, libérant de la capacité.
+La délégation d'assurance (assurance externe à la banque) permet d'économiser 0,10 à 0,30 % par an. Sur un prêt de {{CAPITAL_20}} € sur 20 ans, cela représente plusieurs milliers d'euros d'économies — et réduit la mensualité d'assurance, libérant de la capacité.
 
 ---
 
@@ -127,7 +128,7 @@ La délégation d'assurance (assurance externe à la banque) permet d'économise
 1. **La stabilité des revenus** : CDI ou fonctionnaire = dossier standard. CDD, intérim, profession libérale = analyse plus poussée
 2. **Le reste à vivre** : après mensualité, vous devez conserver un minimum (souvent 700-800 € par personne dans le foyer)
 3. **Le comportement bancaire** : pas de découvert, pas d'incident dans les 3 derniers relevés
-4. **La cohérence du projet** : un bien à 220 000 € avec 0 € d'épargne résiduelle est refusé même si le taux d'endettement tient
+4. **La cohérence du projet** : un bien à {{BUDGET_25}} € avec 0 € d'épargne résiduelle est refusé même si le taux d'endettement tient
 
 ---
 
@@ -141,24 +142,4 @@ La délégation d'assurance (assurance externe à la banque) permet d'économise
 
 ## Calculez votre capacité exacte
 
-Les tableaux ci-dessus sont des estimations basées sur les taux moyens actuels (mis à jour chaque semaine sur [notre page de données de référence](/donnees)). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
-
----
-
-## Questions fréquentes
-
-### Peut-on acheter seul avec 3 000 €/mois ?
-
-Oui, dans la plupart des villes moyennes françaises hors Paris et grandes métropoles. À 3 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget de ~222 000 € — suffisant pour un T2 dans beaucoup de marchés.
-
-### Le 35 % est-il une règle absolue ?
-
-Non, c'est un plafond réglementaire (HCSF 2021) avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. Pour un primo-accédant achetant sa résidence principale avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37-38 % d'endettement.
-
-### Mon salaire variable est-il pris en compte ?
-
-Les primes contractuelles régulières (sur 3+ ans) sont parfois intégrées partiellement. Les bonus discrétionnaires ne le sont généralement pas. Les commissions sur un poste commercial peuvent être prises en compte si elles représentent une part significative et sont documentées sur plusieurs années.
-
-### Faut-il aller dans plusieurs banques ?
-
-Oui, systématiquement. L'écart de taux entre la meilleure et la moins bonne offre peut atteindre 0,30-0,40 % sur un même profil, soit plusieurs milliers d'euros d'intérêts de différence sur 20 ans.
+Les tableaux ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.

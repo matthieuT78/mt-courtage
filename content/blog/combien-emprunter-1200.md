@@ -1,32 +1,33 @@
 ---
 title: "Emprunter avec 1 200 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 1 200 € par mois ?"
-description: "Avec 1 200 € nets/mois : capacité d'emprunt entre 59 000 et 80 000 € selon la durée. Zones accessibles, PTZ, impact du moindre crédit en cours en 2026."
+description: "Avec 1 200 € nets/mois : capacité d'emprunt entre {{CAPITAL_15}} et {{CAPITAL_25}} € selon la durée. Zones accessibles, PTZ, impact du moindre crédit en cours en 2026."
 date: "2026-10-06"
 updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "1200 euros", "PTZ", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
+capaciteEmpruntSalaire: 1200
 faq:
   - q: "Peut-on acheter seul avec 1 200 € de revenus par mois ?"
-    a: "C'est possible mais très contraint : seul avec 25 ans de durée et 10 % d'apport, le budget accessible tourne autour de 89 000 €, ce qui limite le choix aux zones rurales ou aux petites villes. Un co-emprunteur ou le PTZ changent significativement l'équation à ce niveau de revenu."
+    a: "C'est possible mais très contraint : seul avec 25 ans de durée et 10 % d'apport, le budget accessible tourne autour de {{BUDGET_25}} €, ce qui limite le choix aux zones rurales ou aux petites villes. Un co-emprunteur ou le PTZ changent significativement l'équation à ce niveau de revenu."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. À ce niveau de revenu, les banques sont toutefois plus strictes sur le reste à vivre que sur le taux d'endettement lui-même."
   - q: "Le PTZ est-il vraiment utile à 1 200 € de revenus ?"
     a: "Oui, souvent déterminant. Le PTZ est justement calibré pour les revenus modestes et peut représenter une part significative du financement sur les zones éligibles, sans intérêts à rembourser sur cette part — un levier qui pèse proportionnellement plus à 1 200 € qu'à un revenu élevé."
   - q: "Un crédit à la consommation rend-il le projet impossible à 1 200 € ?"
-    a: "Il peut le bloquer complètement. Avec une mensualité maximale de 420 € (35 % de 1 200 €), un crédit conso de 500 €/mois dépasse déjà l'enveloppe disponible à lui seul. Solder ou réduire ses crédits en cours est souvent la condition préalable au projet, pas une option."
+    a: "Il peut le bloquer complètement. Avec une mensualité maximale de {{MENSUALITE}} € (35 % de 1 200 €), un crédit conso de 500 €/mois dépasse déjà l'enveloppe disponible à lui seul. Solder ou réduire ses crédits en cours est souvent la condition préalable au projet, pas une option."
 ---
 
 # Combien puis-je emprunter avec 1 200 € par mois ?
 
-Avec 1 200 € nets par mois, votre capacité d'emprunt se situe entre **59 000 € et 80 000 €** selon la durée. C'est un niveau de revenu où chaque paramètre compte double — apport, crédits en cours, durée — et où des dispositifs comme le PTZ peuvent faire une vraie différence sur la faisabilité du projet.
+Avec 1 200 € nets par mois, votre capacité d'emprunt se situe entre **{{CAPITAL_15}} € et {{CAPITAL_25}} €** selon la durée. C'est un niveau de revenu où chaque paramètre compte double — apport, crédits en cours, durée — et où des dispositifs comme le PTZ peuvent faire une vraie différence sur la faisabilité du projet.
 
 ---
 
 ## Mensualité maximale à 1 200 €/mois
 
-> **Mensualité max = 1 200 × 35 % = 420 €/mois**
+> **Mensualité max = 1 200 × 35 % = {{MENSUALITE}} €/mois**
 
 C'est l'enveloppe crédit totale, assurance comprise, tous crédits confondus. À ce niveau, l'écart entre un dossier qui passe et un dossier refusé tient souvent à quelques dizaines d'euros de mensualité.
 
@@ -34,26 +35,26 @@ C'est l'enveloppe crédit totale, assurance comprise, tous crédits confondus. �
 
 ## Tableau de capacité par durée (sans crédit en cours)
 
-Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
+Taux actuels (Observatoire Crédit Logement/CSA, mis à jour chaque semaine sur [/donnees](/donnees)), assurance incluse dans la mensualité.
 
 | Durée | Taux moyen constaté | Capital emprunté |
 |-------|---------------|-----------------|
-| 15 ans | 3,20 % | ~59 000 € |
-| 20 ans | 3,40 % | ~71 000 € |
-| 25 ans | 3,60 % | ~80 000 € |
+| 15 ans | {{TAUX_15}} % | ~{{CAPITAL_15}} € |
+| 20 ans | {{TAUX_20}} % | ~{{CAPITAL_20}} € |
+| 25 ans | {{TAUX_25}} % | ~{{CAPITAL_25}} € |
 
 ### Budget total avec apport de 10 %
 
 | Durée | Capital | Apport 10 % | **Budget total** |
 |-------|---------|-------------|-----------------|
-| 20 ans | 71 000 € | 8 000 € | **~79 000 €** |
-| 25 ans | 80 000 € | 9 000 € | **~89 000 €** |
+| 20 ans | {{CAPITAL_20}} € | {{APPORT_20}} € | **~{{BUDGET_20}} €** |
+| 25 ans | {{CAPITAL_25}} € | {{APPORT_25}} € | **~{{BUDGET_25}} €** |
 
 ---
 
 ## Ce que vous pouvez acheter à 1 200 €/mois
 
-| Marché | Budget ~79 000 € | Budget ~89 000 € |
+| Marché | Budget ~{{BUDGET_20}} € | Budget ~{{BUDGET_25}} € |
 |--------|-----------------|-----------------|
 | Grandes métropoles et périphérie proche | Hors de portée | Hors de portée |
 | Villes moyennes | Hors de portée sauf PTZ | Studio en périphérie |
@@ -68,9 +69,9 @@ Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la
 
 | Crédits en cours | Mensualité immo dispo | Capital (20 ans) |
 |-----------------|----------------------|-----------------|
-| 0 € | 420 € | ~71 000 € |
-| 150 €/mois | 270 € | ~45 000 € |
-| 300 €/mois | 120 € | ~20 000 € |
+| 0 € | {{MENSUALITE}} € | ~{{CAPITAL_20}} € |
+| 150 €/mois | {{CREDIT150_DISPO}} € | ~{{CREDIT150_CAPITAL}} € |
+| 300 €/mois | {{CREDIT300_DISPO}} € | ~{{CREDIT300_CAPITAL}} € |
 | 500 €/mois | — | Projet non finançable |
 
 À 1 200 €/mois, un crédit à la consommation n'ampute pas seulement le budget, il peut le rendre nul. Un crédit auto à 300 €/mois fait perdre plus de la moitié de la capacité d'emprunt. Solder ses crédits conso avant de déposer un dossier n'est pas une stratégie d'optimisation ici — c'est souvent une condition de faisabilité.
@@ -124,4 +125,4 @@ Un deuxième revenu, même modeste, change radicalement l'équation : les mensua
 
 ## Calculez votre capacité exacte
 
-Les montants ci-dessus sont des estimations basées sur les taux moyens actuels (mis à jour chaque semaine sur [notre page de données de référence](/donnees)). Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.

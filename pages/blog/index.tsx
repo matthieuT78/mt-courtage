@@ -357,7 +357,7 @@ export default function BlogIndex({ posts }: any) {
 const FEATURED_SLUG = "barometre-rendement-locatif-villes-2026";
 
 export async function getStaticProps() {
-  const posts = getAllPostsMeta();
+  const posts = await getAllPostsMeta();
   const sorted = [...posts].sort((a: any, b: any) => {
     const da = new Date(a?.frontmatter?.date || 0).getTime();
     const db = new Date(b?.frontmatter?.date || 0).getTime();
@@ -368,5 +368,8 @@ export async function getStaticProps() {
     const [featured] = sorted.splice(featuredIdx, 1);
     sorted.unshift(featured);
   }
-  return { props: { posts: sorted } };
+  // Certains articles affichent une description générée depuis /donnees
+  // (cf. capaciteEmpruntSalaire(s)) — revalidation hebdomadaire pour que
+  // cette liste ne fige pas des chiffres obsolètes.
+  return { props: { posts: sorted }, revalidate: 60 * 60 * 24 * 7 };
 }

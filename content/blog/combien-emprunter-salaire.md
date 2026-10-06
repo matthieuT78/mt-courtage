@@ -8,13 +8,14 @@ category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "salaire", "budget achat immobilier", "tableau emprunt"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
 coverImage: "/blog/combien-emprunter-3000.jpg"
+capaciteEmpruntSalaires: [1200, 1500, 1600, 2000, 2500, 3000, 3500, 4000, 5000]
 faq:
   - q: "Combien puis-je emprunter avec 2 000 € par mois ?"
-    a: "Avec 2 000 €/mois nets, votre mensualité maximale est de 700 € (35 % de taux d'endettement). Selon la durée, vous pouvez emprunter entre 98 000 et 133 000 €. Sur 25 ans, le capital accessible est d'environ 133 000 €."
+    a: "Avec 2 000 €/mois nets, votre mensualité maximale est de {{MENSUALITE_2000}} € (35 % de taux d'endettement). Selon la durée, vous pouvez emprunter entre {{CAPITAL_15_2000}} et {{CAPITAL_25_2000}} €. Sur 25 ans, le capital accessible est d'environ {{CAPITAL_25_2000}} €."
   - q: "Combien puis-je emprunter avec 2 500 € par mois ?"
-    a: "Avec 2 500 €/mois nets, votre mensualité maximale est de 875 €. Vous pouvez emprunter entre 122 000 et 166 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 166 000 €."
+    a: "Avec 2 500 €/mois nets, votre mensualité maximale est de {{MENSUALITE_2500}} €. Vous pouvez emprunter entre {{CAPITAL_15_2500}} et {{CAPITAL_25_2500}} € selon la durée. Sur 25 ans, le capital accessible est d'environ {{CAPITAL_25_2500}} €."
   - q: "Combien puis-je emprunter avec 3 500 € par mois ?"
-    a: "Avec 3 500 €/mois nets, votre mensualité maximale est de 1 225 €. Vous pouvez emprunter entre 171 000 et 233 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 233 000 €."
+    a: "Avec 3 500 €/mois nets, votre mensualité maximale est de {{MENSUALITE_3500}} €. Vous pouvez emprunter entre {{CAPITAL_15_3500}} et {{CAPITAL_25_3500}} € selon la durée. Sur 25 ans, le capital accessible est d'environ {{CAPITAL_25_3500}} €."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers selon les établissements. Pour un primo-accédant achetant sa résidence principale avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37–38 % d'endettement."
   - q: "Mon salaire variable est-il pris en compte dans ma capacité d'emprunt ?"
@@ -25,7 +26,7 @@ faq:
 
 # Combien puis-je emprunter selon mon salaire ? Tableau 2026
 
-La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'endettement maximum fixé à 35 % (assurance incluse). Ce tableau couvre les tranches les plus courantes, de 1 200 à 5 000 €/mois, avec les taux moyens constatés actuellement (Observatoire Crédit Logement/CSA). Pour une tranche précise, une page dédiée détaille aussi les villes accessibles et l'impact des crédits en cours.
+La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'endettement maximum fixé à 35 % (assurance incluse). Ce tableau couvre les tranches les plus courantes, de 1 200 à 5 000 €/mois, avec les taux moyens constatés actuellement (Observatoire Crédit Logement/CSA, mis à jour chaque semaine sur [/donnees](/donnees)). Pour une tranche précise, une page dédiée détaille aussi les villes accessibles et l'impact des crédits en cours.
 
 ---
 
@@ -33,15 +34,15 @@ La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'e
 
 | Salaire net/mois | Mensualité max (35 %) | Détail par tranche |
 |---|---|---|
-| [1 200 €](/blog/combien-emprunter-1200) | 420 € | Tableau détaillé |
-| [1 500 €](/blog/combien-emprunter-1500) | 525 € | Tableau détaillé |
-| [1 600 €](/blog/combien-emprunter-1600) | 560 € | Tableau détaillé |
-| 2 000 € | 700 € | Ci-dessous |
-| 2 500 € | 875 € | Ci-dessous |
-| [3 000 €](/blog/combien-emprunter-3000) | 1 050 € | Tableau détaillé |
-| 3 500 € | 1 225 € | Ci-dessous |
-| [4 000 €](/blog/combien-emprunter-4000) | 1 400 € | Tableau détaillé |
-| [5 000 €](/blog/combien-emprunter-5000) | 1 750 € | Tableau détaillé |
+| [1 200 €](/blog/combien-emprunter-1200) | {{MENSUALITE_1200}} € | Tableau détaillé |
+| [1 500 €](/blog/combien-emprunter-1500) | {{MENSUALITE_1500}} € | Tableau détaillé |
+| [1 600 €](/blog/combien-emprunter-1600) | {{MENSUALITE_1600}} € | Tableau détaillé |
+| 2 000 € | {{MENSUALITE_2000}} € | Ci-dessous |
+| 2 500 € | {{MENSUALITE_2500}} € | Ci-dessous |
+| [3 000 €](/blog/combien-emprunter-3000) | {{MENSUALITE_3000}} € | Tableau détaillé |
+| 3 500 € | {{MENSUALITE_3500}} € | Ci-dessous |
+| [4 000 €](/blog/combien-emprunter-4000) | {{MENSUALITE_4000}} € | Tableau détaillé |
+| [5 000 €](/blog/combien-emprunter-5000) | {{MENSUALITE_5000}} € | Tableau détaillé |
 
 > Si vous avez déjà un crédit en cours (auto, conso), déduisez sa mensualité de l'enveloppe ci-dessus avant tout calcul.
 
@@ -49,19 +50,19 @@ La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'e
 
 ## Tableau complet par salaire et durée
 
-Capital empruntable net (hors apport, hors frais de notaire), taux moyens constatés actuellement par durée (15 ans : 3,20 % ; 20 ans : 3,40 % ; 25 ans : 3,60 % — source Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité. Ces taux sont recalculés chaque semaine sur notre [page de données de référence](/donnees).
+Capital empruntable net (hors apport, hors frais de notaire), taux moyens constatés actuellement par durée (15 ans : {{TAUX_15_3000}} % ; 20 ans : {{TAUX_20_3000}} % ; 25 ans : {{TAUX_25_3000}} % — source Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
 
 | Salaire net/mois | 15 ans | 20 ans | 25 ans |
 |---|---|---|---|
-| 1 200 € | 59 000 € | 71 000 € | 80 000 € |
-| 1 500 € | 73 000 € | 88 000 € | 100 000 € |
-| 1 600 € | 78 000 € | 94 000 € | 107 000 € |
-| 2 000 € | 98 000 € | 118 000 € | 133 000 € |
-| 2 500 € | 122 000 € | 147 000 € | 166 000 € |
-| 3 000 € | 146 000 € | 177 000 € | 200 000 € |
-| 3 500 € | 171 000 € | 206 000 € | 233 000 € |
-| 4 000 € | 195 000 € | 236 000 € | 266 000 € |
-| 5 000 € | 244 000 € | 295 000 € | 333 000 € |
+| 1 200 € | {{CAPITAL_15_1200}} € | {{CAPITAL_20_1200}} € | {{CAPITAL_25_1200}} € |
+| 1 500 € | {{CAPITAL_15_1500}} € | {{CAPITAL_20_1500}} € | {{CAPITAL_25_1500}} € |
+| 1 600 € | {{CAPITAL_15_1600}} € | {{CAPITAL_20_1600}} € | {{CAPITAL_25_1600}} € |
+| 2 000 € | {{CAPITAL_15_2000}} € | {{CAPITAL_20_2000}} € | {{CAPITAL_25_2000}} € |
+| 2 500 € | {{CAPITAL_15_2500}} € | {{CAPITAL_20_2500}} € | {{CAPITAL_25_2500}} € |
+| 3 000 € | {{CAPITAL_15_3000}} € | {{CAPITAL_20_3000}} € | {{CAPITAL_25_3000}} € |
+| 3 500 € | {{CAPITAL_15_3500}} € | {{CAPITAL_20_3500}} € | {{CAPITAL_25_3500}} € |
+| 4 000 € | {{CAPITAL_15_4000}} € | {{CAPITAL_20_4000}} € | {{CAPITAL_25_4000}} € |
+| 5 000 € | {{CAPITAL_15_5000}} € | {{CAPITAL_20_5000}} € | {{CAPITAL_25_5000}} € |
 
 ---
 
@@ -71,22 +72,22 @@ En ajoutant un apport de 10 % (qui couvre généralement les frais de notaire), 
 
 | Salaire | Capital (25 ans) | Apport 10 % | **Budget total** |
 |---|---|---|---|
-| 1 200 €/mois | 80 000 € | 9 000 € | **~89 000 €** |
-| 1 500 €/mois | 100 000 € | 11 000 € | **~111 000 €** |
-| 1 600 €/mois | 107 000 € | 12 000 € | **~119 000 €** |
-| 2 000 €/mois | 133 000 € | 15 000 € | **~148 000 €** |
-| 2 500 €/mois | 166 000 € | 18 000 € | **~184 000 €** |
-| 3 000 €/mois | 200 000 € | 22 000 € | **~222 000 €** |
-| 3 500 €/mois | 233 000 € | 26 000 € | **~259 000 €** |
-| 4 000 €/mois | 266 000 € | 30 000 € | **~296 000 €** |
-| 5 000 €/mois | 333 000 € | 37 000 € | **~370 000 €** |
+| 1 200 €/mois | {{CAPITAL_25_1200}} € | {{APPORT_25_1200}} € | **{{BUDGET_25_1200}} €** |
+| 1 500 €/mois | {{CAPITAL_25_1500}} € | {{APPORT_25_1500}} € | **{{BUDGET_25_1500}} €** |
+| 1 600 €/mois | {{CAPITAL_25_1600}} € | {{APPORT_25_1600}} € | **{{BUDGET_25_1600}} €** |
+| 2 000 €/mois | {{CAPITAL_25_2000}} € | {{APPORT_25_2000}} € | **{{BUDGET_25_2000}} €** |
+| 2 500 €/mois | {{CAPITAL_25_2500}} € | {{APPORT_25_2500}} € | **{{BUDGET_25_2500}} €** |
+| 3 000 €/mois | {{CAPITAL_25_3000}} € | {{APPORT_25_3000}} € | **{{BUDGET_25_3000}} €** |
+| 3 500 €/mois | {{CAPITAL_25_3500}} € | {{APPORT_25_3500}} € | **{{BUDGET_25_3500}} €** |
+| 4 000 €/mois | {{CAPITAL_25_4000}} € | {{APPORT_25_4000}} € | **{{BUDGET_25_4000}} €** |
+| 5 000 €/mois | {{CAPITAL_25_5000}} € | {{APPORT_25_5000}} € | **{{BUDGET_25_5000}} €** |
 
 **Ce que ces budgets permettent concrètement**, à titre indicatif :
 
-- **~89-119 000 €** : studio en zone peu tendue, T2-T3 en zone rurale
-- **~148-184 000 €** : studio à Lyon ou Bordeaux, T2 en ville moyenne
-- **~222-259 000 €** : T2 dans plusieurs grandes villes hors Paris
-- **~296-370 000 €** : T3-T4 à Lyon ou Bordeaux, T2-T3 à Paris en proche banlieue
+- **Tranches basses (1 200-1 600 €)** : studio en zone peu tendue, T2-T3 en zone rurale
+- **Tranches intermédiaires (2 000-2 500 €)** : studio à Lyon ou Bordeaux, T2 en ville moyenne
+- **Tranches confortables (3 000-3 500 €)** : T2 dans plusieurs grandes villes hors Paris
+- **Tranches hautes (4 000-5 000 €)** : T3-T4 à Lyon ou Bordeaux, T2-T3 à Paris en proche banlieue
 
 Pour le détail ville par ville selon votre tranche exacte, consultez la page dédiée à votre salaire listée dans le premier tableau.
 
@@ -114,10 +115,10 @@ Pour un couple avec deux revenus, les banques agrègent généralement les deux 
 
 | Composition | Salaire total | Mensualité max | Capital (25 ans) |
 |---|---|---|---|
-| Solo 2 500 €/mois | 2 500 € | 875 € | 166 000 € |
-| Couple 2 × 1 500 €/mois | 3 000 € | 1 050 € | 200 000 € |
-| Couple 2 × 2 000 €/mois | 4 000 € | 1 400 € | 266 000 € |
-| Couple 2 × 2 500 €/mois | 5 000 € | 1 750 € | 333 000 € |
+| Solo 2 500 €/mois | 2 500 € | {{MENSUALITE_2500}} € | {{CAPITAL_25_2500}} € |
+| Couple 2 × 1 500 €/mois | 3 000 € | {{MENSUALITE_3000}} € | {{CAPITAL_25_3000}} € |
+| Couple 2 × 2 000 €/mois | 4 000 € | {{MENSUALITE_4000}} € | {{CAPITAL_25_4000}} € |
+| Couple 2 × 2 500 €/mois | 5 000 € | {{MENSUALITE_5000}} € | {{CAPITAL_25_5000}} € |
 
 ---
 
@@ -133,4 +134,4 @@ Pour un couple avec deux revenus, les banques agrègent généralement les deux 
 
 ---
 
-*Les montants indiqués sont des estimations basées sur les taux moyens actuels (Observatoire Crédit Logement/CSA, recalculés chaque semaine) et une assurance emprunteur de 0,36 % sur le capital restant dû. Les conditions réelles dépendent du profil, de la banque, de l'apport et de la durée négociée. Retrouvez ces données à jour sur [/donnees](/donnees), ou utilisez notre [simulateur de capacité d'emprunt](/capacite) pour une estimation personnalisée.*
+*Les montants indiqués sont calculés à partir des taux moyens actuels (Observatoire Crédit Logement/CSA, recalculés chaque semaine) et une assurance emprunteur de 0,36 % sur le capital restant dû. Les conditions réelles dépendent du profil, de la banque, de l'apport et de la durée négociée. Retrouvez ces données à jour sur [/donnees](/donnees), ou utilisez notre [simulateur de capacité d'emprunt](/capacite) pour une estimation personnalisée.*

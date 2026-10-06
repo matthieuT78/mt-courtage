@@ -1,15 +1,16 @@
 ---
 title: "Emprunter avec 1 500 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 1 500 € par mois ?"
-description: "Avec 1 500 € nets/mois : capacité d'emprunt entre 73 000 et 100 000 € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles en 2026."
+description: "Avec 1 500 € nets/mois : capacité d'emprunt entre {{CAPITAL_15}} et {{CAPITAL_25}} € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles en 2026."
 date: "2026-10-06"
 updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "1500 euros", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
+capaciteEmpruntSalaire: 1500
 faq:
   - q: "Peut-on acheter seul avec 1 500 € de revenus par mois ?"
-    a: "Oui, dans les villes moyennes et les zones peu tendues. À 1 500 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ 111 000 €, ce qui permet un studio en ville moyenne, ou un T2-T3 en zone rurale."
+    a: "Oui, dans les villes moyennes et les zones peu tendues. À 1 500 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ {{BUDGET_25}} €, ce qui permet un studio en ville moyenne, ou un T2-T3 en zone rurale."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. Pour un primo-accédant avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37-38 % d'endettement."
   - q: "Mon salaire variable est-il pris en compte dans la capacité d'emprunt ?"
@@ -20,13 +21,13 @@ faq:
 
 # Combien puis-je emprunter avec 1 500 € par mois ?
 
-Avec 1 500 € nets par mois, votre capacité d'emprunt se situe entre **73 000 € et 100 000 €** selon la durée. C'est un profil qui permet d'accéder à la propriété dans les villes moyennes et les zones peu tendues, à condition d'optimiser durée, apport et crédits en cours.
+Avec 1 500 € nets par mois, votre capacité d'emprunt se situe entre **{{CAPITAL_15}} € et {{CAPITAL_25}} €** selon la durée. C'est un profil qui permet d'accéder à la propriété dans les villes moyennes et les zones peu tendues, à condition d'optimiser durée, apport et crédits en cours.
 
 ---
 
 ## Mensualité maximale à 1 500 €/mois
 
-> **Mensualité max = 1 500 × 35 % = 525 €/mois**
+> **Mensualité max = 1 500 × 35 % = {{MENSUALITE}} €/mois**
 
 C'est votre enveloppe crédit totale (assurance incluse, tous crédits confondus). Un crédit en cours vient directement s'imputer sur cette enveloppe.
 
@@ -34,26 +35,26 @@ C'est votre enveloppe crédit totale (assurance incluse, tous crédits confondus
 
 ## Tableau de capacité par durée (sans crédit en cours)
 
-Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
+Taux actuels (Observatoire Crédit Logement/CSA, mis à jour chaque semaine sur [/donnees](/donnees)), assurance incluse dans la mensualité.
 
 | Durée | Taux moyen constaté | Capital emprunté |
 |-------|---------------|-----------------|
-| 15 ans | 3,20 % | ~73 000 € |
-| 20 ans | 3,40 % | ~88 000 € |
-| 25 ans | 3,60 % | ~100 000 € |
+| 15 ans | {{TAUX_15}} % | ~{{CAPITAL_15}} € |
+| 20 ans | {{TAUX_20}} % | ~{{CAPITAL_20}} € |
+| 25 ans | {{TAUX_25}} % | ~{{CAPITAL_25}} € |
 
 ### Budget total avec apport de 10 %
 
 | Durée | Capital | Apport 10 % | **Budget total** |
 |-------|---------|-------------|-----------------|
-| 20 ans | 88 000 € | 10 000 € | **~98 000 €** |
-| 25 ans | 100 000 € | 11 000 € | **~111 000 €** |
+| 20 ans | {{CAPITAL_20}} € | {{APPORT_20}} € | **~{{BUDGET_20}} €** |
+| 25 ans | {{CAPITAL_25}} € | {{APPORT_25}} € | **~{{BUDGET_25}} €** |
 
 ---
 
 ## Ce que vous pouvez acheter à 1 500 €/mois
 
-| Marché | Budget ~98 000 € | Budget ~111 000 € |
+| Marché | Budget ~{{BUDGET_20}} € | Budget ~{{BUDGET_25}} € |
 |--------|-----------------|-----------------|
 | Paris et grandes métropoles | Hors de portée | Hors de portée |
 | Lyon, Bordeaux, Nantes | Hors de portée en ville | Hors de portée en ville |
@@ -67,12 +68,12 @@ Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la
 
 | Crédits en cours | Mensualité immo dispo | Capital (20 ans) |
 |-----------------|----------------------|-----------------|
-| 0 € | 525 € | ~88 000 € |
-| 150 €/mois | 375 € | ~63 000 € |
-| 300 €/mois | 225 € | ~38 000 € |
-| 500 €/mois | 25 € | Projet quasi non finançable |
+| 0 € | {{MENSUALITE}} € | ~{{CAPITAL_20}} € |
+| 150 €/mois | {{CREDIT150_DISPO}} € | ~{{CREDIT150_CAPITAL}} € |
+| 300 €/mois | {{CREDIT300_DISPO}} € | ~{{CREDIT300_CAPITAL}} € |
+| 500 €/mois | {{CREDIT500_DISPO}} € | Projet quasi non finançable |
 
-Un crédit auto à 300 €/mois ampute votre budget immobilier de **~50 000 €**, plus de la moitié de la capacité initiale. Solder les crédits consommation avant de déposer un dossier reste la meilleure stratégie d'optimisation à ce niveau de revenu.
+Un crédit auto à 300 €/mois ampute significativement votre budget immobilier. Solder les crédits consommation avant de déposer un dossier reste la meilleure stratégie d'optimisation à ce niveau de revenu.
 
 ---
 
@@ -103,7 +104,7 @@ Deux revenus à 1 500 € ne donnent pas simplement le double de budget — l'ef
 
 ### 1. Allonger la durée à 25 ans
 
-Passer de 20 à 25 ans augmente le capital empruntable de ~12 000 € pour la même mensualité — un gain proportionnellement important à ce niveau de budget.
+Passer de 20 à 25 ans augmente sensiblement le capital empruntable pour la même mensualité — un gain proportionnellement important à ce niveau de budget.
 
 ### 2. Solder les crédits consommation avant le dépôt
 
@@ -134,4 +135,4 @@ Ces dispositifs sont précisément calibrés pour ce niveau de revenu. Une véri
 
 ## Calculez votre capacité exacte
 
-Les montants ci-dessus sont des estimations basées sur les taux moyens actuels (mis à jour chaque semaine sur [notre page de données de référence](/donnees)). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.

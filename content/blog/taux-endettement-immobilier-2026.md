@@ -7,6 +7,7 @@ updatedAt: "2026-07-08"
 category: "Crédit immobilier"
 tags: ["taux d'endettement", "capacité d'emprunt", "règle HCSF", "crédit immobilier", "emprunt immobilier 2026"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
+capaciteEmpruntSalaires: [2000, 2500, 3000, 3200, 4000, 4500, 5000, 6000, 8000]
 faq:
   - q: "Quel est le taux d'endettement maximum autorisé en 2026 ?"
     a: "Le taux d'endettement maximum recommandé par le HCSF est de 35 %, assurance emprunteur comprise. Les banques peuvent déroger à cette règle pour 20 % de leur production de crédit, principalement pour les primo-accédants et les résidences principales."
@@ -133,19 +134,19 @@ Ces chiffres supposent **aucune autre charge de crédit en cours**, aux taux moy
 
 | Revenus nets/mois | Mensualité max (35 %) | Budget 15 ans | Budget 20 ans | Budget 25 ans |
 |-------------------|-----------------------|---------------|---------------|---------------|
-| 2 000 € | 700 € | 98 000 € | 118 000 € | 133 000 € |
-| 2 500 € | 875 € | 122 000 € | 147 000 € | 166 000 € |
-| 3 000 € | 1 050 € | 146 000 € | 177 000 € | 200 000 € |
-| 3 200 € | 1 120 € | 156 000 € | 189 000 € | 213 000 € |
-| 4 000 € | 1 400 € | 195 000 € | 236 000 € | 266 000 € |
-| 4 500 € | 1 575 € | 219 000 € | 265 000 € | 300 000 € |
-| 5 000 € | 1 750 € | 244 000 € | 295 000 € | 333 000 € |
-| 6 000 € | 2 100 € | 293 000 € | 354 000 € | 400 000 € |
-| 8 000 € | 2 800 € | 390 000 € | 472 000 € | 533 000 € |
+| 2 000 € | {{MENSUALITE_2000}} € | {{CAPITAL_15_2000}} € | {{CAPITAL_20_2000}} € | {{CAPITAL_25_2000}} € |
+| 2 500 € | {{MENSUALITE_2500}} € | {{CAPITAL_15_2500}} € | {{CAPITAL_20_2500}} € | {{CAPITAL_25_2500}} € |
+| 3 000 € | {{MENSUALITE_3000}} € | {{CAPITAL_15_3000}} € | {{CAPITAL_20_3000}} € | {{CAPITAL_25_3000}} € |
+| 3 200 € | {{MENSUALITE_3200}} € | {{CAPITAL_15_3200}} € | {{CAPITAL_20_3200}} € | {{CAPITAL_25_3200}} € |
+| 4 000 € | {{MENSUALITE_4000}} € | {{CAPITAL_15_4000}} € | {{CAPITAL_20_4000}} € | {{CAPITAL_25_4000}} € |
+| 4 500 € | {{MENSUALITE_4500}} € | {{CAPITAL_15_4500}} € | {{CAPITAL_20_4500}} € | {{CAPITAL_25_4500}} € |
+| 5 000 € | {{MENSUALITE_5000}} € | {{CAPITAL_15_5000}} € | {{CAPITAL_20_5000}} € | {{CAPITAL_25_5000}} € |
+| 6 000 € | {{MENSUALITE_6000}} € | {{CAPITAL_15_6000}} € | {{CAPITAL_20_6000}} € | {{CAPITAL_25_6000}} € |
+| 8 000 € | {{MENSUALITE_8000}} € | {{CAPITAL_15_8000}} € | {{CAPITAL_20_8000}} € | {{CAPITAL_25_8000}} € |
 
 Pour le détail par tranche (villes accessibles, impact des crédits en cours), voir notre [tableau complet capacité d'emprunt par salaire](/blog/combien-emprunter-salaire).
 
-**Ces montants s'entendent capital emprunté** — votre budget d'achat total sera supérieur si vous ajoutez votre apport. Pour un couple à 3 000 €/mois de revenus nets cumulés avec 30 000 € d'apport, le budget accessible grimpe à environ 230 000 € (200 000 + 30 000).
+**Ces montants s'entendent capital emprunté** — votre budget d'achat total sera supérieur si vous ajoutez votre apport. Pour un couple à 3 000 €/mois de revenus nets cumulés avec 30 000 € d'apport, le budget accessible grimpe à environ {{BUDGET_25_3000}} € ({{CAPITAL_25_3000}} € + 30 000 €).
 
 ---
 

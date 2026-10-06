@@ -18,12 +18,12 @@ const PHASE_LABEL: Record<string, string> = {
   depart: "Départ",
 };
 
-export default function handler(_req: NextApiRequest, res: NextApiResponse<LoktFeedItem[]>) {
+export default async function handler(_req: NextApiRequest, res: NextApiResponse<LoktFeedItem[]>) {
   // Index du jour UTC — change chaque jour à minuit
   const dayIndex = Math.floor(Date.now() / 86_400_000);
 
   // Pool complet trié par date (tous les articles, pas juste les récents)
-  const allPosts = getAllPostsMeta()
+  const allPosts = (await getAllPostsMeta())
     .sort((a: any, b: any) => new Date(b.frontmatter.date || 0).getTime() - new Date(a.frontmatter.date || 0).getTime())
     .map((p: any) => ({
       type: "blog" as const,
