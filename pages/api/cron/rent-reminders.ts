@@ -121,6 +121,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (!rentPeriod) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_rent_period" }); continue; }
       const { periodStart, periodEnd } = rentPeriod;
 
+      // Le bailleur a pu confirmer le paiement manuellement (bouton côté
+      // SectionLoyers, source "manual_confirm") avant que ce cron ne tourne —
+      // sans ce check, la relance "avez-vous reçu le paiement" repart quand
+      // même, tous les mois, même pour un paiement déjà confirmé la veille.
+      const existingPayment = await supabaseAdmin
+        .from("rent_payments")
+        .select("id")
+        .eq("lease_id", l.id)
+        .eq("period_start", periodStart)
+        .gte("period_end", periodEnd)
+        .not("paid_at", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPayment.data) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "already_confirmed" }); continue; }
+
       // 2) créer token one-shot
       const token = crypto.randomBytes(24).toString("hex");
       const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
