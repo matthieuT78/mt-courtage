@@ -5,6 +5,7 @@ import { remark } from "remark";
 import html from "remark-html";
 import remarkGfm from "remark-gfm";
 import { getDonneesImmo, computeCapaciteEmpruntPourSalaire } from "./donnees-service";
+import { getIrlTokenData } from "./irl-service";
 
 export type BlogFrontmatter = {
   title: string;
@@ -28,6 +29,11 @@ export type BlogFrontmatter = {
   // salaires (cf. combien-emprunter-salaire.md) : génère des tokens suffixés
   // par salaire, ex. {{CAPITAL_20_1500}}, {{BUDGET_25_3000}}.
   capaciteEmpruntSalaires?: number[];
+  // Si true, les tokens {{IRL_LATEST_VALUE}}, {{IRL_Q1_LABEL}}..{{IRL_Q6_EVOL}}
+  // etc. sont résolus contre la table irl_values (source INSEE, cf.
+  // lib/irl-service.ts) — même logique que capaciteEmpruntSalaire, pour que
+  // la page ne fige jamais une valeur IRL devenue fausse au trimestre suivant.
+  irlLiveData?: boolean;
 };
 
 function fmtEuro(n: number): string {
@@ -62,22 +68,59 @@ function tokensForSalaire(
   };
 }
 
+function fmtPct(n: number): string {
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtIrl(n: number): string {
+  return n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function buildIrlTokens(): Promise<Record<string, string>> {
+  const irl = await getIrlTokenData();
+  if (!irl) return {};
+  const tokens: Record<string, string> = {
+    IRL_LATEST_LABEL: irl.latest.label,
+    IRL_LATEST_VALUE: fmtIrl(irl.latest.value),
+  };
+  if (irl.yearAgo) tokens.IRL_YEARAGO_LABEL = irl.yearAgo.label;
+  if (irl.yearAgo) tokens.IRL_YEARAGO_VALUE = fmtIrl(irl.yearAgo.value);
+  if (irl.evolutionPct != null) {
+    tokens.IRL_EVOLUTION_PCT = (irl.evolutionPct >= 0 ? "+" : "") + fmtPct(irl.evolutionPct);
+  }
+  irl.rows.forEach((row, i) => {
+    const n = i + 1;
+    tokens[`IRL_Q${n}_LABEL`] = row.label;
+    tokens[`IRL_Q${n}_VALUE`] = fmtIrl(row.value);
+    tokens[`IRL_Q${n}_EVOL`] = row.evolutionPct != null ? (row.evolutionPct >= 0 ? "+" : "") + fmtPct(row.evolutionPct) : "—";
+  });
+  return tokens;
+}
+
 async function applyCapaciteEmpruntTokens<T>(
   value: T,
   salaire: number | undefined,
-  salaires: number[] | undefined
+  salaires: number[] | undefined,
+  irlLiveData?: boolean
 ): Promise<T> {
-  if (!salaire && !salaires?.length) return value;
-  const donnees = await getDonneesImmo();
+  if (!salaire && !salaires?.length && !irlLiveData) return value;
 
   let tokens: Record<string, string> = {};
-  if (salaire) {
-    const cap = computeCapaciteEmpruntPourSalaire(salaire, donnees.taux_credit_immobilier);
-    tokens = { ...tokens, ...tokensForSalaire(cap, "") };
+
+  if (salaire || salaires?.length) {
+    const donnees = await getDonneesImmo();
+    if (salaire) {
+      const cap = computeCapaciteEmpruntPourSalaire(salaire, donnees.taux_credit_immobilier);
+      tokens = { ...tokens, ...tokensForSalaire(cap, "") };
+    }
+    for (const s of salaires || []) {
+      const cap = computeCapaciteEmpruntPourSalaire(s, donnees.taux_credit_immobilier);
+      tokens = { ...tokens, ...tokensForSalaire(cap, `_${s}`) };
+    }
   }
-  for (const s of salaires || []) {
-    const cap = computeCapaciteEmpruntPourSalaire(s, donnees.taux_credit_immobilier);
-    tokens = { ...tokens, ...tokensForSalaire(cap, `_${s}`) };
+
+  if (irlLiveData) {
+    tokens = { ...tokens, ...(await buildIrlTokens()) };
   }
 
   const replaceTokens = (s: string) =>
@@ -170,7 +213,8 @@ export async function getAllPostsMeta(): Promise<Array<{ slug: string; frontmatt
       const frontmatter = await applyCapaciteEmpruntTokens(
         resolveFrontmatter(fm),
         fm.capaciteEmpruntSalaire,
-        fm.capaciteEmpruntSalaires
+        fm.capaciteEmpruntSalaires,
+        fm.irlLiveData
       );
       return { slug, frontmatter, readingTime: computeReadingTime(content) };
     })
@@ -185,8 +229,14 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
 
   const salaire = (data as BlogFrontmatter).capaciteEmpruntSalaire;
   const salaires = (data as BlogFrontmatter).capaciteEmpruntSalaires;
-  const content = await applyCapaciteEmpruntTokens(rawContent, salaire, salaires);
-  const frontmatterResolved = await applyCapaciteEmpruntTokens(resolveFrontmatter((data || {}) as BlogFrontmatter), salaire, salaires);
+  const irlLiveData = (data as BlogFrontmatter).irlLiveData;
+  const content = await applyCapaciteEmpruntTokens(rawContent, salaire, salaires, irlLiveData);
+  const frontmatterResolved = await applyCapaciteEmpruntTokens(
+    resolveFrontmatter((data || {}) as BlogFrontmatter),
+    salaire,
+    salaires,
+    irlLiveData
+  );
 
   const processed = await remark().use(remarkGfm).use(html, { sanitize: false }).process(content);
   const rawHtml = processed.toString().replace(/^<h1[^>]*>.*?<\/h1>\s*/i, "");

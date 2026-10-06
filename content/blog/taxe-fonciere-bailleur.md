@@ -3,20 +3,32 @@ title: "Taxe foncière 2026 : déduire et contester"
 h1: "Taxe foncière 2026 : qui paye, comment la déduire et comment la contester"
 description: "La taxe foncière est à la charge du propriétaire, pas du locataire, mais elle peut être déduite fiscalement. Calcul, déductibilité et recours en cas d'erreur."
 date: "2026-06-27"
+updatedAt: "2026-10-06"
 category: "Investissement locatif"
 tags: ["taxe foncière", "taxe foncière 2026", "déduction taxe foncière", "contester taxe foncière", "TEOM"]
 coverImage: "/blog/taxe-fonciere.jpg"
+faq:
+  - q: "Qui doit payer la taxe foncière, le propriétaire ou le locataire ?"
+    a: "Le propriétaire, toujours. La taxe foncière est due par celui qui possède le bien au 1er janvier de l'année d'imposition (article 1415 du Code général des impôts). Le locataire n'est jamais redevable, même si le bail le mentionne — seule la taxe d'enlèvement des ordures ménagères (TEOM), qui figure sur le même avis, est récupérable sur lui."
+  - q: "Quelle est la formule officielle de calcul de la taxe foncière ?"
+    a: "Taxe foncière = valeur locative cadastrale × 50 % (abattement forfaitaire légal, article 1388 du CGI) × taux communal et intercommunal votés chaque année. La valeur locative cadastrale est elle-même revalorisée annuellement par un coefficient fixé en loi de finances, conformément à l'article 1518 bis du CGI."
+  - q: "La taxe foncière est-elle déductible des impôts ?"
+    a: "Oui, en régime réel (location nue ou LMNP) : elle se déduit intégralement des revenus fonciers ou du résultat BIC, hors part TEOM déjà récupérée sur le locataire. En micro-foncier ou micro-BIC, elle n'est pas déductible séparément — elle est réputée couverte par l'abattement forfaitaire (30 %, 50 % ou 71 % selon le régime)."
+  - q: "Quel est le délai légal pour contester sa taxe foncière ?"
+    a: "Vous disposez, en application de l'article R*196-2 du Livre des procédures fiscales, de l'année suivant la réception de l'avis pour déposer une réclamation contentieuse auprès du centre des impôts fonciers ou via l'espace impots.gouv.fr. Un avis reçu en 2026 peut donc être contesté jusqu'au 31 décembre 2027."
+  - q: "Un logement neuf est-il exonéré de taxe foncière ?"
+    a: "Oui, pendant 2 ans à compter de l'achèvement des travaux (article 1383 du CGI), sous réserve de déposer la déclaration H1 ou H2 auprès du centre des impôts fonciers dans les 90 jours suivant l'achèvement. L'exonération n'est pas automatique sans cette déclaration."
 ---
 
 # Taxe foncière 2026 : qui paye, comment la déduire et comment la contester
 
-La taxe foncière a augmenté significativement ces dernières années dans de nombreuses communes. Pour un propriétaire-bailleur, comprendre comment elle fonctionne, si elle est déductible et comment la contester en cas d'erreur peut représenter plusieurs centaines d'euros d'économies.
+La taxe foncière est régie par les **articles 1380 et suivants du Code général des impôts (CGI)**, et administrée par la **DGFiP (Direction Générale des Finances Publiques)**. Elle a augmenté significativement ces dernières années dans de nombreuses communes. Pour un propriétaire-bailleur, comprendre comment elle fonctionne, si elle est déductible et comment la contester en cas d'erreur peut représenter plusieurs centaines d'euros d'économies.
 
 ---
 
 ## Qui paye la taxe foncière : propriétaire ou locataire ?
 
-**Le propriétaire.** Toujours. La taxe foncière est un impôt sur la propriété immobilière, dû par celui qui possède le bien au 1er janvier de l'année d'imposition.
+**Le propriétaire.** Toujours. En application de l'**article 1415 du CGI**, la taxe foncière est un impôt sur la propriété immobilière, dû par celui qui possède le bien au 1er janvier de l'année d'imposition.
 
 Le locataire n'est jamais redevable de la taxe foncière — même si votre bail en fait mention, vous ne pouvez pas la lui réclamer. C'est une règle d'ordre public.
 
@@ -30,11 +42,13 @@ La formule est simple :
 
 > **Taxe foncière = Valeur locative cadastrale × 50 % × Taux communal**
 
+L'abattement forfaitaire de 50 % appliqué à la valeur locative cadastrale est fixé par l'**article 1388 du CGI**.
+
 ### La valeur locative cadastrale
 
-C'est la base de calcul fixée par l'administration fiscale. Elle correspond à un loyer théorique annuel que pourrait générer le bien, selon des critères définis par les services du cadastre (surface pondérée, caractéristiques du logement, emplacement).
+C'est la base de calcul fixée par l'administration fiscale (DGFiP). Elle correspond à un loyer théorique annuel que pourrait générer le bien, selon des critères définis par les services du cadastre (surface pondérée, caractéristiques du logement, emplacement).
 
-Cette valeur est revalorisée chaque année par un coefficient voté en loi de finances. En 2023 : +7,1 %. En 2024 : +3,9 %. Ces revalorisations expliquent les hausses massives constatées par les propriétaires ces dernières années.
+Cette valeur est revalorisée chaque année par un coefficient voté en loi de finances, en application de l'**article 1518 bis du CGI**. En 2023 : +7,1 %. En 2024 : +3,9 %. Ces revalorisations expliquent les hausses massives constatées par les propriétaires ces dernières années.
 
 ### Les taux communaux
 
@@ -78,7 +92,7 @@ Même principe qu'en micro-foncier : abattement forfaitaire de 50 % (ou 71 % pou
 
 ## TEOM : ce que vous pouvez récupérer sur le locataire
 
-La taxe d'enlèvement des ordures ménagères (TEOM) figure sur votre avis de taxe foncière et peut être refacturée au locataire. C'est une charge locative récupérable au sens du [décret 87-713](/blog/charges-locatives-recuperables).
+La taxe d'enlèvement des ordures ménagères (TEOM), régie par l'**article 1521 du CGI**, figure sur votre avis de taxe foncière et peut être refacturée au locataire. C'est une charge locative récupérable au sens du [décret 87-713](/blog/charges-locatives-recuperables).
 
 **Comment faire :**
 1. Identifiez le montant TEOM sur votre avis de taxe foncière (ligne distincte)
@@ -98,12 +112,12 @@ La taxe foncière peut être contestée si :
 
 ### Délai de réclamation
 
-Vous disposez de l'**année suivant la réception de l'avis** pour contester. Si votre avis 2025 vous semble erroné, vous pouvez contester jusqu'au **31 décembre 2026**.
+Vous disposez, en application de l'**article R*196-2 du Livre des procédures fiscales**, de l'**année suivant la réception de l'avis** pour contester. Si votre avis 2026 vous semble erroné, vous pouvez contester jusqu'au **31 décembre 2027**.
 
 ### Comment procéder
 
 1. **Vérifiez vos données cadastrales** sur impots.gouv.fr (rubrique "Gérer mes biens immobiliers")
-2. Si une erreur est constatée, déposez une **réclamation contentieuse** via votre espace personnel impots.gouv.fr ou par courrier à votre centre des impôts fonciers
+2. Si une erreur est constatée, déposez une **réclamation contentieuse** auprès de la DGFiP, via votre espace personnel impots.gouv.fr ou par courrier à votre centre des impôts fonciers
 3. Joignez les justificatifs : plan du logement, photos, anciens actes notariés, permis de construire
 
 En cas d'acceptation, l'administration rembourse le trop-perçu avec intérêts moratoires.
@@ -114,7 +128,7 @@ En cas d'acceptation, l'administration rembourse le trop-perçu avec intérêts 
 
 ### Exonération temporaire pour constructions nouvelles
 
-Un logement neuf bénéficie d'une **exonération de 2 ans** de taxe foncière à compter de la fin des travaux. Cette exonération est accordée automatiquement sur présentation de la déclaration H1 ou H2 dans les 90 jours suivant l'achèvement.
+Un logement neuf bénéficie, en application de l'**article 1383 du CGI**, d'une **exonération de 2 ans** de taxe foncière à compter de la fin des travaux. Cette exonération n'est pas automatique : elle suppose la présentation de la déclaration H1 ou H2 auprès du centre des impôts fonciers dans les 90 jours suivant l'achèvement.
 
 ### Logements vacants
 

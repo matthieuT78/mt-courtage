@@ -28,9 +28,9 @@ La réponse tient en quelques dispositifs bien identifiés — Denormandie, Loc'
 
 ## Pourquoi le Pinel s'est arrêté
 
-Le dispositif Pinel, instauré en 2014, permettait une réduction d'impôt sur le revenu calculée sur le prix d'acquisition d'un logement neuf, dans la limite de 300 000 € et de 5 500 €/m², en contrepartie d'un engagement de location à loyer plafonné pendant 6, 9 ou 12 ans. Les taux de réduction, initialement 12 %, 18 % et 21 % pour ces trois durées, avaient déjà été réduits progressivement en 2023 et 2024 (Pinel+ à taux différenciés selon la performance énergétique et la localisation du bien).
+Le dispositif Pinel, codifié à l'**article 199 novovicies du Code général des impôts (CGI)** et instauré par la loi de finances pour 2015, permettait une réduction d'impôt sur le revenu calculée sur le prix d'acquisition d'un logement neuf, dans la limite de 300 000 € et de 5 500 €/m², en contrepartie d'un engagement de location à loyer plafonné pendant 6, 9 ou 12 ans. Les taux de réduction, initialement 12 %, 18 % et 21 % pour ces trois durées, avaient déjà été réduits progressivement en 2023 et 2024 (Pinel+ à taux différenciés selon la performance énergétique et la localisation du bien).
 
-Le gouvernement a mis fin au dispositif au 31 décembre 2024, sans le remplacer par un successeur généraliste équivalent. Les raisons invoquées sont connues des professionnels du secteur : un coût budgétaire jugé disproportionné par rapport à l'effet réel sur l'offre de logements, et une multitude d'études pointant des biens Pinel régulièrement surpayés de 15 à 25 % par rapport au prix de marché — l'avantage fiscal étant en grande partie capté par le prix de vente du promoteur plutôt que par l'investisseur final.
+La **loi de finances pour 2025** a mis fin au dispositif au **31 décembre 2024**, sans le remplacer par un successeur généraliste équivalent. Les raisons invoquées sont connues des professionnels du secteur : un coût budgétaire jugé disproportionné par rapport à l'effet réel sur l'offre de logements, et une multitude d'études pointant des biens Pinel régulièrement surpayés de 15 à 25 % par rapport au prix de marché — l'avantage fiscal étant en grande partie capté par le prix de vente du promoteur plutôt que par l'investisseur final.
 
 **Si vous avez un Pinel en cours** : rien ne change pour vous. Les engagements souscrits avant le 1er janvier 2025 continuent de produire leurs effets fiscaux jusqu'à l'échéance prévue (case 7QA, 7QB ou 7QC du formulaire 2042-C selon la durée d'engagement initiale). Vous devez simplement continuer à respecter les conditions de loyer plafonné et de ressources du locataire jusqu'au terme de votre engagement, sous peine de reprise de l'avantage fiscal obtenu.
 
@@ -38,7 +38,7 @@ Le gouvernement a mis fin au dispositif au 31 décembre 2024, sans le remplacer 
 
 ## Le dispositif Denormandie : le Pinel de l'ancien
 
-Le Denormandie, en vigueur depuis 2019 et prolongé jusqu'au **31 décembre 2027**, est aujourd'hui le dispositif le plus proche, dans sa logique, de l'ancien Pinel — mais appliqué à des logements anciens à rénover plutôt qu'au neuf.
+Le Denormandie, codifié au **même article 199 novovicies du CGI** que le Pinel (il en reprend le mécanisme via un renvoi réglementaire), en vigueur depuis le **1er janvier 2019** et prolongé par la loi de finances pour 2024 jusqu'au **31 décembre 2027**, est aujourd'hui le dispositif le plus proche, dans sa logique, de l'ancien Pinel — mais appliqué à des logements anciens à rénover plutôt qu'au neuf.
 
 ### Le principe
 
@@ -76,11 +76,11 @@ Prenons un exemple : achat d'un bien ancien à 130 000 €, dans une commune él
 
 ## Loc'Avantage : la défiscalisation par le conventionnement
 
-Le Loc'Avantage (qui a remplacé l'ancien dispositif Cosse / "Louer abordable" depuis 2022) fonctionne sur une logique totalement différente du Pinel ou du Denormandie : ici, il n'y a **aucune réduction sur le prix d'acquisition ni sur les travaux**. L'avantage fiscal porte sur les **loyers perçus**, en contrepartie d'un engagement à louer moins cher que le marché.
+Le Loc'Avantage (qui a remplacé l'ancien dispositif Cosse / "Louer abordable" depuis le 1er mars 2022) fonctionne sur une logique totalement différente du Pinel ou du Denormandie : ici, il n'y a **aucune réduction sur le prix d'acquisition ni sur les travaux**. L'avantage fiscal, codifié à l'**article 199 tricies du CGI**, porte sur les **loyers perçus**, en contrepartie d'un engagement à louer moins cher que le marché.
 
 ### Le principe
 
-Vous signez une convention avec l'ANAH (Agence Nationale de l'Habitat) portant sur un logement (neuf ou ancien, sans condition de travaux minimum) que vous vous engagez à louer, pendant une durée minimale de 6 ans, à un loyer plafonné selon un barème par zone (Loc1, Loc2, Loc3, selon la décote appliquée par rapport au loyer de marché), à un locataire sous conditions de ressources.
+Vous signez une convention avec l'**ANAH (Agence Nationale de l'Habitat)**, régie par les **articles L321-4 et suivants du Code de la construction et de l'habitation**, portant sur un logement (neuf ou ancien, sans condition de travaux minimum) que vous vous engagez à louer, pendant une durée minimale de 6 ans, à un loyer plafonné selon un barème par zone (Loc1, Loc2, Loc3, selon la décote appliquée par rapport au loyer de marché), à un locataire sous conditions de ressources.
 
 ### Les trois niveaux et leurs avantages
 

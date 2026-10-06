@@ -32,15 +32,15 @@ Il existe en réalité **deux dispositifs distincts**, souvent confondus sous le
 
 ### L'encadrement "simple" en zone tendue
 
-Depuis la loi ALUR de 2014, dans les **zones tendues** (grandes agglomérations où la demande de logements dépasse largement l'offre), le loyer d'un logement remis en location ne peut pas être fixé librement s'il était déjà loué dans les 18 mois précédents : il ne peut excéder le loyer du précédent locataire, sauf travaux d'amélioration substantiels ou sous-évaluation manifeste par rapport au marché. Cette règle s'applique dans un grand nombre de communes classées en zone tendue par décret, bien au-delà des seules villes citées plus bas.
+Depuis la **loi ALUR (Accès au Logement et un Urbanisme Rénové) n° 2014-366 du 24 mars 2014**, dans les **zones tendues** (grandes agglomérations où la demande de logements dépasse largement l'offre), le loyer d'un logement remis en location ne peut pas être fixé librement s'il était déjà loué dans les 18 mois précédents : il ne peut excéder le loyer du précédent locataire, sauf travaux d'amélioration substantiels ou sous-évaluation manifeste par rapport au marché. Cette règle, codifiée à l'**article 18 de la loi n° 89-462 du 6 juillet 1989**, s'applique dans un grand nombre de communes classées en zone tendue par décret, bien au-delà des seules villes citées plus bas.
 
 ### L'encadrement "renforcé" avec loyer de référence
 
-C'est le dispositif expérimental — issu de la loi ALUR puis relancé par la loi ELAN de 2018 — qui fait l'objet de ce guide. Dans les territoires volontaires où il a été mis en place, un **loyer de référence** est fixé par arrêté préfectoral pour chaque type de logement et chaque secteur géographique. Le loyer pratiqué ne peut, sauf exception, pas dépasser ce plafond précis, exprimé en euros par m².
+C'est le dispositif expérimental — issu de l'article 140 de la loi ALUR, puis relancé et étendu par l'**article 140 de la loi ELAN (Évolution du Logement, de l'Aménagement et du Numérique) n° 2018-1021 du 23 novembre 2018** — qui fait l'objet de ce guide. Dans les territoires volontaires où il a été mis en place, un **loyer de référence** est fixé par arrêté préfectoral pour chaque type de logement et chaque secteur géographique, sur le fondement de l'**article 17 de la loi du 6 juillet 1989**. Le loyer pratiqué ne peut, sauf exception, pas dépasser ce plafond précis, exprimé en euros par m².
 
-C'est ce second dispositif — beaucoup plus contraignant et beaucoup plus précis — qui concerne aujourd'hui 72 communes et qui fait l'objet de contrôles et de sanctions administratives réelles.
+C'est ce second dispositif — beaucoup plus contraignant et beaucoup plus précis — qui concerne aujourd'hui 72 communes et qui fait l'objet de contrôles et de sanctions administratives réelles par les services préfectoraux.
 
-**Ce dispositif est expérimental** : son cadre légal prévoit une fin d'expérimentation fixée au **23 novembre 2026**, sauf prolongation ou pérennisation décidée par le législateur d'ici là. Les bailleurs des territoires concernés doivent donc suivre l'actualité législative de près.
+**Ce dispositif est expérimental** : l'article 140 de la loi ELAN prévoit une fin d'expérimentation fixée au **23 novembre 2026** (8 ans après la promulgation de la loi), sauf prolongation ou pérennisation décidée par le législateur d'ici là. Les bailleurs des territoires concernés doivent donc suivre l'actualité législative de près.
 
 ---
 
