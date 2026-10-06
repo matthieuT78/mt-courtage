@@ -102,7 +102,7 @@ export default function PretRelaisPage() {
 
   const title = "Simulateur prêt relais 2026 : calcul gratuit | lokt.fr";
   const description =
-    "Combien pouvez-vous emprunter avec un prêt relais ? Montant, intérêts intercalaires et budget d'achat calculés en 30 secondes. Sec ou adossé, sans inscription.";
+    "Combien pouvez-vous emprunter avec un prêt relais ? Formule de calcul, montant estimé et intérêts intercalaires calculés en 30 secondes, gratuit et sans inscription.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -381,7 +381,9 @@ export default function PretRelaisPage() {
             <div data-scroll-reveal data-reveal-delay="70">
               <h3 className="text-sm font-semibold text-slate-900">La formule de calcul</h3>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Formule indicative : <strong>valeur du bien à vendre × pourcentage retenu − capital restant dû</strong>.
+                La formule indicative est simple à calculer soi-même : multipliez la <strong>valeur du bien à vendre</strong> par le{" "}
+                <strong>pourcentage retenu par la banque</strong> (60 à 80 % selon les établissements), puis soustrayez le{" "}
+                <strong>capital restant dû</strong> sur votre crédit en cours, s'il en existe un.
               </p>
               <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                 <p className="font-semibold">Exemple concret</p>
