@@ -2,11 +2,12 @@
 title: "Emprunter avec 4 000 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 4 000 € par mois ?"
 description: "Avec 4 000 € nets/mois : capacité d'emprunt entre {{CAPITAL_15}} et {{CAPITAL_25}} € selon la durée. Tableau complet, villes accessibles, et piste investissement locatif en 2026."
-date: "2026-10-06"
+date: "2026-09-22"
 updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "4000 euros", "investissement locatif", "budget achat immobilier"]
 relatedCalculators: ["capacite", "investissement"]
+coverImage: "/blog/combien-emprunter-capacite.jpg"
 capaciteEmpruntSalaire: 4000
 faq:
   - q: "Peut-on acheter seul avec 4 000 € de revenus par mois ?"

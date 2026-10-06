@@ -2,11 +2,12 @@
 title: "Emprunter avec 1 200 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 1 200 € par mois ?"
 description: "Avec 1 200 € nets/mois : capacité d'emprunt entre {{CAPITAL_15}} et {{CAPITAL_25}} € selon la durée. Zones accessibles, PTZ, impact du moindre crédit en cours en 2026."
-date: "2026-10-06"
+date: "2026-08-30"
 updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "1200 euros", "PTZ", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
+coverImage: "/blog/combien-emprunter-capacite.jpg"
 capaciteEmpruntSalaire: 1200
 faq:
   - q: "Peut-on acheter seul avec 1 200 € de revenus par mois ?"
