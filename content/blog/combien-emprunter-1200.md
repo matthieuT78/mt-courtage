@@ -1,14 +1,15 @@
 ---
 title: "Emprunter avec 1 200 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 1 200 € par mois ?"
-description: "Avec 1 200 € nets/mois : capacité d'emprunt entre 61 000 et 87 000 € selon la durée. Zones accessibles, PTZ, impact du moindre crédit en cours en 2026."
+description: "Avec 1 200 € nets/mois : capacité d'emprunt entre 59 000 et 80 000 € selon la durée. Zones accessibles, PTZ, impact du moindre crédit en cours en 2026."
 date: "2026-10-06"
+updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "1200 euros", "PTZ", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
 faq:
   - q: "Peut-on acheter seul avec 1 200 € de revenus par mois ?"
-    a: "C'est possible mais très contraint : seul avec 25 ans de durée et 10 % d'apport, le budget accessible tourne autour de 97 000 €, ce qui limite le choix aux zones rurales ou aux petites villes. Un co-emprunteur ou le PTZ changent significativement l'équation à ce niveau de revenu."
+    a: "C'est possible mais très contraint : seul avec 25 ans de durée et 10 % d'apport, le budget accessible tourne autour de 89 000 €, ce qui limite le choix aux zones rurales ou aux petites villes. Un co-emprunteur ou le PTZ changent significativement l'équation à ce niveau de revenu."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. À ce niveau de revenu, les banques sont toutefois plus strictes sur le reste à vivre que sur le taux d'endettement lui-même."
   - q: "Le PTZ est-il vraiment utile à 1 200 € de revenus ?"
@@ -19,7 +20,7 @@ faq:
 
 # Combien puis-je emprunter avec 1 200 € par mois ?
 
-Avec 1 200 € nets par mois, votre capacité d'emprunt se situe entre **61 000 € et 87 000 €** selon la durée. C'est un niveau de revenu où chaque paramètre compte double — apport, crédits en cours, durée — et où des dispositifs comme le PTZ peuvent faire une vraie différence sur la faisabilité du projet.
+Avec 1 200 € nets par mois, votre capacité d'emprunt se situe entre **59 000 € et 80 000 €** selon la durée. C'est un niveau de revenu où chaque paramètre compte double — apport, crédits en cours, durée — et où des dispositifs comme le PTZ peuvent faire une vraie différence sur la faisabilité du projet.
 
 ---
 
@@ -33,31 +34,31 @@ C'est l'enveloppe crédit totale, assurance comprise, tous crédits confondus. �
 
 ## Tableau de capacité par durée (sans crédit en cours)
 
-Taux 2026 estimés, assurance incluse dans la mensualité.
+Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
 
-| Durée | Taux indicatif | Capital emprunté |
+| Durée | Taux moyen constaté | Capital emprunté |
 |-------|---------------|-----------------|
-| 15 ans | 3,10 % | ~61 000 € |
-| 20 ans | 3,35 % | ~75 000 € |
-| 25 ans | 3,55 % | ~87 000 € |
+| 15 ans | 3,20 % | ~59 000 € |
+| 20 ans | 3,40 % | ~71 000 € |
+| 25 ans | 3,60 % | ~80 000 € |
 
 ### Budget total avec apport de 10 %
 
 | Durée | Capital | Apport 10 % | **Budget total** |
 |-------|---------|-------------|-----------------|
-| 20 ans | 75 000 € | 8 000 € | **~83 000 €** |
-| 25 ans | 87 000 € | 10 000 € | **~97 000 €** |
+| 20 ans | 71 000 € | 8 000 € | **~79 000 €** |
+| 25 ans | 80 000 € | 9 000 € | **~89 000 €** |
 
 ---
 
 ## Ce que vous pouvez acheter à 1 200 €/mois
 
-| Marché | Budget ~83 000 € | Budget ~97 000 € |
+| Marché | Budget ~79 000 € | Budget ~89 000 € |
 |--------|-----------------|-----------------|
 | Grandes métropoles et périphérie proche | Hors de portée | Hors de portée |
 | Villes moyennes | Hors de portée sauf PTZ | Studio en périphérie |
-| Petites villes, zones peu tendues | Studio ou petit T2 | T2 |
-| Zones rurales | T2-T3 | T3, parfois avec terrain |
+| Petites villes, zones peu tendues | Studio | Studio ou petit T2 |
+| Zones rurales | T2 | T2-T3 |
 
 À ce niveau de budget, le PTZ et les dispositifs d'accession sociale (comme le Prêt d'Accession Sociale) ne sont pas des options accessoires : ils conditionnent souvent la faisabilité même du projet.
 
@@ -67,9 +68,9 @@ Taux 2026 estimés, assurance incluse dans la mensualité.
 
 | Crédits en cours | Mensualité immo dispo | Capital (20 ans) |
 |-----------------|----------------------|-----------------|
-| 0 € | 420 € | ~75 000 € |
-| 150 €/mois | 270 € | ~48 000 € |
-| 300 €/mois | 120 € | ~21 000 € |
+| 0 € | 420 € | ~71 000 € |
+| 150 €/mois | 270 € | ~45 000 € |
+| 300 €/mois | 120 € | ~20 000 € |
 | 500 €/mois | — | Projet non finançable |
 
 À 1 200 €/mois, un crédit à la consommation n'ampute pas seulement le budget, il peut le rendre nul. Un crédit auto à 300 €/mois fait perdre plus de la moitié de la capacité d'emprunt. Solder ses crédits conso avant de déposer un dossier n'est pas une stratégie d'optimisation ici — c'est souvent une condition de faisabilité.
@@ -123,4 +124,4 @@ Un deuxième revenu, même modeste, change radicalement l'équation : les mensua
 
 ## Calculez votre capacité exacte
 
-Les montants ci-dessus sont des estimations sur la base de profils standards. Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les montants ci-dessus sont des estimations basées sur les taux moyens actuels (mis à jour chaque semaine sur [notre page de données de référence](/donnees)). Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.

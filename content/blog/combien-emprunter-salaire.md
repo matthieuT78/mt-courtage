@@ -10,11 +10,11 @@ relatedCalculators: ["capacite", "acheter-ou-louer"]
 coverImage: "/blog/combien-emprunter-3000.jpg"
 faq:
   - q: "Combien puis-je emprunter avec 2 000 € par mois ?"
-    a: "Avec 2 000 €/mois nets, votre mensualité maximale est de 700 € (35 % de taux d'endettement). Selon la durée, vous pouvez emprunter entre 101 000 et 145 000 €. Sur 25 ans, le capital accessible est d'environ 145 000 €."
+    a: "Avec 2 000 €/mois nets, votre mensualité maximale est de 700 € (35 % de taux d'endettement). Selon la durée, vous pouvez emprunter entre 98 000 et 133 000 €. Sur 25 ans, le capital accessible est d'environ 133 000 €."
   - q: "Combien puis-je emprunter avec 2 500 € par mois ?"
-    a: "Avec 2 500 €/mois nets, votre mensualité maximale est de 875 €. Vous pouvez emprunter entre 127 000 et 181 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 181 000 €."
+    a: "Avec 2 500 €/mois nets, votre mensualité maximale est de 875 €. Vous pouvez emprunter entre 122 000 et 166 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 166 000 €."
   - q: "Combien puis-je emprunter avec 3 500 € par mois ?"
-    a: "Avec 3 500 €/mois nets, votre mensualité maximale est de 1 225 €. Vous pouvez emprunter entre 177 000 et 253 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 253 000 €."
+    a: "Avec 3 500 €/mois nets, votre mensualité maximale est de 1 225 €. Vous pouvez emprunter entre 171 000 et 233 000 € selon la durée. Sur 25 ans, le capital accessible est d'environ 233 000 €."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
     a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers selon les établissements. Pour un primo-accédant achetant sa résidence principale avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37–38 % d'endettement."
   - q: "Mon salaire variable est-il pris en compte dans ma capacité d'emprunt ?"
@@ -25,7 +25,7 @@ faq:
 
 # Combien puis-je emprunter selon mon salaire ? Tableau 2026
 
-La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'endettement maximum fixé à 35 % (assurance incluse). Ce tableau couvre les tranches les plus courantes, de 1 200 à 5 000 €/mois. Pour une tranche précise, une page dédiée détaille aussi les villes accessibles et l'impact des crédits en cours.
+La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'endettement maximum fixé à 35 % (assurance incluse). Ce tableau couvre les tranches les plus courantes, de 1 200 à 5 000 €/mois, avec les taux moyens constatés actuellement (Observatoire Crédit Logement/CSA). Pour une tranche précise, une page dédiée détaille aussi les villes accessibles et l'impact des crédits en cours.
 
 ---
 
@@ -49,19 +49,19 @@ La capacité d'emprunt dépend directement du revenu net mensuel via le taux d'e
 
 ## Tableau complet par salaire et durée
 
-Capital empruntable net (hors apport, hors frais de notaire), taux indicatifs 2026 par durée (15 ans : 3,10 % ; 20 ans : 3,35 % ; 25 ans : 3,55 %), assurance incluse dans la mensualité.
+Capital empruntable net (hors apport, hors frais de notaire), taux moyens constatés actuellement par durée (15 ans : 3,20 % ; 20 ans : 3,40 % ; 25 ans : 3,60 % — source Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité. Ces taux sont recalculés chaque semaine sur notre [page de données de référence](/donnees).
 
 | Salaire net/mois | 15 ans | 20 ans | 25 ans |
 |---|---|---|---|
-| 1 200 € | 61 000 € | 75 000 € | 87 000 € |
-| 1 500 € | 76 000 € | 94 000 € | 108 000 € |
-| 1 600 € | 81 000 € | 100 000 € | 116 000 € |
-| 2 000 € | 101 000 € | 125 000 € | 145 000 € |
-| 2 500 € | 127 000 € | 156 000 € | 181 000 € |
-| 3 000 € | 152 000 € | 187 000 € | 217 000 € |
-| 3 500 € | 177 000 € | 218 000 € | 253 000 € |
-| 4 000 € | 203 000 € | 249 000 € | 289 000 € |
-| 5 000 € | 253 000 € | 312 000 € | 362 000 € |
+| 1 200 € | 59 000 € | 71 000 € | 80 000 € |
+| 1 500 € | 73 000 € | 88 000 € | 100 000 € |
+| 1 600 € | 78 000 € | 94 000 € | 107 000 € |
+| 2 000 € | 98 000 € | 118 000 € | 133 000 € |
+| 2 500 € | 122 000 € | 147 000 € | 166 000 € |
+| 3 000 € | 146 000 € | 177 000 € | 200 000 € |
+| 3 500 € | 171 000 € | 206 000 € | 233 000 € |
+| 4 000 € | 195 000 € | 236 000 € | 266 000 € |
+| 5 000 € | 244 000 € | 295 000 € | 333 000 € |
 
 ---
 
@@ -71,22 +71,22 @@ En ajoutant un apport de 10 % (qui couvre généralement les frais de notaire), 
 
 | Salaire | Capital (25 ans) | Apport 10 % | **Budget total** |
 |---|---|---|---|
-| 1 200 €/mois | 87 000 € | 10 000 € | **~97 000 €** |
-| 1 500 €/mois | 108 000 € | 12 000 € | **~120 000 €** |
-| 1 600 €/mois | 116 000 € | 13 000 € | **~129 000 €** |
-| 2 000 €/mois | 145 000 € | 16 000 € | **~161 000 €** |
-| 2 500 €/mois | 181 000 € | 20 000 € | **~201 000 €** |
-| 3 000 €/mois | 217 000 € | 24 000 € | **~241 000 €** |
-| 3 500 €/mois | 253 000 € | 28 000 € | **~281 000 €** |
-| 4 000 €/mois | 289 000 € | 32 000 € | **~321 000 €** |
-| 5 000 €/mois | 362 000 € | 40 000 € | **~402 000 €** |
+| 1 200 €/mois | 80 000 € | 9 000 € | **~89 000 €** |
+| 1 500 €/mois | 100 000 € | 11 000 € | **~111 000 €** |
+| 1 600 €/mois | 107 000 € | 12 000 € | **~119 000 €** |
+| 2 000 €/mois | 133 000 € | 15 000 € | **~148 000 €** |
+| 2 500 €/mois | 166 000 € | 18 000 € | **~184 000 €** |
+| 3 000 €/mois | 200 000 € | 22 000 € | **~222 000 €** |
+| 3 500 €/mois | 233 000 € | 26 000 € | **~259 000 €** |
+| 4 000 €/mois | 266 000 € | 30 000 € | **~296 000 €** |
+| 5 000 €/mois | 333 000 € | 37 000 € | **~370 000 €** |
 
 **Ce que ces budgets permettent concrètement**, à titre indicatif :
 
-- **~97-120 000 €** : studio ou petit T2 en zone peu tendue, T2-T3 en zone rurale
-- **~161-201 000 €** : T2 en ville moyenne, studio à Lyon ou Bordeaux
-- **~241-281 000 €** : T3 dans plusieurs grandes villes hors Paris, T2-T3 à Bordeaux, Lyon, Nantes
-- **~321-402 000 €** : T3-T4 à Lyon ou Bordeaux, T2 à Paris en proche banlieue
+- **~89-119 000 €** : studio en zone peu tendue, T2-T3 en zone rurale
+- **~148-184 000 €** : studio à Lyon ou Bordeaux, T2 en ville moyenne
+- **~222-259 000 €** : T2 dans plusieurs grandes villes hors Paris
+- **~296-370 000 €** : T3-T4 à Lyon ou Bordeaux, T2-T3 à Paris en proche banlieue
 
 Pour le détail ville par ville selon votre tranche exacte, consultez la page dédiée à votre salaire listée dans le premier tableau.
 
@@ -96,7 +96,7 @@ Pour le détail ville par ville selon votre tranche exacte, consultez la page d�
 
 ### 1. Allonger la durée
 
-Passer de 20 à 25 ans augmente le capital empruntable d'environ **16 à 20 %** selon le profil. La contrepartie : le coût total du crédit augmente avec la durée.
+Passer de 20 à 25 ans augmente le capital empruntable d'environ **13 à 17 %** selon le profil. La contrepartie : le coût total du crédit augmente avec la durée.
 
 ### 2. Augmenter l'apport
 
@@ -114,10 +114,10 @@ Pour un couple avec deux revenus, les banques agrègent généralement les deux 
 
 | Composition | Salaire total | Mensualité max | Capital (25 ans) |
 |---|---|---|---|
-| Solo 2 500 €/mois | 2 500 € | 875 € | 181 000 € |
-| Couple 2 × 1 500 €/mois | 3 000 € | 1 050 € | 217 000 € |
-| Couple 2 × 2 000 €/mois | 4 000 € | 1 400 € | 289 000 € |
-| Couple 2 × 2 500 €/mois | 5 000 € | 1 750 € | 362 000 € |
+| Solo 2 500 €/mois | 2 500 € | 875 € | 166 000 € |
+| Couple 2 × 1 500 €/mois | 3 000 € | 1 050 € | 200 000 € |
+| Couple 2 × 2 000 €/mois | 4 000 € | 1 400 € | 266 000 € |
+| Couple 2 × 2 500 €/mois | 5 000 € | 1 750 € | 333 000 € |
 
 ---
 
@@ -133,4 +133,4 @@ Pour un couple avec deux revenus, les banques agrègent généralement les deux 
 
 ---
 
-*Les montants indiqués sont des estimations basées sur des taux indicatifs 2026 et une assurance emprunteur de 0,30 % sur le capital restant dû. Les conditions réelles dépendent du profil, de la banque, de l'apport et de la durée négociée. Utilisez notre [simulateur de capacité d'emprunt](/capacite) pour une estimation personnalisée.*
+*Les montants indiqués sont des estimations basées sur les taux moyens actuels (Observatoire Crédit Logement/CSA, recalculés chaque semaine) et une assurance emprunteur de 0,36 % sur le capital restant dû. Les conditions réelles dépendent du profil, de la banque, de l'apport et de la durée négociée. Retrouvez ces données à jour sur [/donnees](/donnees), ou utilisez notre [simulateur de capacité d'emprunt](/capacite) pour une estimation personnalisée.*

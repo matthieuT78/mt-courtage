@@ -129,24 +129,23 @@ La méthode différentielle est particulièrement avantageuse quand le loyer per
 
 ## Tableau complet : capacité d'emprunt par tranche de revenus
 
-Ces chiffres supposent **aucune autre charge de crédit en cours** et un taux de 3,5 % assurance incluse.
+Ces chiffres supposent **aucune autre charge de crédit en cours**, aux taux moyens actuellement constatés (Observatoire Crédit Logement/CSA), assurance incluse. Ces taux sont recalculés chaque semaine sur notre [page de données de référence](/donnees).
 
 | Revenus nets/mois | Mensualité max (35 %) | Budget 15 ans | Budget 20 ans | Budget 25 ans |
 |-------------------|-----------------------|---------------|---------------|---------------|
-| 2 000 € | 700 € | 85 000 € | 121 000 € | 140 000 € |
-| 2 500 € | 875 € | 107 000 € | 151 000 € | 175 000 € |
-| 3 000 € | 1 050 € | 128 000 € | 181 000 € | 210 000 € |
-| 3 200 € | 1 120 € | 137 000 € | 194 000 € | 224 000 € |
-| 4 000 € | 1 400 € | 171 000 € | 242 000 € | 280 000 € |
-| 4 500 € | 1 575 € | 193 000 € | 272 000 € | 315 000 € |
-| 5 000 € | 1 750 € | 214 000 € | 303 000 € | 350 000 € |
-| 6 000 € | 2 100 € | 257 000 € | 363 000 € | 420 000 € |
-| 8 000 € | 2 800 € | 342 000 € | 484 000 € | 560 000 € |
-| 10 000 € | 3 500 € | 428 000 € | 605 000 € | 700 000 € |
+| 2 000 € | 700 € | 98 000 € | 118 000 € | 133 000 € |
+| 2 500 € | 875 € | 122 000 € | 147 000 € | 166 000 € |
+| 3 000 € | 1 050 € | 146 000 € | 177 000 € | 200 000 € |
+| 3 200 € | 1 120 € | 156 000 € | 189 000 € | 213 000 € |
+| 4 000 € | 1 400 € | 195 000 € | 236 000 € | 266 000 € |
+| 4 500 € | 1 575 € | 219 000 € | 265 000 € | 300 000 € |
+| 5 000 € | 1 750 € | 244 000 € | 295 000 € | 333 000 € |
+| 6 000 € | 2 100 € | 293 000 € | 354 000 € | 400 000 € |
+| 8 000 € | 2 800 € | 390 000 € | 472 000 € | 533 000 € |
 
-*Hors apport, hors crédits en cours, taux indicatif 3,5 % assurance incluse.*
+Pour le détail par tranche (villes accessibles, impact des crédits en cours), voir notre [tableau complet capacité d'emprunt par salaire](/blog/combien-emprunter-salaire).
 
-**Ces montants s'entendent capital emprunté** — votre budget d'achat total sera supérieur si vous ajoutez votre apport. Pour un couple à 3 000 €/mois de revenus nets cumulés avec 30 000 € d'apport, le budget accessible grimpe à environ 240 000 € (210 000 + 30 000).
+**Ces montants s'entendent capital emprunté** — votre budget d'achat total sera supérieur si vous ajoutez votre apport. Pour un couple à 3 000 €/mois de revenus nets cumulés avec 30 000 € d'apport, le budget accessible grimpe à environ 230 000 € (200 000 + 30 000).
 
 ---
 

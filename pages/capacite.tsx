@@ -330,7 +330,7 @@ export default function CapaciteEmpruntPage() {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
             <h2 className="text-sm font-semibold text-slate-900">Combien puis-je emprunter selon mon salaire ?</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Estimation indicative basée sur la règle des 35 % d’endettement, sans charges existantes, à un taux de 3,5 %.
+              Estimation indicative basée sur la règle des 35 % d’endettement, sans charges existantes, aux taux moyens actuels par durée.
               En pratique, vos charges en cours (crédits, pension alimentaire…) réduisent la mensualité disponible.
             </p>
             <div className="overflow-x-auto">
@@ -345,15 +345,15 @@ export default function CapaciteEmpruntPage() {
                 </thead>
                 <tbody className="text-slate-600">
                   {[
-                    ["2 000 €", "700 €", "~125 000 €", "~145 000 €"],
-                    ["2 500 €", "875 €", "~156 000 €", "~181 000 €"],
-                    ["3 000 €", "1 050 €", "~187 000 €", "~217 000 €"],
-                    ["3 200 €", "1 120 €", "~199 000 €", "~231 000 €"],
-                    ["4 000 €", "1 400 €", "~249 000 €", "~289 000 €"],
-                    ["4 500 €", "1 575 €", "~280 000 €", "~326 000 €"],
-                    ["5 000 €", "1 750 €", "~312 000 €", "~362 000 €"],
-                    ["6 000 €", "2 100 €", "~374 000 €", "~434 000 €"],
-                    ["8 000 €", "2 800 €", "~499 000 €", "~579 000 €"],
+                    ["2 000 €", "700 €", "~118 000 €", "~133 000 €"],
+                    ["2 500 €", "875 €", "~147 000 €", "~166 000 €"],
+                    ["3 000 €", "1 050 €", "~177 000 €", "~200 000 €"],
+                    ["3 200 €", "1 120 €", "~189 000 €", "~213 000 €"],
+                    ["4 000 €", "1 400 €", "~236 000 €", "~266 000 €"],
+                    ["4 500 €", "1 575 €", "~265 000 €", "~300 000 €"],
+                    ["5 000 €", "1 750 €", "~295 000 €", "~333 000 €"],
+                    ["6 000 €", "2 100 €", "~354 000 €", "~400 000 €"],
+                    ["8 000 €", "2 800 €", "~472 000 €", "~533 000 €"],
                   ].map(([sal, mens, c20, c25]) => (
                     <tr key={sal} className="border-b border-slate-100">
                       <td className="py-2 pr-4 font-medium text-slate-800">{sal}</td>
@@ -366,7 +366,7 @@ export default function CapaciteEmpruntPage() {
               </table>
             </div>
             <p className="text-xs text-slate-500">
-              Estimations hors charges, à titre indicatif. Taux 2026 indicatifs par durée (20 ans : 3,35 % ; 25 ans : 3,55 %), assurance incluse. Chaque dossier est analysé individuellement par la banque.
+              Estimations hors charges, à titre indicatif. Taux moyens constatés actuellement par durée (20 ans : 3,40 % ; 25 ans : 3,60 % — Observatoire Crédit Logement/CSA, recalculés chaque semaine sur <Link href="/donnees" className="underline hover:text-slate-700">/donnees</Link>), assurance incluse. Chaque dossier est analysé individuellement par la banque.
             </p>
             <p className="text-xs text-slate-500">
               Le détail par tranche de salaire (villes accessibles, impact des crédits en cours) est disponible dans notre{" "}

@@ -1,14 +1,15 @@
 ---
 title: "Emprunter avec 5 000 €/mois : tableau 2026"
 h1: "Combien puis-je emprunter avec 5 000 € par mois ?"
-description: "Avec 5 000 € nets/mois : capacité d'emprunt entre 253 000 et 362 000 € selon la durée. Tableau complet, villes accessibles, et piste investissement locatif en 2026."
+description: "Avec 5 000 € nets/mois : capacité d'emprunt entre 244 000 et 333 000 € selon la durée. Tableau complet, villes accessibles, et piste investissement locatif en 2026."
 date: "2026-10-06"
+updatedAt: "2026-10-06"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "5000 euros", "investissement locatif", "budget achat immobilier"]
 relatedCalculators: ["capacite", "investissement"]
 faq:
   - q: "Peut-on acheter seul avec 5 000 € de revenus par mois ?"
-    a: "Oui, dans la quasi-totalité des marchés français, y compris Paris pour un studio ou un T2. À 5 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ 402 000 €."
+    a: "Oui, dans la quasi-totalité des marchés français, y compris Paris pour un studio. À 5 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ 370 000 €."
   - q: "À 5 000 €/mois, l'investissement locatif devient-il plus accessible ?"
     a: "Oui, nettement. Au-delà de la capacité d'emprunt elle-même, un revenu de ce niveau rassure davantage les banques sur un second projet, et les loyers perçus (intégrés à ~70 % dans le calcul) renforcent encore la capacité pour les projets suivants."
   - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
@@ -19,7 +20,7 @@ faq:
 
 # Combien puis-je emprunter avec 5 000 € par mois ?
 
-Avec 5 000 € nets par mois, votre capacité d'emprunt se situe entre **253 000 € et 362 000 €** selon la durée. C'est un profil qui ouvre l'accès à la quasi-totalité des marchés immobiliers français, résidence principale comme investissement locatif, et qui permet souvent d'envisager les deux dans une même stratégie patrimoniale.
+Avec 5 000 € nets par mois, votre capacité d'emprunt se situe entre **244 000 € et 333 000 €** selon la durée. C'est un profil qui ouvre l'accès à la quasi-totalité des marchés immobiliers français, résidence principale comme investissement locatif, et qui permet souvent d'envisager les deux dans une même stratégie patrimoniale.
 
 ---
 
@@ -33,31 +34,31 @@ C'est votre enveloppe crédit totale, assurance comprise, tous crédits confondu
 
 ## Tableau de capacité par durée (sans crédit en cours)
 
-Taux 2026 estimés, assurance 0,30 %/an incluse dans la mensualité.
+Taux 2026 actuels (Observatoire Crédit Logement/CSA), assurance incluse dans la mensualité.
 
-| Durée | Taux indicatif | Capital emprunté |
+| Durée | Taux moyen constaté | Capital emprunté |
 |-------|---------------|-----------------|
-| 15 ans | 3,10 % | ~253 000 € |
-| 20 ans | 3,35 % | ~312 000 € |
-| 25 ans | 3,55 % | ~362 000 € |
+| 15 ans | 3,20 % | ~244 000 € |
+| 20 ans | 3,40 % | ~295 000 € |
+| 25 ans | 3,60 % | ~333 000 € |
 
 ### Budget total avec apport de 10 %
 
 | Durée | Capital | Apport 10 % | **Budget total** |
 |-------|---------|-------------|-----------------|
-| 20 ans | 312 000 € | 35 000 € | **~347 000 €** |
-| 25 ans | 362 000 € | 40 000 € | **~402 000 €** |
+| 20 ans | 295 000 € | 33 000 € | **~328 000 €** |
+| 25 ans | 333 000 € | 37 000 € | **~370 000 €** |
 
 ---
 
 ## Ce que vous pouvez acheter à 5 000 €/mois
 
-| Marché | Budget ~347 000 € | Budget ~402 000 € |
+| Marché | Budget ~328 000 € | Budget ~370 000 € |
 |--------|-----------------|-----------------|
-| Paris intramuros | Studio-T2 | T2 |
-| Île-de-France périphérie | T3 | T3-T4 |
-| Lyon, Bordeaux, Nantes | T4 ou maison | Maison avec jardin |
-| Villes moyennes | Grande maison | Grande maison avec terrain |
+| Paris intramuros | Studio | Studio-T2 |
+| Île-de-France périphérie | T3 | T3 |
+| Lyon, Bordeaux, Nantes | T3-T4 | T4 ou maison |
+| Villes moyennes | Maison | Grande maison |
 | Zones rurales | Propriété spacieuse | Propriété avec dépendances |
 
 ---
@@ -78,12 +79,12 @@ Un **simulateur de rentabilité locative** permet de chiffrer précisément plus
 
 | Crédits en cours | Mensualité immo dispo | Capital (20 ans) |
 |-----------------|----------------------|-----------------|
-| 0 € | 1 750 € | ~312 000 € |
-| 150 €/mois | 1 600 € | ~285 000 € |
-| 300 €/mois | 1 450 € | ~259 000 € |
-| 500 €/mois | 1 250 € | ~223 000 € |
+| 0 € | 1 750 € | ~295 000 € |
+| 150 €/mois | 1 600 € | ~270 000 € |
+| 300 €/mois | 1 450 € | ~244 000 € |
+| 500 €/mois | 1 250 € | ~211 000 € |
 
-Même à ce niveau de revenu, un crédit en cours a un coût réel : un crédit auto à 300 €/mois représente encore environ 53 000 € de capacité d'emprunt en moins.
+Même à ce niveau de revenu, un crédit en cours a un coût réel : un crédit auto à 300 €/mois représente encore environ 51 000 € de capacité d'emprunt en moins.
 
 ---
 
@@ -107,7 +108,7 @@ La réponse dépend de l'objectif (revenu complémentaire, constitution de patri
 
 ### 2. Négocier l'assurance emprunteur en délégation
 
-Sur un capital de 312 000 € ou plus, chaque dixième de point d'assurance représente une somme significative sur la durée — un des leviers de négociation les plus rentables à ce niveau de capital.
+Sur un capital de 295 000 € ou plus, chaque dixième de point d'assurance représente une somme significative sur la durée — un des leviers de négociation les plus rentables à ce niveau de capital.
 
 ### 3. Anticiper le financement d'un second projet dès le premier dossier
 
@@ -133,4 +134,4 @@ Si l'investissement locatif fait partie de la stratégie, en parler à la banque
 
 ## Calculez votre capacité exacte
 
-Les tableaux ci-dessus sont des estimations sur la base de profils standards. Votre situation réelle dépend de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée, ou testez un scénario d'investissement locatif avec le simulateur de rentabilité.
+Les tableaux ci-dessus sont des estimations basées sur les taux moyens actuels (mis à jour chaque semaine sur [notre page de données de référence](/donnees)). Votre situation réelle dépend de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée, ou testez un scénario d'investissement locatif avec le simulateur de rentabilité.
