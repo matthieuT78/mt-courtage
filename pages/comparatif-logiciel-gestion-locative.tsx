@@ -5,6 +5,7 @@ import { CheckIcon, XMarkIcon, MinusIcon } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import TrustpilotStars from "../components/TrustpilotStars";
+import { TRUSTPILOT_RATING, TRUSTPILOT_REVIEW_COUNT, TRUSTPILOT_URL } from "../lib/trustpilot";
 import ReviewsSection from "../components/ReviewsSection";
 
 const siteUrl = "https://lokt.fr";
@@ -293,6 +294,13 @@ const schemas = [
     description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant, avec assistant IA (Loky) qui exécute les actions courantes, simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
     url: siteUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: TRUSTPILOT_RATING,
+      reviewCount: TRUSTPILOT_REVIEW_COUNT,
+      bestRating: 5,
+      worstRating: 1,
+    },
   },
   {
     "@context": "https://schema.org",
@@ -375,14 +383,14 @@ export default function ComparatifPage() {
           </div>
 
           <a
-            href="https://fr.trustpilot.com/review/lokt.fr"
+            href={TRUSTPILOT_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
           >
-            <TrustpilotStars rating={4.4} size={15} />
-            <span className="font-semibold text-slate-950">4,4</span>
-            <span className="text-slate-500">· 12 avis sur Trustpilot</span>
+            <TrustpilotStars rating={TRUSTPILOT_RATING} size={15} />
+            <span className="font-semibold text-slate-950">{TRUSTPILOT_RATING.toFixed(1).replace(".", ",")}</span>
+            <span className="text-slate-500">· {TRUSTPILOT_REVIEW_COUNT} avis sur Trustpilot</span>
           </a>
         </header>
 

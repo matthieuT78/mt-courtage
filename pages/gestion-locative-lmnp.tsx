@@ -12,6 +12,7 @@ import {
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import TrustpilotStars from "../components/TrustpilotStars";
+import { TRUSTPILOT_RATING, TRUSTPILOT_REVIEW_COUNT, TRUSTPILOT_URL } from "../lib/trustpilot";
 import ReviewsSection from "../components/ReviewsSection";
 import LokyDemoTabs, { type LokyDemo } from "../components/LokyDemoTabs";
 
@@ -140,6 +141,13 @@ const jsonLdItems = [
       price: "0",
       priceCurrency: "EUR",
       description: "Gestion gratuite pour un logement actif.",
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: TRUSTPILOT_RATING,
+      reviewCount: TRUSTPILOT_REVIEW_COUNT,
+      bestRating: 5,
+      worstRating: 1,
     },
     featureList: [
       "Gestion locative LMNP",
@@ -304,14 +312,14 @@ export default function GestionLocativeLmnpPage() {
                 </div>
 
                 <a
-                  href="https://fr.trustpilot.com/review/lokt.fr"
+                  href={TRUSTPILOT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                 >
-                  <TrustpilotStars rating={4.4} size={15} />
-                  <span className="font-semibold text-slate-950">4,4</span>
-                  <span className="text-slate-500">· 12 avis sur Trustpilot</span>
+                  <TrustpilotStars rating={TRUSTPILOT_RATING} size={15} />
+                  <span className="font-semibold text-slate-950">{TRUSTPILOT_RATING.toFixed(1).replace(".", ",")}</span>
+                  <span className="text-slate-500">· {TRUSTPILOT_REVIEW_COUNT} avis sur Trustpilot</span>
                 </a>
               </div>
 

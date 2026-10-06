@@ -722,9 +722,9 @@ export const GUIDES: GuideArticle[] = [
   {
     slug: "arrivee-locataire-remise-cles",
     category: "arrivee",
-    title: "Arrivée du locataire : réussir la remise des clés et le démarrage du bail",
+    title: "Remise des clés 2026 : guide de l'arrivée du locataire",
     shortTitle: "Arrivée du locataire",
-    description: "Le déroulé concret de la signature à l'état des lieux d'entrée : documents, compteurs, preuves et bonnes pratiques pour un démarrage solide.",
+    description: "Remise des clés, documents, état des lieux d'entrée et relevés de compteurs : le déroulé complet pour un démarrage de bail sans litige.",
     updatedAt: "2026-06-28",
     intro:
       "L'entrée dans les lieux est un moment court mais fondateur. Les preuves constituées ce jour-là — état des lieux, photos, relevés de compteurs, signatures — serviront de référence pendant toute la durée du bail et conditionneront la gestion du départ. Un état des lieux bâclé ou un inventaire imprécis peut rendre impossible toute retenue légitime sur le dépôt de garantie.",

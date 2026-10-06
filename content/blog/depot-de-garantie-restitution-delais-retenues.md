@@ -1,9 +1,9 @@
 ---
 title: "Dépôt de garantie 2026 : restitution et litiges"
 h1: "Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026"
-description: "Tout savoir sur le dépôt de garantie locatif : montants légaux, délai de restitution, ce que le bailleur peut retenir, vétusté et recours en cas de litige."
+description: "Tout savoir sur le dépôt de garantie (DDG) locatif : montants légaux, révision, délai de restitution, ce que le bailleur peut retenir et recours en cas de litige."
 date: "2026-07-01"
-updatedAt: "2026-07-01"
+updatedAt: "2026-10-06"
 category: "Gestion locative"
 tags: ["dépôt de garantie", "caution locative", "restitution dépôt", "retenues bailleur", "litige locatif", "état des lieux"]
 coverImage: "/blog/depot-de-garantie-restitution.jpg"
@@ -18,6 +18,8 @@ faq:
     a: "Non. La vétusté — l'usure normale du logement liée au temps et à un usage raisonnable — est à la charge du bailleur. Il ne peut retenir que les dégradations anormales imputables au locataire. Des grilles de vétusté permettent de calculer la part à charge de chaque partie."
   - q: "Comment contester une retenue abusive sur le dépôt de garantie ?"
     a: "Envoyez d'abord une lettre recommandée au bailleur en demandant le remboursement du trop-retenu avec vos arguments. Sans réponse sous 1 mois, saisissez gratuitement la commission départementale de conciliation. En dernier recours, le tribunal judiciaire peut être saisi sans avocat obligatoire pour les montants inférieurs à 10 000 €."
+  - q: "Le dépôt de garantie (DDG) est-il révisable en cours de bail ?"
+    a: "Non, le DDG n'est pas révisable. Contrairement au loyer, qui se révise chaque année selon l'IRL (article 17-1 de la loi du 6 juillet 1989), aucune disposition légale ne prévoit de mécanisme de révision pour le dépôt de garantie. Le montant versé à la signature du bail reste fixe pendant toute sa durée, même si le loyer augmente entre-temps à la révision annuelle."
 ---
 
 # Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026
@@ -28,7 +30,7 @@ Le dépôt de garantie est l'une des sources de litiges les plus fréquentes ent
 
 ## Qu'est-ce que le dépôt de garantie ?
 
-Le **dépôt de garantie** — souvent appelé à tort "caution", terme qui désigne en réalité la personne qui se porte garante — est une somme versée par le locataire au bailleur lors de la signature du bail. Elle est conservée pendant toute la durée de la location et restituée à la fin, déduction faite des sommes éventuellement dues.
+Le **dépôt de garantie** (souvent abrégé **DDG**) — souvent appelé à tort "caution", terme qui désigne en réalité la personne qui se porte garante — est une somme versée par le locataire au bailleur lors de la signature du bail. Elle est conservée pendant toute la durée de la location et restituée à la fin, déduction faite des sommes éventuellement dues.
 
 Son rôle est triple : couvrir les loyers impayés, les charges non régularisées, et les dégradations constatées à la sortie qui dépassent l'usure normale du logement.
 
@@ -61,7 +63,9 @@ Le dépôt est versé **à la signature du bail**, le plus souvent par chèque, 
 
 Le bailleur n'est pas tenu de placer le dépôt sur un compte séparé ou bloqué — contrairement à d'autres pays européens (Royaume-Uni, Allemagne). Il peut le conserver sur son compte courant. Aucun intérêt n'est dû au locataire sur cette somme pendant la durée de la location.
 
-**Le montant du dépôt n'est pas révisable** en cours de bail, même si le loyer augmente à l'IRL. Le montant versé à la signature reste la référence pour la restitution.
+### Le DDG n'est pas révisable en cours de bail
+
+À la différence du loyer, qui se révise chaque année selon l'**IRL** (article 17-1 de la loi du 6 juillet 1989), **aucune disposition légale ne prévoit de mécanisme de révision pour le dépôt de garantie**. Le montant versé à la signature du bail reste fixe pendant toute sa durée : même si le loyer augmente à chaque révision annuelle, le DDG, lui, ne bouge pas. Le montant versé à la signature reste la seule référence pour la restitution en fin de bail.
 
 ---
 
