@@ -130,6 +130,14 @@ La délégation d'assurance (assurance externe à la banque) permet d'économise
 
 ---
 
+## Autres tranches de salaire
+
+- [Tableau complet par salaire (1 200 à 5 000 €)](/blog/combien-emprunter-salaire)
+- [Combien emprunter avec 1 600 € par mois](/blog/combien-emprunter-1600)
+- [Combien emprunter avec 4 000 € par mois](/blog/combien-emprunter-4000)
+
+---
+
 ## Calculez votre capacité exacte
 
 Les tableaux ci-dessus sont des estimations sur la base de profils standards. Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.

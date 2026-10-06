@@ -103,28 +103,8 @@ export default function CapaciteEmpruntPage() {
   const faqData = useMemo(
     () => [
       {
-        q: "Combien puis-je emprunter avec 2 000 € de salaire ?",
-        a: "Avec 2 000 € de revenus nets et sans autre charge, la mensualité soutenable à 35 % est d’environ 700 €. Cela correspond à une capacité d’emprunt indicative de 121 000 € sur 20 ans ou 140 000 € sur 25 ans (taux 3,5 %, hors assurance). Avec un apport de 20 000 €, le budget d’achat peut approcher 155 000 €.",
-      },
-      {
-        q: "Combien puis-je emprunter avec 3 000 € de salaire ?",
-        a: "Avec 3 000 € de revenus nets mensuels et sans charges, la mensualité disponible est d’environ 1 050 €. Soit une capacité indicative de 181 000 € sur 20 ans ou 210 000 € sur 25 ans à 3,5 %. Si vous avez des crédits à la consommation ou un loyer retenu, la mensualité disponible diminue en conséquence.",
-      },
-      {
-        q: "Combien puis-je emprunter avec 4 000 € de salaire ?",
-        a: "À 35 % d’endettement et sans charges, la mensualité disponible est d’environ 1 400 €. La capacité d’emprunt indicative est de 241 000 € sur 20 ans ou 280 000 € sur 25 ans à 3,5 %. Pour un ménage à deux revenus, c’est la somme des deux salaires qui est prise en compte.",
-      },
-      {
-        q: "Combien puis-je emprunter avec 5 000 € de salaire ?",
-        a: "Avec 5 000 € de revenus nets mensuels et sans autres charges, la mensualité soutenable est d’environ 1 750 €. Cela correspond à environ 302 000 € sur 20 ans ou 349 000 € sur 25 ans à 3,5 %. Utilisez le simulateur pour intégrer vos charges réelles.",
-      },
-      {
-        q: "Combien puis-je emprunter avec 6 000 € de salaire ?",
-        a: "La mensualité disponible à 35 % est d’environ 2 100 €. Capacité indicative : 362 000 € sur 20 ans ou 419 000 € sur 25 ans à 3,5 %. Ces montants varient selon les banques en fonction du reste à vivre, du type de revenus et des garanties exigées.",
-      },
-      {
-        q: "Combien puis-je emprunter avec 8 000 € de salaire ?",
-        a: "Avec 8 000 € de revenus nets et sans charges, la mensualité soutenable est d’environ 2 800 €. La capacité d’emprunt indicative est de 483 000 € sur 20 ans ou 559 000 € sur 25 ans à 3,5 %. À ce niveau de revenus, les banques regardent aussi le patrimoine, la stabilité de l’emploi et le reste à vivre.",
+        q: "Combien puis-je emprunter selon mon salaire ?",
+        a: "La mensualité maximale soutenable représente généralement 35 % de vos revenus nets, assurance incluse. Le capital empruntable qui en découle dépend ensuite de la durée et du taux. Le détail chiffré par tranche de salaire (1 200 à 5 000 € et plus), avec les villes accessibles à chaque niveau, est disponible dans notre tableau complet capacité d'emprunt par salaire.",
       },
       {
         q: "Comment savoir combien je peux emprunter ?",
@@ -365,15 +345,15 @@ export default function CapaciteEmpruntPage() {
                 </thead>
                 <tbody className="text-slate-600">
                   {[
-                    ["2 000 €", "700 €", "~121 000 €", "~140 000 €"],
-                    ["2 500 €", "875 €", "~151 000 €", "~175 000 €"],
-                    ["3 000 €", "1 050 €", "~181 000 €", "~210 000 €"],
-                    ["3 200 €", "1 120 €", "~193 000 €", "~224 000 €"],
-                    ["4 000 €", "1 400 €", "~241 000 €", "~280 000 €"],
-                    ["4 500 €", "1 575 €", "~272 000 €", "~315 000 €"],
-                    ["5 000 €", "1 750 €", "~302 000 €", "~349 000 €"],
-                    ["6 000 €", "2 100 €", "~362 000 €", "~419 000 €"],
-                    ["8 000 €", "2 800 €", "~483 000 €", "~559 000 €"],
+                    ["2 000 €", "700 €", "~125 000 €", "~145 000 €"],
+                    ["2 500 €", "875 €", "~156 000 €", "~181 000 €"],
+                    ["3 000 €", "1 050 €", "~187 000 €", "~217 000 €"],
+                    ["3 200 €", "1 120 €", "~199 000 €", "~231 000 €"],
+                    ["4 000 €", "1 400 €", "~249 000 €", "~289 000 €"],
+                    ["4 500 €", "1 575 €", "~280 000 €", "~326 000 €"],
+                    ["5 000 €", "1 750 €", "~312 000 €", "~362 000 €"],
+                    ["6 000 €", "2 100 €", "~374 000 €", "~434 000 €"],
+                    ["8 000 €", "2 800 €", "~499 000 €", "~579 000 €"],
                   ].map(([sal, mens, c20, c25]) => (
                     <tr key={sal} className="border-b border-slate-100">
                       <td className="py-2 pr-4 font-medium text-slate-800">{sal}</td>
@@ -386,7 +366,14 @@ export default function CapaciteEmpruntPage() {
               </table>
             </div>
             <p className="text-xs text-slate-500">
-              Estimations hors charges et hors assurance, à titre indicatif. Taux utilisé : 3,5 %. Chaque dossier est analysé individuellement par la banque.
+              Estimations hors charges, à titre indicatif. Taux 2026 indicatifs par durée (20 ans : 3,35 % ; 25 ans : 3,55 %), assurance incluse. Chaque dossier est analysé individuellement par la banque.
+            </p>
+            <p className="text-xs text-slate-500">
+              Le détail par tranche de salaire (villes accessibles, impact des crédits en cours) est disponible dans notre{" "}
+              <Link href="/blog/combien-emprunter-salaire" className="font-semibold text-[#3f37c9] hover:underline">
+                tableau complet capacité d'emprunt par salaire
+              </Link>
+              .
             </p>
           </section>
 
@@ -472,7 +459,7 @@ export default function CapaciteEmpruntPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">À lire aussi</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {[
-              { href: "/blog/combien-emprunter-3000", cat: "Crédit immobilier", title: "Combien emprunter avec 3 000 € de revenus ?" },
+              { href: "/blog/combien-emprunter-salaire", cat: "Crédit immobilier", title: "Combien emprunter selon mon salaire ? Tableau complet" },
               { href: "/blog/investir-sans-apport-immobilier", cat: "Investissement locatif", title: "Investir sans apport : est-ce vraiment possible ?" },
               { href: "/blog/frais-de-notaire-calcul", cat: "Achat immobilier", title: "Frais de notaire : calcul et simulation 2026" },
             ].map((a) => (
