@@ -1467,7 +1467,7 @@ export const GUIDES: GuideArticle[] = [
     title: "Loyers impayés : du premier retard à la procédure judiciaire",
     shortTitle: "Loyers impayés",
     description: "Comment réagir dès le premier retard, formaliser la relance, activer la GLI, et lancer la procédure judiciaire si nécessaire — étape par étape.",
-    updatedAt: "2026-07-08",
+    updatedAt: "2026-10-08",
     intro:
       "Un loyer impayé doit déclencher une réaction rapide et formalisée. Plus vous attendez, plus la dette s'accumule et plus la procédure judiciaire est longue et coûteuse. La règle de base : relance amiable dès J+5, mise en demeure formelle à J+15, activation de la GLI ou contact du garant avant le mois suivant. Un bailleur organisé réduit considérablement le risque d'impayé structurel.",
     sections: [
@@ -1533,13 +1533,13 @@ export const GUIDES: GuideArticle[] = [
       {
         title: "5. La procédure judiciaire : commandement de payer",
         paragraphs: [
-          "Si la mise en demeure reste sans effet, la procédure judiciaire commence par un commandement de payer, délivré par un commissaire de justice (anciennement huissier) au locataire. Ce document officiel donne au locataire 2 mois pour régler l'intégralité de la dette (loyers + charges + frais). Ce délai peut être allongé par le juge si le locataire sollicite des délais de paiement.",
-          "Le commandement de payer est la première étape formelle vers la résiliation judiciaire du bail. Si la dette n'est pas réglée dans les 2 mois, vous pouvez saisir le tribunal judiciaire pour obtenir une ordonnance de résiliation du bail et, à terme, une autorisation d'expulsion. La procédure dure en moyenne 6 à 18 mois selon les juridictions.",
+          "Si la mise en demeure reste sans effet, la procédure judiciaire commence par un commandement de payer, délivré par un commissaire de justice (anciennement huissier) au locataire. Ce document officiel donne au locataire six semaines pour régler l'intégralité de la dette (loyers + charges + frais) — deux mois pour un bail signé avant le 29 juillet 2023, date d'entrée en vigueur de la loi Kasbarian qui a raccourci ce délai. Ce délai peut être allongé par le juge si le locataire sollicite des délais de paiement.",
+          "Le commandement de payer est la première étape formelle vers la résiliation judiciaire du bail. Si la dette n'est pas réglée dans ce délai, vous pouvez saisir le tribunal judiciaire pour obtenir une ordonnance de résiliation du bail et, à terme, une autorisation d'expulsion. La procédure dure en moyenne 6 à 18 mois selon les juridictions.",
           "Les frais de procédure (commissaire de justice, avocat si nécessaire) sont en principe mis à la charge du locataire défaillant par le juge, mais leur recouvrement effectif n'est pas garanti si le locataire est insolvable.",
         ],
         bullets: [
-          "Commandement de payer : délivré par commissaire de justice, délai 2 mois au locataire.",
-          "Après 2 mois sans paiement : saisine du tribunal judiciaire.",
+          "Commandement de payer : délivré par commissaire de justice, délai de six semaines (2 mois pour un bail antérieur au 29 juillet 2023).",
+          "Après ce délai sans paiement : saisine du tribunal judiciaire.",
           "Jugement : résiliation du bail + titre exécutoire pour expulsion.",
           "Expulsion : uniquement sur ordonnance judiciaire + concours de la force publique.",
           "Délai moyen : 6 à 18 mois selon les juridictions (avec ou sans audience de conciliation).",
@@ -1593,7 +1593,7 @@ export const GUIDES: GuideArticle[] = [
     ],
     faq: [
       { q: "Peut-on couper l'électricité ou l'eau pour faire partir un locataire qui ne paie plus ?", a: "Non, jamais. Couper l'électricité, l'eau ou le gaz, changer la serrure ou expulser soi-même le locataire constitue une 'voie de fait', un délit passible de 3 ans d'emprisonnement et 30 000 € d'amende (article 226-4-2 du code pénal). Seule une décision de justice suivie du concours de la force publique permet une expulsion légale." },
-      { q: "Combien de temps dure une procédure d'expulsion pour impayés en France ?", a: "En moyenne 6 à 18 mois selon les juridictions, entre le commandement de payer (délai de 2 mois laissé au locataire), la saisine du tribunal judiciaire, le jugement de résiliation, et enfin l'expulsion effective — qui reste par ailleurs impossible pendant la trêve hivernale (1er novembre au 31 mars), sauf exceptions." },
+      { q: "Combien de temps dure une procédure d'expulsion pour impayés en France ?", a: "En moyenne 6 à 18 mois selon les juridictions, entre le commandement de payer (délai de six semaines laissé au locataire pour un bail signé depuis le 29 juillet 2023, deux mois pour un bail antérieur), la saisine du tribunal judiciaire, le jugement de résiliation, et enfin l'expulsion effective — qui reste par ailleurs impossible pendant la trêve hivernale (1er novembre au 31 mars), sauf exceptions." },
       { q: "À quel moment faut-il déclarer un impayé à l'assurance GLI ou activer le garant ?", a: "Dès le premier mois de retard complet pour la GLI (le délai contractuel de déclaration, souvent 30 à 45 jours, est à vérifier dans votre contrat pour éviter la déchéance de garantie). Pour un garant en caution solidaire, la mise en demeure par lettre recommandée peut être envoyée immédiatement, sans attendre d'avoir mis en demeure le locataire au préalable." },
     ],
     sources: [

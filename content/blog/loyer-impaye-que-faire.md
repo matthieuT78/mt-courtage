@@ -2,6 +2,7 @@
 title: "Loyer impayé 2026 : que faire étape par étape"
 description: "Locataire qui ne paie plus ? La procédure complète : de la première relance amiable à l'expulsion, avec les délais réels et comment activer vos garanties."
 date: "2026-06-26"
+updatedAt: "2026-10-08"
 category: "Gestion locative"
 tags: ["loyer impayé", "impayé locataire", "expulsion locataire", "GLI", "procédure loyer impayé"]
 relatedCalculators: ["parc-immobilier"]
@@ -134,7 +135,7 @@ Procédure plus lourde mais nécessaire si vous voulez récupérer le logement. 
 Avant toute demande d'expulsion, vous devez faire délivrer un **commandement de payer les loyers** par huissier de justice. Cet acte :
 
 - Détaille les sommes exactes dues
-- Donne au locataire **2 mois** pour régler ou quitter les lieux
+- Donne au locataire **six semaines** pour régler (deux mois pour un bail signé avant le 29 juillet 2023, date d'entrée en vigueur de la loi Kasbarian qui a raccourci ce délai)
 - Active la clause résolutoire du bail si elle existe
 - Ouvre le droit à la CAF/MSA de régler directement le bailleur (mécanisme de tiers payant)
 
@@ -146,11 +147,13 @@ Coût : 150 à 300 € selon l'huissier.
 
 ## Étape 7 — L'audience et le jugement
 
-Si le locataire ne régularise pas dans les 2 mois suivant le commandement de payer, l'affaire passe devant le juge. À l'audience, le juge peut :
+Si le locataire ne régularise pas dans le délai imparti par le commandement de payer, l'affaire passe devant le juge des contentieux de la protection. À l'audience, le juge peut :
 
 - **Constater la résiliation du bail** et ordonner l'expulsion
-- **Accorder des délais de paiement** au locataire (jusqu'à 2 ans) si sa situation le justifie
+- **Accorder des délais de paiement** au locataire (jusqu'à 3 ans), sous deux conditions cumulatives : être en mesure de régler sa dette et avoir repris le paiement intégral du loyer courant avant l'audience
 - **Suspendre la clause résolutoire** si le locataire règle tout avant l'audience
+
+Le déroulé détaillé de cette audience — pièces à apporter, délais de notification au préfet, ce que le juge vérifie d'office — est couvert dans notre [guide sur l'audience pour loyers impayés](/blog/audience-loyers-impayes-ce-que-verifie-le-juge).
 
 **Ce que vous devez apporter à l'audience** :
 - Copie du bail
