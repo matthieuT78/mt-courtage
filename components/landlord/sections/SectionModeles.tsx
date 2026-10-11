@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownTrayIcon,
   ArrowTopRightOnSquareIcon,
@@ -12,7 +12,8 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import type { CongeKind } from "../../../pages/api/lease-contracts/generate-conge";
-import { IRL_TABLE, LATEST_IRL, irlByQuarter } from "../../../lib/irlData";
+
+type IrlEntry = { quarter: string; label: string; value: number };
 
 type PropertyLite = { id: string; label?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null };
 type TenantLite = { id: string; full_name?: string | null; archived_at?: string | null };
@@ -674,18 +675,41 @@ function RevisionLoyerForm({ onBack }: { userId: string; onBack: () => void }) {
     leaseStartDate: "",
     currentRentRaw: "",
     refQuarter: "",
-    newQuarter: LATEST_IRL.quarter,
+    newQuarter: "",
     signaturePlace: "",
     signatureDate: new Date().toISOString().slice(0, 10),
   });
   const [showLetter, setShowLetter] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Historique IRL chargé depuis la table irl_values (source INSEE, synchronisée
+  // chaque semaine) plutôt qu'un fichier statique codé en dur qu'il fallait
+  // resynchroniser manuellement à chaque trimestre.
+  const [irlTable, setIrlTable] = useState<IrlEntry[]>([]);
+  const [irlLoading, setIrlLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/irl-history")
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        const history: IrlEntry[] = Array.isArray(json?.history) ? json.history : [];
+        setIrlTable(history);
+        if (history.length) setForm((f) => (f.newQuarter ? f : { ...f, newQuarter: history[0].quarter }));
+      })
+      .catch(() => null)
+      .finally(() => { if (!cancelled) setIrlLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const irlByQuarter = (quarter: string) => irlTable.find((e) => e.quarter === quarter) || null;
+
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const currentRent = parseFloat(form.currentRentRaw.replace(",", ".")) || 0;
-  const refEntry = useMemo(() => irlByQuarter(form.refQuarter), [form.refQuarter]);
-  const newEntry = useMemo(() => irlByQuarter(form.newQuarter), [form.newQuarter]);
+  const refEntry = useMemo(() => irlByQuarter(form.refQuarter), [form.refQuarter, irlTable]);
+  const newEntry = useMemo(() => irlByQuarter(form.newQuarter), [form.newQuarter, irlTable]);
 
   const result = useMemo(() => {
     if (!refEntry || !newEntry || currentRent <= 0 || refEntry.value <= 0) return null;
@@ -816,17 +840,18 @@ ${form.landlordName || "[Signature]"}`;
             </label>
             <label className={lbl}>
               Trimestre de référence
-              <select className={inp} value={form.refQuarter} onChange={(e) => set("refQuarter", e.target.value)}>
-                <option value="">— Sélectionner —</option>
-                {IRL_TABLE.map((e) => (
+              <select className={inp} value={form.refQuarter} onChange={(e) => set("refQuarter", e.target.value)} disabled={irlLoading}>
+                <option value="">{irlLoading ? "Chargement…" : "— Sélectionner —"}</option>
+                {irlTable.map((e) => (
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>
             </label>
             <label className={lbl}>
               Trimestre de révision
-              <select className={inp} value={form.newQuarter} onChange={(e) => set("newQuarter", e.target.value)}>
-                {IRL_TABLE.map((e) => (
+              <select className={inp} value={form.newQuarter} onChange={(e) => set("newQuarter", e.target.value)} disabled={irlLoading}>
+                {irlLoading ? <option value="">Chargement…</option> : null}
+                {irlTable.map((e) => (
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>

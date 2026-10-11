@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardDocumentIcon, CheckIcon, ChevronDownIcon, ArrowTrendingUpIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
-import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../../../lib/irlData";
+import { dateToIrlQuarter, type IrlEntry } from "../../../lib/irlData";
 import type { Lease } from "./SectionBaux";
 
 type PropertyLike = { label?: string | null; address_line1?: string | null; postal_code?: string | null; city?: string | null };
@@ -31,31 +31,61 @@ function signedPct(n: number) {
 export function IrlRevisionPanel({ lease, property, tenant, openTrigger, onRefresh }: Props) {
   const currentRent = Number(lease.rent_amount || 0);
 
+  // Historique IRL chargé depuis la table irl_values (source INSEE, synchronisée
+  // chaque semaine) plutôt qu'un fichier statique codé en dur qu'il fallait
+  // resynchroniser manuellement à chaque trimestre.
+  const [irlTable, setIrlTable] = useState<IrlEntry[]>([]);
+  const [irlLoading, setIrlLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/irl-history")
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        setIrlTable(Array.isArray(json?.history) ? json.history : []);
+      })
+      .catch(() => null)
+      .finally(() => { if (!cancelled) setIrlLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const findIrl = (quarter: string) => irlTable.find((e) => e.quarter === quarter) || null;
+
   // Trimestre de référence : champ irl_reference du bail, ou trimestre de start_date,
   // ou trimestre le plus proche disponible dans la table si pas de correspondance exacte
   const defaultRef = useMemo(() => {
+    if (!irlTable.length) return "";
     const irlField = (lease as any).irl_reference as string | null;
-    if (irlField && irlByQuarter(irlField)) return irlField;
+    if (irlField && findIrl(irlField)) return irlField;
     if (!lease.start_date) return "";
     const exact = dateToIrlQuarter(lease.start_date);
-    if (irlByQuarter(exact)) return exact;
+    if (findIrl(exact)) return exact;
     // Fallback : trimestre disponible le plus proche <= start_date
     const [sy, sq] = exact.split("-T").map(Number);
     const startNum = sy * 4 + sq;
-    for (const entry of IRL_TABLE) {
+    for (const entry of irlTable) {
       const [ey, eq] = entry.quarter.split("-T").map(Number);
       if (ey * 4 + eq <= startNum) return entry.quarter;
     }
-    return IRL_TABLE[IRL_TABLE.length - 1].quarter;
-  }, [lease]);
+    return irlTable[irlTable.length - 1]?.quarter || "";
+  }, [lease, irlTable]);
 
   const [open, setOpen]           = useState(false);
 
   useEffect(() => {
     if (openTrigger != null) setOpen(true);
   }, [openTrigger]);
-  const [refQuarter, setRefQuarter] = useState<string>(defaultRef);
-  const [newQuarter, setNewQuarter] = useState<string>(LATEST_IRL.quarter);
+  const [refQuarter, setRefQuarter] = useState<string>("");
+  const [newQuarter, setNewQuarter] = useState<string>("");
+
+  // defaultRef/irlTable[0] n'existent qu'une fois le fetch terminé — on
+  // n'écrase pas une sélection déjà faite par l'utilisateur.
+  useEffect(() => {
+    if (!irlTable.length) return;
+    setRefQuarter((prev) => prev || defaultRef);
+    setNewQuarter((prev) => prev || irlTable[0].quarter);
+  }, [irlTable, defaultRef]);
   const [showLetter, setShowLetter] = useState(false);
   const [copied, setCopied]         = useState(false);
   const [sending, setSending]         = useState(false);
@@ -65,8 +95,8 @@ export function IrlRevisionPanel({ lease, property, tenant, openTrigger, onRefre
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [applyOn, setApplyOn]         = useState<string | null>(lease.irl_apply_on ?? null);
 
-  const refEntry = useMemo(() => irlByQuarter(refQuarter), [refQuarter]);
-  const newEntry = useMemo(() => irlByQuarter(newQuarter), [newQuarter]);
+  const refEntry = useMemo(() => findIrl(refQuarter), [refQuarter, irlTable]);
+  const newEntry = useMemo(() => findIrl(newQuarter), [newQuarter, irlTable]);
 
   const result = useMemo(() => {
     if (!refEntry || !newEntry || currentRent <= 0 || refEntry.value <= 0) return null;
@@ -194,7 +224,7 @@ ___________________________
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[0.7rem] text-slate-400">
-            {LATEST_IRL.label} · {LATEST_IRL.value}
+            {irlLoading ? "…" : irlTable[0] ? `${irlTable[0].label} · ${irlTable[0].value}` : "—"}
           </span>
           <ChevronDownIcon className={`h-4 w-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
         </div>
@@ -217,10 +247,11 @@ ___________________________
               <select
                 value={refQuarter}
                 onChange={(e) => setRefQuarter(e.target.value)}
+                disabled={irlLoading}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none"
               >
-                <option value="">-- Choisir --</option>
-                {IRL_TABLE.map((e) => (
+                <option value="">{irlLoading ? "Chargement…" : "-- Choisir --"}</option>
+                {irlTable.map((e) => (
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>
@@ -233,9 +264,11 @@ ___________________________
               <select
                 value={newQuarter}
                 onChange={(e) => setNewQuarter(e.target.value)}
+                disabled={irlLoading}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none"
               >
-                {IRL_TABLE.map((e) => (
+                {irlLoading ? <option value="">Chargement…</option> : null}
+                {irlTable.map((e) => (
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>

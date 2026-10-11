@@ -11,7 +11,8 @@ import { landlordMaxActiveProperties } from "../permissions";
 import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
 import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
-import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../irlData";
+import { dateToIrlQuarter, type IrlEntry } from "../irlData";
+import { getIrlTable } from "../irlService";
 import { expectedLeaseEndDate } from "./leaseRenewal";
 import { randomUUID } from "crypto";
 import { LEASE_CONTRACT_BUCKET, externalContractPdfPath, isLeaseContractKind } from "../leaseContract";
@@ -180,17 +181,21 @@ async function resolvePropertyAddress(admin: NonNullable<typeof supabaseAdmin>, 
 // Claude. Note : irl_reference (lu par le panneau via un cast "as any") n'est
 // pas une colonne de la table leases — vit uniquement dans le payload JSON du
 // contrat de bail — donc jamais utilisable ici sans une requête séparée.
-function computeDefaultRefQuarter(lease: { start_date?: string | null }): string {
+function findIrlByQuarter(table: IrlEntry[], quarter: string): IrlEntry | null {
+  return table.find((e) => e.quarter === quarter) || null;
+}
+
+function computeDefaultRefQuarter(lease: { start_date?: string | null }, irlTable: IrlEntry[]): string {
   if (!lease.start_date) return "";
   const exact = dateToIrlQuarter(lease.start_date);
-  if (irlByQuarter(exact)) return exact;
+  if (findIrlByQuarter(irlTable, exact)) return exact;
   const [sy, sq] = exact.split("-T").map(Number);
   const startNum = sy * 4 + sq;
-  for (const entry of IRL_TABLE) {
+  for (const entry of irlTable) {
     const [ey, eq] = entry.quarter.split("-T").map(Number);
     if (ey * 4 + eq <= startNum) return entry.quarter;
   }
-  return IRL_TABLE[IRL_TABLE.length - 1].quarter;
+  return irlTable[irlTable.length - 1]?.quarter || "";
 }
 
 // Catégories Finance exposées à Loky — hors "rent" (géré uniquement via les
@@ -1936,10 +1941,11 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       if (!lease) throw new Error("Bail introuvable ou non autorisé.");
       if (lease.irl_sent_at) throw new Error("Une révision est déjà en cours pour ce bail — annule-la d'abord (cancel_rent_revision) pour en renvoyer une nouvelle.");
 
-      const refQuarter = String(args.ref_quarter || computeDefaultRefQuarter(lease));
-      const newQuarter = String(args.new_quarter || LATEST_IRL.quarter);
-      if (!irlByQuarter(refQuarter)) throw new Error(`Trimestre IRL de référence inconnu : ${refQuarter}`);
-      if (!irlByQuarter(newQuarter)) throw new Error(`Trimestre IRL inconnu : ${newQuarter}`);
+      const irlTable = await getIrlTable();
+      const refQuarter = String(args.ref_quarter || computeDefaultRefQuarter(lease, irlTable));
+      const newQuarter = String(args.new_quarter || irlTable[0]?.quarter || "");
+      if (!findIrlByQuarter(irlTable, refQuarter)) throw new Error(`Trimestre IRL de référence inconnu : ${refQuarter}`);
+      if (!findIrlByQuarter(irlTable, newQuarter)) throw new Error(`Trimestre IRL inconnu : ${newQuarter}`);
 
       const data = await callInternalApi(ctx, "/api/landlord/send-revision", { userId: ctx.userId, leaseId: args.lease_id, refQuarter, newQuarter });
       return data;
@@ -1948,10 +1954,11 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       const admin = requireAdmin();
       const { data: lease } = await admin.from("leases").select("start_date,rent_amount").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
       const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
-      const refQuarter = String(args.ref_quarter || (lease ? computeDefaultRefQuarter(lease) : ""));
-      const newQuarter = String(args.new_quarter || LATEST_IRL.quarter);
-      const refEntry = irlByQuarter(refQuarter);
-      const newEntry = irlByQuarter(newQuarter);
+      const irlTable = await getIrlTable();
+      const refQuarter = String(args.ref_quarter || (lease ? computeDefaultRefQuarter(lease, irlTable) : ""));
+      const newQuarter = String(args.new_quarter || irlTable[0]?.quarter || "");
+      const refEntry = findIrlByQuarter(irlTable, refQuarter);
+      const newEntry = findIrlByQuarter(irlTable, newQuarter);
       const currentRent = Number(lease?.rent_amount || 0);
       const newRent = refEntry && newEntry && refEntry.value > 0 ? Math.round(((currentRent * newEntry.value) / refEntry.value) * 100) / 100 : null;
       const rows: Array<{ label: string; value: string }> = [];
