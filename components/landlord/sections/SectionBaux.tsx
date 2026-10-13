@@ -2235,7 +2235,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
         </div>
 
         {/* ===== Dépôt de garantie ===== */}
-        {(() => {
+        {/* Masqué si "Bail & état des lieux" est délégué à une agence : c'est
+            elle qui encaisse et restitue le dépôt, pas le bailleur depuis
+            lokt — mêmes conditions que l'attestation d'assurance plus bas. */}
+        {!(p?.delegated_services || []).includes("bail_edl") &&
+          (() => {
           const depositAmount = Number(l.deposit_amount ?? 0);
           if (depositAmount <= 0) return null;
           const depositAction = depositActionByLease[l.id] ?? null;
