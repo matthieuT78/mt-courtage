@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: lease, error: leaseError } = await supabaseAdmin
       .from("leases")
-      .select("id,property_id,tenant_id,co_tenant_id")
+      .select("id,property_id,tenant_id,co_tenant_id,lease_kind")
       .eq("id", leaseId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -83,9 +83,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error("[promote-co-tenant] archive error:", archiveError);
     }
 
+    // Bail professionnel : régime juridique différent de la loi du 6 juillet
+    // 1989, le départ ne prend effet que par avenant signé. Bail d'habitation
+    // (cas courant) : "principal" vs "colocataire" n'est qu'une convention
+    // lokt — légalement les deux co-titulaires sont à égalité, donc la même
+    // règle que pour un départ de colocataire s'applique : la solidarité de
+    // ${oldName} cesse automatiquement 6 mois après son congé (art. 8-1 IV),
+    // aucun avenant n'est nécessaire pour cette seule promotion.
+    const isProfessional = lease.lease_kind === "professional";
+    const todoHtml = isProfessional
+      ? `<li>Régénère le bail et fais-le signer par toutes les parties (un avenant est nécessaire pour ce bail professionnel) — depuis "Bail" sur cette location.</li>`
+      : `<li>Aucun avenant n'est nécessaire pour cette promotion : le bail déjà signé reste valable tel quel. Garde une trace écrite du congé donné par ${oldName} (date reçue) — sa solidarité cesse automatiquement 6 mois après (art. 8-1 IV, loi du 6 juillet 1989). Un avenant ne sera utile que si un nouveau colocataire rejoint ${newName}.</li>`;
+    const todoText = isProfessional
+      ? `Pense à régénérer et faire signer un avenant depuis "Bail" (nécessaire pour ce bail professionnel).`
+      : `Aucun avenant n'est nécessaire pour cette promotion (garde une trace écrite du congé) — utile seulement si un nouveau colocataire rejoint ${newName}.`;
+
     // Email de trace immédiate — indépendant de la session du bailleur, pour
     // qu'il n'y ait pas besoin de se souvenir de ce toast pour se rappeler des
-    // 2 actions restantes (avenant, archivage).
+    // actions restantes (archivage déjà automatique, avenant seulement si
+    // bail professionnel ou futur remplacement).
     if (auth.email) {
       try {
         const subject = `${propertyLabel} — ${newName} devient locataire principal`;
@@ -104,16 +120,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6">
       La fiche de ${oldName} a été archivée automatiquement — si son départ n'est pas définitif, tu peux la restaurer à tout moment depuis la section Locataires.
     </p>
-    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">Une chose à faire toi-même :</p>
+    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">${isProfessional ? "Une chose à faire toi-même :" : "À savoir :"}</p>
     <ul style="margin:0 0 20px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
-      <li>Régénère le bail et fais-le signer par toutes les parties (un avenant, les parties ont changé) — depuis "Bail" sur cette location.</li>
+      ${todoHtml}
     </ul>
     <a href="https://lokt.fr/espace-bailleur?tab=baux" style="display:inline-block;border-radius:999px;background:#0f172a;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;text-decoration:none">Ouvrir la location →</a>
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
-        await sendEmailViaResend({ to: auth.email, subject, html, text: `${newName} est maintenant locataire principal de ce bail (${propertyLabel}), à la place de ${oldName} (fiche archivée automatiquement, restaurable depuis Locataires si besoin). Pense à régénérer et faire signer un avenant depuis "Bail".` });
+        await sendEmailViaResend({ to: auth.email, subject, html, text: `${newName} est maintenant locataire principal de ce bail (${propertyLabel}), à la place de ${oldName} (fiche archivée automatiquement, restaurable depuis Locataires si besoin). ${todoText}` });
       } catch (emailError) {
         console.error("[promote-co-tenant] email error:", emailError);
       }

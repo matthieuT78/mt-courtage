@@ -210,7 +210,7 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     how: "Ajoutez l'adresse email du co-locataire depuis sa fiche locataire.",
   },
   avenant_pending: {
-    why: "Après une promotion de colocataire, le bail signé mentionne encore l'ancien locataire — le document ne reflète plus qui occupe réellement le logement.",
+    why: "Ce bail est professionnel (hors loi du 6 juillet 1989) : après une promotion de colocataire, le départ ne prend juridiquement effet que par un avenant signé par toutes les parties.",
     how: "Régénère le bail depuis \"Bail\" sur cette location et fais-le signer par toutes les parties.",
   },
   entry_inventory_missing: {
@@ -580,7 +580,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (lease.co_tenant_promoted_at) {
+          // Avenant légalement requis uniquement pour un bail professionnel
+          // (hors loi du 6 juillet 1989) : pour un bail d'habitation, la
+          // solidarité de la partie qui part cesse automatiquement 6 mois
+          // après son congé (art. 8-1 IV), sans avenant pour cette seule
+          // promotion — même logique que SectionBaux.tsx et les emails de
+          // promote-co-tenant.ts / remove-co-tenant.ts.
+          if (lease.co_tenant_promoted_at && lease.lease_kind === "professional") {
             const generatedAt = latestContractGeneratedAtByLease.get(lease.id);
             if (!generatedAt || generatedAt < lease.co_tenant_promoted_at) {
               alerts.push({

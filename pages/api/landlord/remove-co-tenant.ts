@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: lease, error: leaseError } = await supabaseAdmin
       .from("leases")
-      .select("id,property_id,tenant_id,co_tenant_id")
+      .select("id,property_id,tenant_id,co_tenant_id,lease_kind")
       .eq("id", leaseId)
       .eq("user_id", userId)
       .maybeSingle();
@@ -76,6 +76,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error("[remove-co-tenant] archive error:", archiveError);
     }
 
+    // Bail professionnel : régime juridique différent de la loi du 6 juillet
+    // 1989, le départ ne prend effet que par avenant signé. Bail d'habitation
+    // (cas courant) : la solidarité du colocataire parti cesse automatiquement
+    // 6 mois après le congé donné au bailleur (art. 8-1 IV) — aucun avenant
+    // n'est nécessaire pour ce seul départ, voir la même logique dans le
+    // formulaire de modification du bail (SectionBaux.tsx).
+    const isProfessional = lease.lease_kind === "professional";
+    const todoHtml = isProfessional
+      ? `<li>Régénère le bail et fais-le signer par toutes les parties (un avenant est nécessaire pour ce bail professionnel) — depuis "Bail" sur cette location.</li>`
+      : `<li>Aucun avenant n'est nécessaire pour ce départ : le bail déjà signé reste valable tel quel. Garde une trace écrite du congé donné par ${leavingName} (date reçue) — sa solidarité cesse automatiquement 6 mois après (art. 8-1 IV, loi du 6 juillet 1989). Un avenant ne sera utile que si un nouveau colocataire le remplace.</li>`;
+    const todoText = isProfessional
+      ? `Pense à régénérer et faire signer un avenant depuis "Bail" (nécessaire pour ce bail professionnel).`
+      : `Aucun avenant n'est nécessaire pour ce départ (garde une trace écrite du congé) — utile seulement si un nouveau colocataire remplace ${leavingName}.`;
+
     if (auth.email) {
       try {
         const subject = `${propertyLabel} — ${leavingName} a quitté le bail`;
@@ -94,16 +108,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6">
       La fiche de ${leavingName} a été archivée automatiquement — si son départ n'est pas définitif, tu peux la restaurer à tout moment depuis la section Locataires.
     </p>
-    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">Une chose à faire toi-même :</p>
+    <p style="margin:0 0 8px;font-size:14px;color:#0f172a;font-weight:700">${isProfessional ? "Une chose à faire toi-même :" : "À savoir :"}</p>
     <ul style="margin:0 0 20px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
-      <li>Régénère le bail et fais-le signer par toutes les parties (un avenant, les parties ont changé) — depuis "Bail" sur cette location.</li>
+      ${todoHtml}
     </ul>
     <a href="https://lokt.fr/espace-bailleur?tab=baux" style="display:inline-block;border-radius:999px;background:#0f172a;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;text-decoration:none">Ouvrir la location →</a>
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
-        await sendEmailViaResend({ to: auth.email, subject, html, text: `${leavingName} a quitté le bail (${propertyLabel}), qui continue avec ${remainingName} (fiche de ${leavingName} archivée automatiquement, restaurable depuis Locataires si besoin). Pense à régénérer et faire signer un avenant depuis "Bail".` });
+        await sendEmailViaResend({ to: auth.email, subject, html, text: `${leavingName} a quitté le bail (${propertyLabel}), qui continue avec ${remainingName} (fiche de ${leavingName} archivée automatiquement, restaurable depuis Locataires si besoin). ${todoText}` });
       } catch (emailError) {
         console.error("[remove-co-tenant] email error:", emailError);
       }

@@ -1178,12 +1178,22 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       const admin = requireAdmin();
       const { data: lease } = await admin
         .from("leases")
-        .select("id,tenant_id,co_tenant_id,start_date,status")
+        .select("id,tenant_id,co_tenant_id,start_date,status,lease_kind")
         .eq("id", args.lease_id)
         .eq("user_id", ctx.userId)
         .maybeSingle();
       if (!lease) throw new Error("Bail introuvable ou non autorisé.");
       if (lease.status === "ended") throw new Error("Ce bail est déjà terminé.");
+
+      // Bail professionnel : avenant signé requis (régime hors loi du 6
+      // juillet 1989). Bail d'habitation : la solidarité de la partie qui
+      // part cesse automatiquement 6 mois après son congé (art. 8-1 IV),
+      // aucun avenant n'est nécessaire pour ce seul départ/promotion — même
+      // logique que le formulaire "Modifier" dans SectionBaux.tsx.
+      const isProfessional = lease.lease_kind === "professional";
+      const departureNextStep = isProfessional
+        ? { section: "baux" as const, link: { leaseId: args.lease_id }, label: "Régénérer et faire signer l'avenant (bail professionnel)" }
+        : { section: "baux" as const, link: { leaseId: args.lease_id }, label: "Voir le bail (aucun avenant requis pour ce départ)" };
 
       const hasCoTenant = !!lease.co_tenant_id;
       const scope = hasCoTenant ? String(args.departure_scope || "") : "both";
@@ -1198,7 +1208,7 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
         return {
           ok: true,
           ...data,
-          next_steps: [{ section: "baux", link: { leaseId: args.lease_id }, label: "Régénérer et faire signer l'avenant" }],
+          next_steps: [departureNextStep],
         };
       }
 
@@ -1207,7 +1217,7 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
         return {
           ok: true,
           ...data,
-          next_steps: [{ section: "baux", link: { leaseId: args.lease_id }, label: "Régénérer et faire signer l'avenant" }],
+          next_steps: [departureNextStep],
         };
       }
 
