@@ -1987,7 +1987,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     const quittanceOpen = quittanceOpenByLease[l.id] ?? (flow.blockers.length > 0 || flow.warnings.length > 0);
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -2068,76 +2068,76 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bien</p>
-              <span className={cx("h-2 w-2 rounded-full", p?.label ? "bg-emerald-400" : "bg-amber-400")} />
-            </div>
-            <p className="mt-1 font-semibold text-slate-900 break-words">{p?.label || "—"}</p>
-            {lot ? <p className="break-words text-xs font-medium text-[#635bff]">{lot.label}</p> : null}
-            {p?.city ? <p className="break-words text-xs text-slate-600">{p.city}</p> : null}
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Locataire</p>
-              <span className={cx("h-2 w-2 rounded-full", t?.full_name ? "bg-emerald-400" : "bg-amber-400")} />
-            </div>
-            <p className="mt-1 font-semibold text-slate-900 break-words">{t?.full_name || "—"}</p>
-            {t?.email ? <p className="break-words text-xs text-slate-600">{t.email}</p> : null}
-            {l.co_tenant_id ? (
-              <div className="mt-2 border-t border-slate-100 pt-2">
-                <p className="text-[0.65rem] uppercase tracking-[0.14em] text-violet-500">Co-locataire</p>
-                <p className="font-semibold text-slate-900 break-words">{l.co_tenant_name || "—"}</p>
-                {l.co_tenant_email ? <p className="break-words text-xs text-slate-600">{l.co_tenant_email}</p> : null}
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900 break-words">{p?.label || "—"}</p>
+                  <span className={cx("h-2 w-2 shrink-0 rounded-full", p?.label ? "bg-emerald-400" : "bg-amber-400")} />
+                </div>
+                {lot ? <p className="break-words text-xs font-medium text-[#635bff]">{lot.label}</p> : null}
+                {p?.city ? <p className="break-words text-xs text-slate-600">{p.city}</p> : null}
               </div>
-            ) : null}
+            </div>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dates</p>
-              <span className={cx("h-2 w-2 rounded-full", l.start_date ? "bg-emerald-400" : "bg-amber-400")} />
+            <div className="flex items-start gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+                <UserIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900 break-words">{t?.full_name || "—"}</p>
+                  <span className={cx("h-2 w-2 shrink-0 rounded-full", t?.full_name ? "bg-emerald-400" : "bg-amber-400")} />
+                </div>
+                {t?.email ? <p className="break-words text-xs text-slate-600">{t.email}</p> : null}
+                {l.co_tenant_id ? (
+                  <div className="mt-2 border-t border-slate-100 pt-2">
+                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-violet-500">Co-locataire</p>
+                    <p className="font-semibold text-slate-900 break-words">{l.co_tenant_name || "—"}</p>
+                    {l.co_tenant_email ? <p className="break-words text-xs text-slate-600">{l.co_tenant_email}</p> : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <p className="mt-1 text-slate-900">
-              <span className="font-semibold">Début</span> {fmtDateShortFR(l.start_date) ?? l.start_date}
-            </p>
-            <p className="text-slate-700">
-              <span className="font-semibold">Fin</span>{" "}
-              {fmtDateShortFR(l.end_date) ?? (l.end_date || "—")}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">{renewal.rule.label}</p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Paiement</p>
-              <span className={cx("h-2 w-2 rounded-full", l.payment_day ? "bg-emerald-400" : "bg-amber-400")} />
+          <div className="col-span-2 rounded-2xl border border-slate-200 bg-white p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="flex items-baseline gap-2">
+                <CurrencyEuroIcon className="h-5 w-5 shrink-0 text-[#635bff]" aria-hidden="true" />
+                <span className="text-xl font-bold text-slate-900">
+                  {formatEuro(Number(l.rent_amount || 0) + Number(l.charges_amount || 0))}
+                </span>
+                <span className="text-sm text-slate-500">/mois</span>
+                <span className="text-xs text-slate-400">
+                  (loyer {formatEuro(l.rent_amount)} + charges {formatEuro(l.charges_amount)})
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <ShieldCheckIcon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                Dépôt {formatEuro(l.deposit_amount)}
+              </div>
             </div>
-            <p className="mt-1 text-slate-900">
-              Jour <span className="font-semibold">{l.payment_day ?? "—"}</span> • {l.payment_method || "—"}
-            </p>
-            <p className="text-xs text-slate-600">
-              {paymentTypeLabel(l.payment_type)}
-            </p>
-          </div>
-
-          <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Montants</p>
-              <span className={cx("h-2 w-2 rounded-full", Number(l.rent_amount || 0) > 0 ? "bg-emerald-400" : "bg-amber-400")} />
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-slate-100 pt-2.5 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDaysIcon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                {fmtDateShortFR(l.start_date) ?? l.start_date} → {fmtDateShortFR(l.end_date) ?? (l.end_date || "en cours")}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <BanknotesIcon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                Jour {l.payment_day ?? "—"} · {l.payment_method || "—"} ({paymentTypeLabel(l.payment_type)})
+              </span>
             </div>
-            <p className="mt-1 text-slate-900">
-              <span className="font-semibold">Total</span> :{" "}
-              {formatEuro(Number(l.rent_amount || 0) + Number(l.charges_amount || 0))}
-            </p>
-            <p className="text-xs text-slate-600">
-              Loyer {formatEuro(l.rent_amount)} • Charges {formatEuro(l.charges_amount)} • Dépôt {formatEuro(l.deposit_amount)}
-            </p>
+            <p className="mt-1.5 text-xs text-slate-400">{renewal.rule.label}</p>
           </div>
 
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
           <button
             type="button"
             onClick={(e) => {
@@ -2145,12 +2145,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               setRenewalOpenByLease((prev) => ({ ...prev, [l.id]: !prev[l.id] }));
             }}
             aria-expanded={renewalOpen}
-            className="flex w-full flex-col gap-3 text-left md:flex-row md:items-start md:justify-between"
+            className="flex w-full items-center justify-between gap-3 text-left"
           >
-            <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Renouvellement du bail</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.status}</p>
-              <p className="mt-1 text-xs text-slate-600">{renewal.rule.note}</p>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-50 text-[#635bff]">
+                <ArrowPathIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-sm font-semibold text-slate-900">{renewal.status}</span>
+                <span className="truncate text-xs text-slate-500">{renewal.rule.note}</span>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {badge(renewal.tone, renewal.detail)}
@@ -2182,7 +2186,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           ) : null}
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
           <button
             type="button"
             onClick={(e) => {
@@ -2190,15 +2194,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               setQuittanceOpenByLease((prev) => ({ ...prev, [l.id]: !prev[l.id] }));
             }}
             aria-expanded={quittanceOpen}
-            className="flex w-full flex-col gap-3 text-left md:flex-row md:items-start md:justify-between"
+            className="flex w-full items-center justify-between gap-3 text-left"
           >
-            <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Workflow quittance</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.modeLabel}</p>
-              <p className="mt-1 text-xs text-slate-600">
-                Destinataire quittance : <span className="font-semibold">{emailOrDash(flow.receiptEmail)}</span>
-                {" • "}Validation bailleur : <span className="font-semibold">{emailOrDash(flow.ownerEmail)}</span>
-              </p>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+                <DocumentTextIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-sm font-semibold text-slate-900">{flow.modeLabel}</span>
+                <span className="truncate text-xs text-slate-500">
+                  {emailOrDash(flow.receiptEmail)} → {emailOrDash(flow.ownerEmail)}
+                </span>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {badge(flow.tone as any, flow.label)}
@@ -2247,12 +2254,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           return (
             <div
               id={`deposit-${l.id}`}
-              className={`rounded-2xl border p-4 space-y-3 transition-all duration-300 ${highlightDepositLeaseId === l.id ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300 ring-offset-1" : "border-slate-200 bg-white"}`}
+              className={`rounded-xl border p-3 space-y-2 transition-all duration-300 ${highlightDepositLeaseId === l.id ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300 ring-offset-1" : "border-slate-200 bg-white"}`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dépôt de garantie</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(depositAmount)}</p>
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <ShieldCheckIcon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="text-sm font-semibold text-slate-900">Dépôt de garantie · {formatEuro(depositAmount)}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!isPaid && !depositAction ? (
