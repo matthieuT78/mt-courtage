@@ -714,7 +714,7 @@ export default function Home() {
       name: "lokt.fr - Outil de gestion locative",
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
-      url: `${siteUrl}/outil-gestion-locative`,
+      url: siteUrl,
       offers: {
         "@type": "Offer",
         price: "0",
