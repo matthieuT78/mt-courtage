@@ -1691,8 +1691,17 @@ export function SectionQuittances({
                         </p>
 
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className={cx("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold", pillTonePay(row.payStatus))}>
-                            {payLabel(row.payStatus)}
+                          {/* "À payer" + "À venir" affichés ensemble se contredisaient (l'un
+                              implique une action maintenant, l'autre dit explicitement que ce
+                              n'est pas encore dû) — un seul badge cohérent selon que l'échéance
+                              est dépassée ou non. */}
+                          <span
+                            className={cx(
+                              "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold",
+                              row.payStatus === "pending" && !row.isLate ? "bg-sky-100 text-sky-900 border-sky-200" : pillTonePay(row.payStatus)
+                            )}
+                          >
+                            {row.payStatus === "pending" && !row.isLate ? "À venir" : payLabel(row.payStatus)}
                           </span>
 
                           {(tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount ?? 0) >= 2 ? (
@@ -1722,10 +1731,6 @@ export function SectionQuittances({
                           {row.isLate ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
                               Retard
-                            </span>
-                          ) : row.payStatus === "pending" ? (
-                            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[0.7rem] font-semibold text-sky-800">
-                              À venir
                             </span>
                           ) : null}
 
