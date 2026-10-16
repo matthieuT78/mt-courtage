@@ -357,6 +357,4 @@ Environ 1 heure par mois pour un bien en bonne marche : quittance, vérification
 
 ---
 
-*Vous êtes propriétaire bailleur particulier ? Retrouvez notre [guide complet de gestion locative pour particulier](/gestion-locative-proprietaire-particulier) — méthode, documents et alertes pour tout gérer en solo.*
-
 *Gérez vos biens, vos locataires et vos quittances depuis un seul tableau de bord avec [lokt.fr](/outil-gestion-locative) — conçu pour les bailleurs qui gèrent en direct.*

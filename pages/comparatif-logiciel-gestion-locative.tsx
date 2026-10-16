@@ -632,7 +632,7 @@ export default function ComparatifPage() {
               { label: "Suivi loyers impayés", href: "/suivi-loyers-impayes" },
               { label: "Suivi du dépôt de garantie / caution", href: "/cautions-loyers" },
               { label: "Simulateur rentabilité locative", href: "/investissement" },
-              { label: "Gestion locative pour particulier", href: "/gestion-locative-proprietaire-particulier" },
+              { label: "Gestion locative sans agence : le guide", href: "/blog/gestion-locative-sans-agence" },
             ].map(({ label, href }) => (
               <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">
                 {label} →

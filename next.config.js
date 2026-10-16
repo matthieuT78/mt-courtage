@@ -55,6 +55,15 @@ const nextConfig = {
         destination: "/pret-relais",
         permanent: true,
       },
+      {
+        // Même positionnement ("gestion locative sans agence, propriétaire
+        // particulier") que l'article de blog, qui lui a de vraies
+        // impressions/clics — cette page n'en a eu aucun en 4 mois malgré
+        // l'indexation. Consolide plutôt que de laisser 2 pages mortes.
+        source: "/gestion-locative-proprietaire-particulier",
+        destination: "/blog/gestion-locative-sans-agence",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {
