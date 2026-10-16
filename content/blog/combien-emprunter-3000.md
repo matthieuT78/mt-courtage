@@ -142,4 +142,4 @@ La délégation d'assurance (assurance externe à la banque) permet d'économise
 
 ## Calculez votre capacité exacte
 
-Les tableaux ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les tableaux ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre type de contrat, de votre apport précis, de vos charges et du bien visé. **Utilisez la [calculette capacité d'emprunt lokt](/capacite)** pour une simulation personnalisée en 2 minutes.

@@ -121,4 +121,4 @@ L'écart d'appréciation du dossier (pas seulement du taux) peut être important
 
 ## Calculez votre capacité exacte
 
-Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de vos charges précises, de votre apport et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de vos charges précises, de votre apport et du bien visé. **Utilisez la [calculette capacité d'emprunt lokt](/capacite)** pour une simulation personnalisée en 2 minutes.

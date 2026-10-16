@@ -137,4 +137,4 @@ Sur un prêt de {{CAPITAL_20}} € sur 20 ans, la délégation d'assurance peut 
 
 ## Calculez votre capacité exacte
 
-Les tableaux ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre apport précis, de vos charges et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée, ou testez un scénario d'investissement locatif avec le simulateur de rentabilité.
+Les tableaux ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre apport précis, de vos charges et du bien visé. **Utilisez la [calculette capacité d'emprunt lokt](/capacite)** pour une simulation personnalisée, ou testez un scénario d'investissement locatif avec le [simulateur de rentabilité](/investissement).

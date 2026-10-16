@@ -126,4 +126,4 @@ Un deuxième revenu, même modeste, change radicalement l'équation : les mensua
 
 ## Calculez votre capacité exacte
 
-Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la calculette capacité d'emprunt lokt** pour une simulation personnalisée en 2 minutes.
+Les montants ci-dessus sont calculés à partir des taux moyens actuels, identiques à ceux publiés sur [notre page de données de référence](/donnees) (mise à jour hebdomadaire). Votre situation réelle dépend de votre éligibilité au PTZ, de votre apport précis et du bien visé. **Utilisez la [calculette capacité d'emprunt lokt](/capacite)** pour une simulation personnalisée en 2 minutes.
