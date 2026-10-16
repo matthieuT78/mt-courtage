@@ -1650,7 +1650,7 @@ export default function Home() {
                     <span className="h-2 w-2 rounded-full bg-[#28c840]" />
                     <span className="ml-3 rounded-full bg-slate-200 px-3 py-0.5 text-[0.6rem] font-medium text-slate-500">Loyers du mois</span>
                   </div>
-                  <img src="/blog/quittance.png" alt="Section loyers et quittances lokt.fr" className="w-full h-auto block" loading="lazy" />
+                  <img src="/blog/quittance.jpg" alt="Section loyers et quittances lokt.fr" className="w-full h-auto block" loading="lazy" />
                 </div>
               </div>
               {/* Finance */}
@@ -1671,7 +1671,7 @@ export default function Home() {
                     <span className="h-2 w-2 rounded-full bg-[#28c840]" />
                     <span className="ml-3 rounded-full bg-slate-200 px-3 py-0.5 text-[0.6rem] font-medium text-slate-500">Vue finance</span>
                   </div>
-                  <img src="/blog/finance.png" alt="Section finance lokt.fr" className="w-full h-auto block" loading="lazy" />
+                  <img src="/blog/finance.jpg" alt="Section finance lokt.fr" className="w-full h-auto block" loading="lazy" />
                 </div>
               </div>
             </div>

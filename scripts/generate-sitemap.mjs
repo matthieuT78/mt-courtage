@@ -42,7 +42,13 @@ for (const chunk of guidesSource.split(/(?=\s{4}slug:)/)) {
 }
 
 const villesSource = fs.readFileSync(path.join(process.cwd(), "lib/villesRendement.ts"), "utf8");
-const villesSlugs = Array.from(villesSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => match[1]);
+// Coupe avant PRIX_M2_TARGETS : cette table plus bas dans le fichier a aussi
+// des clés "slug" (pour lier vers /prix-m2/departement/...), sans rapport
+// avec les villes /rendement-locatif/... — le regex les captait aussi,
+// produisant des entrées sitemap 404 ("rhone", "bouches-du-rhone") et un
+// doublon ("paris", présent dans les deux tables).
+const villesArraySource = villesSource.split("const PRIX_M2_TARGETS")[0];
+const villesSlugs = Array.from(villesArraySource.matchAll(/slug:\s*"([^"]+)"/g), (match) => match[1]);
 
 // Pages SEO publiques V1 (marketing + calculettes)
 const staticPagesV1 = [
