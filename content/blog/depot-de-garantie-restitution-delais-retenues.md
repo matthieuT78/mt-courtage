@@ -1,9 +1,9 @@
 ---
-title: "Dépôt de garantie 2026 : restitution et litiges"
+title: "Délai de restitution du dépôt de garantie : 1 ou 2 mois (2026)"
 h1: "Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026"
-description: "Tout savoir sur le dépôt de garantie (DDG) locatif : montants légaux, révision, délai de restitution, ce que le bailleur peut retenir et recours en cas de litige."
+description: "Délai légal : 1 mois si l'état des lieux de sortie est conforme, 2 mois sinon — passé ce délai, pénalité de 10%/mois. Retenues autorisées et recours en cas de litige."
 date: "2026-07-01"
-updatedAt: "2026-10-06"
+updatedAt: "2026-10-16"
 category: "Gestion locative"
 tags: ["dépôt de garantie", "caution locative", "restitution dépôt", "retenues bailleur", "litige locatif", "état des lieux"]
 coverImage: "/blog/depot-de-garantie-restitution.jpg"
