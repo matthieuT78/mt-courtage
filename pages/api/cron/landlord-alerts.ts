@@ -449,12 +449,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results: any[] = [];
     const allFailures: Array<{ email?: string | null; error: string }> = [];
 
-    for (const [userId, userLeaseList] of userLeases.entries()) {
+    // Isole le traitement de chaque bailleur : si l'un d'eux déclenche une
+    // erreur ou traîne trop longtemps (cause exacte non identifiable sans accès
+    // aux logs Vercel), les autres continuent d'être traités plutôt que de
+    // perdre tout le lot — incident réel constaté (cron-job.org) : ~14 bailleurs
+    // sur 15 sans digest plusieurs jours sur les 4 dernières semaines.
+    async function processOneLandlord(
+      userId: string,
+      userLeaseList: LeaseRow[]
+    ): Promise<{ result: any; failure?: { email?: string | null; error: string } }> {
       const userPreferences = preferencesByUserId.get(userId) || normalizeLandlordAlertPreferences();
       const userPlan = await getServerUserPlan(userId);
       if (!userPreferences.digest_enabled) {
-        results.push({ userId, skipped: "alert_emails_disabled" });
-        continue;
+        return { result: { userId, skipped: "alert_emails_disabled" } };
       }
 
       const alerts: AlertItem[] = [];
@@ -794,19 +801,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ).values()
       ).slice(0, 24);
       if (uniqueAlerts.length === 0) {
-        results.push({ userId, skipped: "no_alerts" });
-        continue;
+        return { result: { userId, skipped: "no_alerts" } };
       }
 
       const to = await ownerEmailForUser(userId, userLeaseList);
       if (!to) {
-        results.push({ userId, skipped: "no_owner_email", alerts: uniqueAlerts.length });
-        continue;
+        return { result: { userId, skipped: "no_owner_email", alerts: uniqueAlerts.length } };
       }
 
       if (dryRun) {
-        results.push({ userId, to, dryRun: true, alerts: uniqueAlerts });
-        continue;
+        return { result: { userId, to, dryRun: true, alerts: uniqueAlerts } };
       }
 
       const skipped: string[] = [];
@@ -820,8 +824,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (dueAlerts.length === 0) {
-        results.push({ userId, to, sent: [], skipped, failed: [] });
-        continue;
+        return { result: { userId, to, sent: [], skipped, failed: [] } };
       }
 
       const mail = await sendEmailViaResend({
@@ -832,13 +835,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!mail.ok) {
         const failed = dueAlerts.map((a) => ({ key: a.key, error: mail.error }));
-        allFailures.push({ email: to, error: `digest (${dueAlerts.length} alerte${dueAlerts.length > 1 ? "s" : ""}) : ${mail.error}` });
-        results.push({ userId, to, sent: [], skipped, failed });
-        continue;
+        return {
+          result: { userId, to, sent: [], skipped, failed },
+          failure: { email: to, error: `digest (${dueAlerts.length} alerte${dueAlerts.length > 1 ? "s" : ""}) : ${mail.error}` },
+        };
       }
 
       for (const alert of dueAlerts) await markSent(userId, alert);
-      results.push({ userId, to, sent: dueAlerts.map((a) => a.key), skipped, failed: [] });
+      return { result: { userId, to, sent: dueAlerts.map((a) => a.key), skipped, failed: [] } };
+    }
+
+    const PER_LANDLORD_TIMEOUT_MS = 12000;
+    function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Timeout après ${ms}ms`)), ms)),
+      ]);
+    }
+
+    for (const [userId, userLeaseList] of userLeases.entries()) {
+      const startedAt = Date.now();
+      try {
+        const { result, failure } = await withTimeout(processOneLandlord(userId, userLeaseList), PER_LANDLORD_TIMEOUT_MS);
+        results.push({ ...result, durationMs: Date.now() - startedAt });
+        if (failure) allFailures.push(failure);
+      } catch (e: any) {
+        const message = e?.message || "Erreur ou timeout";
+        console.error(`[cron/landlord-alerts] échec pour ${userId} après ${Date.now() - startedAt}ms:`, message);
+        results.push({ userId, error: message, durationMs: Date.now() - startedAt });
+        allFailures.push({ error: `Traitement du bailleur ${userId} : ${message}` });
+      }
     }
 
     await alertCronFailures("landlord-alerts", allFailures);
