@@ -9,7 +9,6 @@ import {
   ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
-  EnvelopeIcon,
   HomeModernIcon,
   KeyIcon,
   ShieldCheckIcon,
@@ -18,16 +17,14 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import TrustpilotStars from "../components/TrustpilotStars";
 import { TRUSTPILOT_RATING, TRUSTPILOT_REVIEW_COUNT, TRUSTPILOT_URL } from "../lib/trustpilot";
-import ReviewsSection from "../components/ReviewsSection";
-import LokyDemoTabs, { type LokyDemo } from "../components/LokyDemoTabs";
 import { useScrollReveal } from "../hooks/useScrollReveal";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
 const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
-const title = "Logiciel de gestion locative gratuit 2026 | lokt.fr";
+const title = "Fonctionnalités lokt.fr : bail, quittances, finance, alertes | lokt.fr";
 const description =
-  "lokt.fr, le logiciel (outil) de gestion locative qui automatise quittances, relances et révision IRL — gratuit pour les bailleurs particuliers, prêt en 10 minutes.";
+  "Comment fonctionne lokt.fr en détail : création du bail, quittances automatiques, état des lieux mobile, inventaire LMNP, suivi financier et alertes — fonctionnalité par fonctionnalité.";
 
 type Feature = {
   title: string;
@@ -95,46 +92,6 @@ function IncludedLine({ icon: Icon, title, text }: Feature) {
   );
 }
 
-const LOKY_DEMOS: LokyDemo[] = [
-  {
-    id: "bail",
-    tab: "Créer un bail",
-    title: "Un bail meublé, prêt en une phrase",
-    description: "Décrivez le locataire, le loyer et la date de début — Loky prépare le bail conforme et attend votre confirmation avant de l’enregistrer.",
-    speedNote: "Ce qui prend d’habitude plusieurs minutes de formulaire tient en une phrase et une confirmation.",
-    capabilities: [
-      { icon: KeyIcon, text: "Créer un bail meublé ou nu" },
-      { icon: DocumentTextIcon, text: "Générer le contrat conforme" },
-      { icon: ArchiveBoxIcon, text: "Rattacher l’inventaire du logement" },
-      { icon: BellAlertIcon, text: "Programmer les alertes de suivi" },
-    ],
-    userMessage: "Crée-moi un bail meublé pour Julien Morel, 650€/mois, à partir du 1er novembre",
-    lokyIntro: "Bail meublé préparé pour Julien Morel.",
-    dataLines: ["🏠 Studio Bellevue · 650€/mois", "📅 Début le 1er novembre 2026"],
-    lokyFollowup: "Je le crée ?",
-    userConfirm: "Confirmer",
-    resultBadge: "✓ Bail créé — Julien Morel, Studio Bellevue",
-  },
-  {
-    id: "paiement",
-    tab: "Confirmer un paiement",
-    title: "Un loyer confirmé, une quittance envoyée",
-    description: "Signalez le paiement reçu — Loky confirme le loyer, génère la quittance PDF et l’envoie au locataire, sans ressaisie.",
-    speedNote: "Ce qui demandait de rouvrir le dossier et générer un PDF à la main devient une phrase et une confirmation.",
-    capabilities: [
-      { icon: DocumentTextIcon, text: "Confirmer un paiement reçu" },
-      { icon: ArchiveBoxIcon, text: "Générer et archiver la quittance" },
-      { icon: EnvelopeIcon, text: "Envoyer la quittance au locataire" },
-      { icon: BellAlertIcon, text: "Relancer un loyer en retard" },
-    ],
-    userMessage: "Le locataire du T2 a payé son loyer de janvier, confirme et envoie la quittance",
-    lokyIntro: "Je confirme le loyer de janvier — la quittance PDF sera générée puis envoyée au locataire.",
-    dataLines: ["🏠 T2 · loyer janvier 2026", "📄 Quittance générée → envoi locataire"],
-    userConfirm: "Confirmer",
-    resultBadge: "✓ Paiement confirmé — quittance envoyée",
-  },
-];
-
 export default function OutilGestionLocativePage() {
   useScrollReveal();
 
@@ -182,7 +139,7 @@ export default function OutilGestionLocativePage() {
       "@context": "https://schema.org",
       "@type": "WebPage",
       name: title,
-      headline: "Logiciel de gestion locative gratuit",
+      headline: "Fonctionnalités de lokt.fr en détail",
       url: pageUrl,
       description,
       inLanguage: "fr-FR",
@@ -192,7 +149,7 @@ export default function OutilGestionLocativePage() {
         name: "lokt.fr",
         url: siteUrl,
       },
-      about: ["logiciel de gestion locative", "outil de gestion locative", "gestion locative gratuite", "quittances de loyer", "révision de loyer IRL"],
+      about: ["fonctionnalités gestion locative", "quittances de loyer", "état des lieux mobile", "inventaire LMNP", "révision de loyer IRL", "suivi financier propriétaire"],
     },
     {
       "@context": "https://schema.org",
@@ -231,7 +188,7 @@ export default function OutilGestionLocativePage() {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
-        { "@type": "ListItem", position: 2, name: "Logiciel de gestion locative", item: pageUrl },
+        { "@type": "ListItem", position: 2, name: "Fonctionnalités", item: pageUrl },
       ],
     },
     {
@@ -318,14 +275,14 @@ export default function OutilGestionLocativePage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/15">
                   <HomeModernIcon className="h-4 w-4 text-[#635bff]" />
-                  Gratuit pour un logement actif
+                  Le détail de l'outil, fonctionnalité par fonctionnalité
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Logiciel de gestion locative gratuit.</span>
-                  <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">Simple et complet pour propriétaire bailleur.</span>
+                  <span className="block text-[2.55rem] sm:text-6xl">Toutes les fonctionnalités de lokt.fr.</span>
+                  <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">En détail, sans jargon commercial.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
-                  La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
+                  Bail, quittances, état des lieux, inventaire LMNP, finance et alertes : comment chaque brique fonctionne concrètement, pour une location nue, meublée ou LMNP.
                 </p>
                 <div className="mt-6 grid gap-3 sm:mt-7 sm:flex sm:flex-wrap">
                   <Link
@@ -386,29 +343,6 @@ export default function OutilGestionLocativePage() {
 
         <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
-            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-              <div className="p-5 pb-0 sm:p-8 sm:pb-0">
-                <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
-                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
-                  <span className="block text-2xl sm:text-3xl">Loky s’occupe des tâches.</span>
-                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Vous gardez la main.</span>
-                </h2>
-                <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  Décrivez ce que vous voulez faire, en une phrase. Loky prépare l’action à partir des vraies données de votre compte — jamais une estimation générique — et attend votre confirmation avant d’écrire quoi que ce soit.
-                </p>
-              </div>
-
-              <div data-scroll-reveal data-reveal-delay="300" className="mt-6 px-5 sm:px-8">
-                <LokyDemoTabs demos={LOKY_DEMOS} />
-              </div>
-
-              <div className="px-5 pb-5 pt-4 text-right sm:px-8 sm:pb-8">
-                <Link href="/loky-assistant-ia" className="text-sm font-semibold text-[#635bff] hover:underline">
-                  Découvrir toutes les capacités de Loky →
-                </Link>
-              </div>
-            </section>
-
             <div className="max-w-3xl pb-3">
               <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tout relier</p>
               <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
@@ -421,9 +355,9 @@ export default function OutilGestionLocativePage() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f6f9fc] text-[#635bff] ring-1 ring-slate-200">
                   <HomeModernIcon className="h-6 w-6" />
                 </div>
-                <h2 className="mt-4 text-base font-semibold text-slate-950">Page produit générale</h2>
+                <h2 className="mt-4 text-base font-semibold text-slate-950">Toutes les fonctionnalités réunies</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Cette page explique l’outil complet : biens, locataires, baux, quittances, états des lieux, inventaire, finance et alertes. Pour le référencement LMNP, consultez la page dédiée au cas d’usage meublé.
+                  Le détail de chaque brique : biens, locataires, baux, quittances, états des lieux, inventaire, finance et alertes. Pour le cas LMNP spécifiquement, la page dédiée au meublé va plus loin.
                 </p>
                 <Link href="/gestion-locative-lmnp" className="mt-4 text-sm font-semibold text-[#3f37c9]">
                   Gestion locative LMNP →
@@ -685,79 +619,19 @@ export default function OutilGestionLocativePage() {
                   </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {[
-                    {
-                      name: "Gratuit",
-                      price: "0 €",
-                      cadence: "1 logement actif",
-                      desc: "Biens, baux, quittances PDF, états des lieux, finance simple, 4 alertes.",
-                      features: ["1 logement actif", "Quittances manuelles", "États des lieux", "Finance simple", "4 alertes essentielles"],
-                      cta: "Créer mon espace",
-                      href: "/mon-compte?mode=register&redirect=/espace-bailleur",
-                      card: "border-emerald-200 bg-white",
-                      badge: null as string | null,
-                      ctaClass: "bg-emerald-700 text-white hover:bg-emerald-600",
-                    },
-                    {
-                      name: "lokt·one",
-                      price: "6,90 €",
-                      cadence: "/ mois · 2 logements",
-                      desc: "Automatisation complète + portail locataire + partage de documents.",
-                      features: ["Quittances automatiques", "Candidatures en ligne & scoring", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
-                      cta: "Souscrire",
-                      href: "/tarifs",
-                      card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
-                      badge: "Recommandé" as string | null,
-                      ctaClass: "bg-gradient-to-r from-[#635bff] to-[#00d4ff] text-white hover:opacity-90",
-                    },
-                    {
-                      name: "lokt·plus",
-                      price: "11,90 €",
-                      cadence: "/ mois · 15 logements",
-                      desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, déclaration.",
-                      features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "15 logements actifs"],
-                      cta: "Souscrire",
-                      href: "/tarifs",
-                      card: "border-slate-200 bg-white",
-                      badge: null as string | null,
-                      ctaClass: "bg-slate-950 text-white hover:bg-slate-800",
-                    },
-                  ].map((plan) => (
-                    <div key={plan.name} className={`relative flex flex-col rounded-[1.5rem] border p-6 shadow-sm ${plan.card}`}>
-                      {plan.badge ? (
-                        <span className="absolute right-5 top-5 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2.5 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
-                          {plan.badge}
-                        </span>
-                      ) : null}
-                      <p className="text-sm font-semibold text-slate-500">{plan.name}</p>
-                      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                        {plan.price} <span className="text-sm font-normal text-slate-400">{plan.cadence}</span>
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-slate-600">{plan.desc}</p>
-                      <ul className="mt-4 flex-1 space-y-2">
-                        {plan.features.map((f) => (
-                          <li key={f} className="flex items-center gap-2 text-sm text-slate-700">
-                            <span className="font-bold text-[#635bff]">✓</span> {f}
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href={plan.href} className={`mt-5 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold ${plan.ctaClass}`}>
-                        {plan.cta} →
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-5 text-center text-xs text-slate-500">
-                  Sans engagement · Résiliable à tout moment ·{" "}
-                  <Link href="/tarifs" className="underline underline-offset-2 hover:text-slate-700">
-                    Voir le comparatif complet
+                <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+                  <p className="text-sm text-slate-600">
+                    Détail complet des 3 offres (Gratuit, lokt·one, lokt·plus) et de ce qui change entre elles.
+                  </p>
+                  <Link
+                    href="/tarifs"
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white hover:bg-slate-800"
+                  >
+                    Voir les tarifs en détail →
                   </Link>
-                </p>
+                </div>
               </div>
             </section>
-
-            <ReviewsSection />
 
             {/* ── FAQ étendue ── */}
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
@@ -792,7 +666,6 @@ export default function OutilGestionLocativePage() {
                   { label: "Loyer impayé : que faire étape par étape ?", href: "/blog/loyer-impaye-que-faire" },
                   { label: "LMNP vs location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
                   { label: "Comparer les logiciels de gestion locative", href: "/comparatif-logiciel-gestion-locative" },
-                  { label: "Gestion locative pour propriétaire particulier", href: "/gestion-locative-proprietaire-particulier" },
                   { label: "Suivi des loyers impayés", href: "/suivi-loyers-impayes" },
                   { label: "Suivi du dépôt de garantie / caution", href: "/cautions-loyers" },
                   { label: "Calculer la rentabilité locative", href: "/investissement" },
