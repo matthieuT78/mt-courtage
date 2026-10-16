@@ -292,7 +292,7 @@ const schemas = [
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant, avec assistant IA (Loky) qui exécute les actions courantes, simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
-    url: siteUrl,
+    url: pageUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
     aggregateRating: {
       "@type": "AggregateRating",
