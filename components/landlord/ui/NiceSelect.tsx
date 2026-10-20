@@ -26,7 +26,7 @@ function initialsOf(name: string) {
 }
 
 // Remplace un <select> natif (liste d'options non stylable par CSS, rendue par
-// l'OS) par un menu personnalisé au style Lokt : icône/avatar + libellé +
+// l'OS) par un menu personnalisé au style lokt.fr : icône/avatar + libellé +
 // sous-titre par option, cohérent avec le reste de l'interface.
 export function NiceSelect({
   value,

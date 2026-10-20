@@ -164,4 +164,4 @@ Le Pinel a définitivement disparu depuis janvier 2025, sans successeur généra
 
 ---
 
-*Lokt.fr centralise le suivi de vos loyers, charges et documents pour vous aider à comparer la rentabilité réelle de vos biens depuis votre [espace bailleur](/outil-gestion-locative), quel que soit le régime fiscal choisi.*
+*lokt.fr centralise le suivi de vos loyers, charges et documents pour vous aider à comparer la rentabilité réelle de vos biens depuis votre [espace bailleur](/outil-gestion-locative), quel que soit le régime fiscal choisi.*

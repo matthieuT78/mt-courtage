@@ -175,4 +175,4 @@ Le bail professionnel occupe une place particulière dans le paysage locatif fra
 
 ---
 
-*Lokt.fr génère un contrat de bail professionnel conforme (durée, clauses, mentions obligatoires) directement depuis votre [espace bailleur](/outil-gestion-locative), au même titre que les baux d'habitation classiques — y compris lorsque le locataire est une société.*
+*lokt.fr génère un contrat de bail professionnel conforme (durée, clauses, mentions obligatoires) directement depuis votre [espace bailleur](/outil-gestion-locative), au même titre que les baux d'habitation classiques — y compris lorsque le locataire est une société.*

@@ -240,7 +240,7 @@ const faq = [
     a: "Oui. À partir du plan lokt·one (6,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila, Smovin, BailFacile, Gererseul et Homii ne proposent pas de module équivalent.",
   },
   {
-    q: "Lokt.fr est-il mieux que Smovin ?",
+    q: "lokt.fr est-il mieux que Smovin ?",
     a: "Ça dépend de votre profil. Smovin est plus complet pour des bailleurs professionnels gérant 10+ biens. lokt.fr est plus adapté aux propriétaires particuliers avec 1 à 10 biens : mise en place en moins de 10 minutes, gratuit pour commencer, simulateurs immobiliers intégrés et dossiers de candidature — ce que Smovin n'a pas. Pour la grande majorité des bailleurs indépendants, lokt.fr est suffisant et moins coûteux.",
   },
   {
@@ -256,7 +256,7 @@ const faq = [
     a: "lokt.fr propose une offre gratuite pour démarrer avec 1 logement : quittances PDF, bail, suivi des loyers et accès aux simulateurs inclus. Les plans payants débloquent plusieurs biens, les relances automatiques, les dossiers de candidature et des fonctionnalités avancées — à un tarif fixe sans commission sur les loyers.",
   },
   {
-    q: "Lokt.fr remplace-t-il une agence de gestion locative ?",
+    q: "lokt.fr remplace-t-il une agence de gestion locative ?",
     a: "Pour les propriétaires qui veulent garder la main sur leur patrimoine, oui. lokt.fr automatise les tâches répétitives (quittances, relances, suivi des paiements) sans prélever 6 à 10 % sur vos loyers comme le ferait une agence. Vous gardez le lien direct avec votre locataire et la visibilité complète sur vos flux.",
   },
   {

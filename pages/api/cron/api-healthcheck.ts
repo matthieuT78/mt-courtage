@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (failed.length > 0) {
     const lines = failed.map((c) => `• <b>${c.name}</b> — ${c.status ? `HTTP ${c.status}` : c.error ?? "timeout"} (${c.latencyMs} ms)`).join("\n");
-    await sendTelegramMessage(`🚨 <b>Lokt.fr — ${failed.length} API KO</b>\n\n${lines}\n\n<i>Healthcheck ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</i>`);
+    await sendTelegramMessage(`🚨 <b>lokt.fr — ${failed.length} API KO</b>\n\n${lines}\n\n<i>Healthcheck ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</i>`);
   }
 
   if (failed.length > 0 && RESEND_KEY) {

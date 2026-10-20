@@ -92,7 +92,7 @@ export default function AppFooter() {
       </div>
 
       <div className="mt-4">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Lokt.fr</p>
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">lokt.fr</p>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link href="/a-propos" className="underline hover:text-slate-700">
             À propos

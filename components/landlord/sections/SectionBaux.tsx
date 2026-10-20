@@ -286,7 +286,7 @@ const leaseKindOptions: Array<{
     durationMonths: null,
     tacitRenewal: false,
     renewalLabel: "À définir",
-    note: "Lokt.fr ne déduit pas automatiquement la règle juridique.",
+    note: "lokt.fr ne déduit pas automatiquement la règle juridique.",
   },
 ];
 

@@ -164,7 +164,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         // Un locataire personne morale ne peut pas signer un bail loi de 1989 (résidence
         // principale) — mais un bail professionnel reste possible (art. 57 A loi 1986,
         // pas de condition de résidence principale). On ne force donc l'import que si
-        // aucun bail n'a jamais été rédigé sous ce type ; le choix "Rédiger avec Lokt"
+        // aucun bail n'a jamais été rédigé sous ce type ; le choix "Rédiger avec lokt.fr"
         // reste ouvert, StepType n'y proposant alors que "Bail professionnel".
         setSourceMode(
           existing?.document_source === "external" ? "external" : existing ? "generated" : "choose"
@@ -277,7 +277,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   // document (id inchangé) une fois le PDF prêt — sans ça l'effet ne se
   // redéclenchait jamais et "Ouvrir le PDF" restait grisé indéfiniment.
   useEffect(() => {
-    // signed_pdf_url (bail signé) / external_pdf_url (bail importé) / pdf_url (généré par Lokt) :
+    // signed_pdf_url (bail signé) / external_pdf_url (bail importé) / pdf_url (généré par lokt.fr) :
     // même priorité que l'API pdf-url.ts, sinon un bail importé n'a jamais de pdf_url et l'effet
     // ne se déclenche jamais — "Ouvrir le bail importé" reste grisé indéfiniment.
     if (!document?.signed_pdf_url && !document?.external_pdf_url && !document?.pdf_url) return;
@@ -428,25 +428,25 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       <Modal onClose={onClose}>
         <div className="border-b border-slate-200 px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contrat de location</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">Associer le document juridique au bail Lokt</h2>
+          <h2 className="mt-1 text-lg font-semibold text-slate-950">Associer le document juridique au bail lokt.fr</h2>
         </div>
         <div className="space-y-4 p-5">
           <p className="text-sm leading-6 text-slate-700">
-            La fiche bail Lokt reste obligatoire pour suivre les loyers, charges, quittances et échéances. Choisis maintenant comment archiver le
+            La fiche bail lokt.fr reste obligatoire pour suivre les loyers, charges, quittances et échéances. Choisis maintenant comment archiver le
             contrat signé avec ton locataire.
           </p>
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
               Locataire professionnel (personne morale) : seul un <strong>bail professionnel</strong> peut être rédigé
-              avec Lokt pour ce locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par
+              avec lokt.fr pour ce locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par
               ailleurs est possible.
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Choice
               icon={DocumentTextIcon}
-              title="Rédiger avec Lokt"
+              title="Rédiger avec lokt.fr"
               description={isCompanyTenant ? "Bail professionnel uniquement pour ce locataire." : "Compléter l’assistant, générer un PDF et envoyer pour signature électronique."}
               onClick={() => {
                 if (isCompanyTenant) setKind("professional");
@@ -457,7 +457,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             <Choice
               icon={DocumentArrowUpIcon}
               title="Importer mon propre bail"
-              description="Archiver ton modèle existant. Aucun PDF Lokt ne sera généré."
+              description="Archiver ton modèle existant. Aucun PDF lokt.fr ne sera généré."
               onClick={() => setSourceMode("external")}
             />
           </div>
@@ -471,16 +471,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       <Modal onClose={onClose}>
         <div className="border-b border-slate-200 px-5 py-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contrat de location</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-950">Bail externe associé à la fiche Lokt</h2>
+          <h2 className="mt-1 text-lg font-semibold text-slate-950">Bail externe associé à la fiche lokt.fr</h2>
         </div>
         <div className="space-y-4 p-5">
           <p className="text-sm leading-6 text-slate-700">
-            Lokt utilise toujours la fiche bail pour gérer la location. Le fichier ci-dessous est ton contrat juridique : aucun autre PDF ne sera
-            généré par Lokt dans ce parcours.
+            lokt.fr utilise toujours la fiche bail pour gérer la location. Le fichier ci-dessous est ton contrat juridique : aucun autre PDF ne sera
+            généré par lokt.fr dans ce parcours.
           </p>
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Locataire professionnel (personne morale) : seul un bail professionnel peut être rédigé avec Lokt pour ce
+              Locataire professionnel (personne morale) : seul un bail professionnel peut être rédigé avec lokt.fr pour ce
               locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par ailleurs est possible.
             </p>
           ) : null}
@@ -528,9 +528,9 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm font-semibold text-emerald-950">Document enregistré</p>
-            <p className="mt-1 text-xs leading-5 text-emerald-800">{document.original_file_name || "bail-signé.pdf"} · Le bail est archivé dans Lokt et accessible depuis la fiche.</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">{document.original_file_name || "bail-signé.pdf"} · Le bail est archivé dans lokt.fr et accessible depuis la fiche.</p>
           </div>
-          <p className="text-sm leading-6 text-slate-600">Le bail signé est archivé dans Lokt et accessible depuis la fiche bail.</p>
+          <p className="text-sm leading-6 text-slate-600">Le bail signé est archivé dans lokt.fr et accessible depuis la fiche bail.</p>
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white"><XMarkIcon className="h-4 w-4"/>Fermer</button>
@@ -566,7 +566,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm font-semibold text-emerald-950">Génération terminée avec succès</p>
-            <p className="mt-1 text-xs leading-5 text-emerald-800">Le document est archivé dans Lokt. Tu peux le rouvrir plus tard depuis cette fiche bail.</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">Le document est archivé dans lokt.fr. Tu peux le rouvrir plus tard depuis cette fiche bail.</p>
           </div>
           {form.tenant_email ? (
             <div className="rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4">

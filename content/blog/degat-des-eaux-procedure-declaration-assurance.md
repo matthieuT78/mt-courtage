@@ -165,4 +165,4 @@ Un refus de prise en charge, un montant d'indemnisation jugé trop faible, ou un
 
 ---
 
-*Lokt.fr centralise vos documents et sinistres par bien dans votre [espace bailleur](/outil-gestion-locative) — un point utile pour retrouver rapidement l'état des lieux d'entrée, les photos et les échanges liés à un sinistre en cours.*
+*lokt.fr centralise vos documents et sinistres par bien dans votre [espace bailleur](/outil-gestion-locative) — un point utile pour retrouver rapidement l'état des lieux d'entrée, les photos et les échanges liés à un sinistre en cours.*

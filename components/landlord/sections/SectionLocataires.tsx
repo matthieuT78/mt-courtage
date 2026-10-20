@@ -1552,7 +1552,7 @@ export function SectionLocataires({
 
                   {createForm.is_company ? (
                     <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                      Pour ce locataire, vous pourrez générer un bail professionnel avec Lokt, ou importer un bail que
+                      Pour ce locataire, vous pourrez générer un bail professionnel avec lokt.fr, ou importer un bail que
                       vous avez rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
                       possible dans lokt.fr dans tous les cas.
                     </p>
@@ -1915,7 +1915,7 @@ export function SectionLocataires({
 
                       {f.is_company ? (
                         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                          Pour ce locataire, vous pourrez générer un bail professionnel avec Lokt, ou importer un bail que
+                          Pour ce locataire, vous pourrez générer un bail professionnel avec lokt.fr, ou importer un bail que
                           vous avez rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
                           possible dans lokt.fr dans tous les cas.
                         </p>
