@@ -51,6 +51,7 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   generate_mise_en_demeure: "Générer cette mise en demeure",
   generate_conge: "Générer cette lettre de congé",
   create_listing: "Publier cette annonce",
+  list_receipts_for_download: "Télécharger ces quittances",
 };
 
 const TERMINATE_LEASE_SCOPE_LABEL: Record<string, string> = {
@@ -91,6 +92,17 @@ async function getAccessToken(): Promise<string | null> {
   if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token || null;
+}
+
+function safeDownloadFileName(label: string) {
+  return (
+    label
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() + ".pdf"
+  );
 }
 
 // Rend cliquables les liens vers les guides/articles gratuits que l'assistant
@@ -148,6 +160,7 @@ export default function AssistantChat({
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -211,12 +224,52 @@ export default function AssistantChat({
       done: boolean;
       pendingAction?: PendingAction;
       suggestedNavigations?: SuggestedNavigation[];
+      downloadBatch?: Array<{ receipt_id: string; label: string }> | null;
       remaining?: number;
       quotaScope?: "monthly_budget" | "trial";
       quotaLimit?: number;
       limitReached?: boolean;
       limitMessage?: string;
     };
+  };
+
+  // Déclenché une fois que l'utilisateur a confirmé un outil "download_batch"
+  // (ex. list_receipts_for_download) : récupère une URL signée à part pour
+  // chaque quittance (avec l'option "download" qui force un vrai
+  // téléchargement, pas une simple navigation — voir /api/receipts/signed-url)
+  // et clique dessus l'une après l'autre, espacées pour laisser le navigateur
+  // les traiter sans les bloquer.
+  const triggerDownloadBatch = async (files: Array<{ receipt_id: string; label: string }>) => {
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Session expirée, merci de recharger la page.");
+      return;
+    }
+    setDownloadProgress({ done: 0, total: files.length });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const res = await fetch("/api/receipts/signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ receiptId: file.receipt_id, download: true, expiresIn: 300 }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.signedUrl) {
+          const link = document.createElement("a");
+          link.href = data.signedUrl;
+          link.download = safeDownloadFileName(file.label);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        }
+      } catch {
+        // on continue les autres fichiers même si l'un d'eux échoue
+      }
+      setDownloadProgress({ done: i + 1, total: files.length });
+      if (i < files.length - 1) await new Promise((r) => setTimeout(r, 400));
+    }
+    setTimeout(() => setDownloadProgress(null), 1500);
   };
 
   const applyResult = (data: Awaited<ReturnType<typeof callAssistant>>) => {
@@ -234,6 +287,9 @@ export default function AssistantChat({
     setPendingAction(data.pendingAction || null);
     setSuggestedNavigations(Array.isArray(data.suggestedNavigations) ? data.suggestedNavigations : []);
     if (typeof data.remaining === "number") setRemaining(data.remaining);
+    if (Array.isArray(data.downloadBatch) && data.downloadBatch.length > 0) {
+      void triggerDownloadBatch(data.downloadBatch);
+    }
   };
 
   const send = async (overrideText?: string) => {
@@ -445,6 +501,14 @@ export default function AssistantChat({
                   {nav.label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {downloadProgress && (
+            <div className="flex justify-center">
+              <div className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-700">
+                Téléchargement {downloadProgress.done}/{downloadProgress.total}…
+              </div>
             </div>
           )}
 

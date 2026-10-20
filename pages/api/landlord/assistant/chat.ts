@@ -62,7 +62,8 @@ Règles impératives :
 - Pour une relance d'impayé, appelle toujours preview_payment_reminder avant send_payment_reminder, et montre le texte proposé à l'utilisateur avant de l'envoyer.
 - Pour créer un bail, demande toujours explicitement le type de location (meublé résidence principale, meublé étudiant, mobilité, nu résidence principale, professionnel, autre) si l'utilisateur ne l'a pas précisé — ne suppose jamais "meublé" par défaut.
 - Il n'existe pas d'action "générer une quittance" isolée : une quittance n'existe qu'une fois le loyer confirmé comme payé (confirm_payment), qui génère automatiquement le PDF dans la foulée. Si l'utilisateur demande "je veux une quittance" ou dit qu'un locataire a payé, résous le bail et la période concernés puis appelle confirm_payment. S'il te manque des infos pour savoir de quel bail/période il parle, ou si l'utilisateur veut juste consulter ses quittances existantes, appelle plutôt open_quittances (ça ouvre l'écran dédié) et explique en une phrase que la quittance apparaît automatiquement dès qu'un paiement y est confirmé. confirm_payment ne fait JAMAIS l'envoi par email au locataire, seulement la confirmation et la génération du PDF — si l'utilisateur demande explicitement d'envoyer/transmettre la quittance à son locataire (pas juste de l'encaisser ou de la générer), appelle aussi resend_receipt juste après confirm_payment pour ce bail : malgré son nom, c'est bien l'action d'envoi par email, y compris pour un tout premier envoi. Pour plusieurs baux, répète la paire confirm_payment puis resend_receipt bail par bail — chacun de ces deux appels reste une action distincte demandant sa propre confirmation à l'utilisateur.
-- Si l'utilisateur veut le PDF d'une quittance directement dans la conversation (télécharger, avoir le lien, l'envoyer ailleurs...), appelle get_receipt_download_link plutôt que open_quittances — présente le lien renvoyé (download_url) sous forme de lien markdown avec un libellé court (ex. [Télécharger la quittance de mars 2026 (PDF)](download_url)), jamais l'URL brute en clair, et précise qu'il expire dans 10 minutes.
+- Si l'utilisateur veut le PDF d'une seule quittance précise directement dans la conversation (télécharger, avoir le lien, l'envoyer ailleurs...), appelle get_receipt_download_link plutôt que open_quittances — présente le lien renvoyé (download_url) sous forme de lien markdown avec un libellé court (ex. [Télécharger la quittance de mars 2026 (PDF)](download_url)), jamais l'URL brute en clair, et précise qu'il expire dans 10 minutes.
+- Si l'utilisateur veut plusieurs quittances à la fois (ex. "toutes les quittances de 2026", "les quittances de janvier à mars", "toutes mes quittances"), appelle list_receipts_for_download UNE SEULE FOIS avec la période demandée — n'appelle JAMAIS get_receipt_download_link en boucle mois par mois pour ce cas, ça ne scale pas et épuise le nombre d'étapes disponibles. Cet outil demande confirmation à l'utilisateur puis déclenche lui-même le téléchargement de tous les fichiers trouvés une fois confirmé : ne génère et ne colle aucun lien toi-même dans ce cas, le téléchargement se fait automatiquement côté interface.
 - Même logique pour un état des lieux (entrée ou sortie) : si l'utilisateur veut le PDF directement dans la conversation, appelle get_edl_download_link plutôt que open_etat_des_lieux, en précisant entrée ou sortie s'il ne l'a pas fait — présente le lien renvoyé (download_url) sous forme de lien markdown avec un libellé court, jamais l'URL brute en clair, et précise qu'il expire dans 10 minutes. Réserve open_etat_des_lieux aux cas où l'utilisateur veut réaliser/compléter l'état des lieux lui-même, pas récupérer un PDF déjà finalisé.
 - Dès que tu as toutes les informations nécessaires pour un outil qui écrit en base (create_property, create_tenant, update_tenant, delete_tenant, restore_tenant, invite_tenant_portal, toggle_tenant_messaging, create_lease, attach_lease_document, confirm_payment, cancel_payment, resend_receipt, send_payment_reminder, terminate_lease, manage_deposit, add_finance_transaction, attach_invoice_document, delete_finance_transaction, stop_recurring_transaction, update_recurring_transaction, send_rent_revision, cancel_rent_revision, generate_mise_en_demeure, generate_conge, create_listing), appelle-le IMMÉDIATEMENT, dans le même message que ta phrase d'explication — n'attends jamais une confirmation textuelle de l'utilisateur avant d'appeler l'outil. C'est l'interface qui affiche automatiquement un bouton "Confirmer" à partir de ton appel d'outil ; si tu attends une réponse de l'utilisateur avant d'appeler l'outil, ce bouton n'apparaît jamais et la conversation reste bloquée. La phrase d'explication qui accompagne l'appel doit utiliser des noms lisibles (jamais d'identifiants techniques) puisqu'elle est affichée juste au-dessus du bouton de confirmation.
 - Après la création d'un bail, l'interface affiche déjà automatiquement des boutons vers les étapes suivantes pertinentes (contrat, état des lieux, inventaire LMNP si meublé) : n'appelle pas toi-même open_lease_contract / open_etat_des_lieux / open_inventaire_lmnp dans ce cas, contente-toi d'une phrase courte du type "tu trouveras juste en dessous les prochaines étapes". Ces trois outils de navigation restent disponibles pour une demande explicite plus tard dans la conversation (ex. "ouvre le contrat du bail de Julien" pour un bail déjà existant) : dans ce cas, résous le bail concerné puis appelle l'outil correspondant.
@@ -185,6 +186,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // ceux de la boucle plus bas) : un bail créé peut suggérer plusieurs
     // étapes suivantes (contrat, état des lieux, inventaire LMNP) d'un coup.
     const suggestedNavigations: Array<{ section: string; link: Record<string, any>; label: string }> = [];
+    // Alimenté quand un outil "download_batch" (ex. list_receipts_for_download)
+    // est confirmé puis exécuté — déclenche le téléchargement automatique de
+    // plusieurs fichiers côté front une fois la réponse reçue.
+    let downloadBatch: Array<{ receipt_id: string; label: string }> | null = null;
 
     // Persiste le message + le coût réel de cette requête (une seule ligne
     // par jour, upsert) et renvoie les champs de quota à inclure dans la
@@ -235,6 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           try {
             const result = await tool.execute(ctx, (toolUseBlock.input as Record<string, any>) || {});
             if (Array.isArray(result?.next_steps)) suggestedNavigations.push(...result.next_steps);
+            if (tool.download_batch && Array.isArray(result?.files)) downloadBatch = result.files;
             resultContent = JSON.stringify(result);
           } catch (err: any) {
             resultContent = JSON.stringify({ error: err?.message || "Erreur lors de l'exécution de l'action." });
@@ -280,7 +286,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const toolUseBlocks = response.content.filter((block): block is Anthropic.ToolUseBlock => block.type === "tool_use");
       if (toolUseBlocks.length === 0) {
         const quota = await recordUsageAndQuota();
-        return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations });
+        return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations, downloadBatch });
       }
 
       const mutatingBlock = toolUseBlocks.find((block) => getAssistantTool(block.name)?.mutates);
@@ -330,7 +336,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     const quota = await recordUsageAndQuota();
-    return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations, warning: "Nombre maximum d'étapes atteint pour cette réponse." });
+    return res.status(200).json({ messages: working, done: true, ...quota, suggestedNavigations, downloadBatch, warning: "Nombre maximum d'étapes atteint pour cette réponse." });
   } catch (error: any) {
     console.error("[api/landlord/assistant/chat] error:", error);
     return res.status(500).json({ error: error?.message || "Erreur interne." });

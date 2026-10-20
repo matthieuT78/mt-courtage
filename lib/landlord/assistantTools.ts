@@ -39,6 +39,11 @@ export type AssistantTool = {
   // vraie navigation dans le cockpit (deep-link), au lieu de faire agir
   // l'assistant sur des écrans complexes/sensibles (contrat de bail, EDL...).
   navigate?: boolean;
+  // Un outil "download_batch" ne mute rien mais déclenche, une fois confirmé
+  // et exécuté, le téléchargement automatique de plusieurs fichiers côté
+  // navigateur (voir AssistantChat.tsx) — son résultat doit inclure un champ
+  // "files": Array<{ receipt_id: string; label: string }>.
+  download_batch?: boolean;
   execute: (ctx: AssistantToolContext, args: Record<string, any>) => Promise<Record<string, any>>;
   // Résumé lisible affiché sur la carte de confirmation, indépendant de la
   // phrase écrite par Claude : résout les ids (bien, lot, locataire, bail) en
@@ -1391,6 +1396,96 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
         period_end: receipt.period_end,
       };
     },
+  },
+  {
+    name: "list_receipts_for_download",
+    description: "Liste les quittances PDF déjà générées sur une période (ex. 'toutes les quittances de 2026', 'les quittances de janvier à mars'), tous biens confondus sauf si lease_id est précisé. Ne télécharge rien directement : après confirmation de l'utilisateur, tous les PDF trouvés se téléchargent automatiquement dans son navigateur. À utiliser dès que l'utilisateur demande plusieurs quittances à la fois (sinon utiliser get_receipt_download_link pour une seule quittance précise).",
+    input_schema: {
+      type: "object",
+      properties: {
+        period_start: { type: "string", description: "Début de la période, YYYY-MM (inclus)." },
+        period_end: { type: "string", description: "Fin de la période, YYYY-MM (inclus)." },
+        lease_id: { type: "string", description: "Optionnel : limite la recherche à un seul bail. Par défaut, tous les baux du bailleur." },
+      },
+      required: ["period_start", "period_end"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const periodStart = String(args.period_start);
+      const periodEnd = String(args.period_end);
+      const [ey, em] = periodEnd.split("-").map(Number);
+      const periodEndExclusive = new Date(Date.UTC(em === 12 ? ey + 1 : ey, em === 12 ? 0 : em, 1)).toISOString().slice(0, 10);
+
+      let leaseIds: string[];
+      if (args.lease_id) {
+        leaseIds = [String(args.lease_id)];
+      } else {
+        const { data: leases } = await admin.from("leases").select("id").eq("user_id", ctx.userId);
+        leaseIds = (leases || []).map((l: any) => l.id);
+      }
+      if (leaseIds.length === 0) return { files: [], count: 0 };
+
+      const { data: receipts, error } = await admin
+        .from("rent_receipts")
+        .select("id,lease_id,period_start,period_end,pdf_url")
+        .in("lease_id", leaseIds)
+        .not("pdf_url", "is", null)
+        .gte("period_start", `${periodStart}-01`)
+        .lt("period_start", periodEndExclusive)
+        .order("period_start", { ascending: true });
+      if (error) throw new Error(error.message);
+      if (!receipts || receipts.length === 0) return { files: [], count: 0 };
+
+      const uniqueLeaseIds = Array.from(new Set(receipts.map((r: any) => r.lease_id)));
+      const { data: leaseRows } = await admin.from("leases").select("id,property_id").in("id", uniqueLeaseIds);
+      const propertyIdByLease = new Map((leaseRows || []).map((l: any) => [l.id, l.property_id]));
+      const propertyIds = Array.from(new Set(Array.from(propertyIdByLease.values()).filter(Boolean)));
+      const { data: propertyRows } = propertyIds.length
+        ? await admin.from("properties").select("id,label").in("id", propertyIds).eq("user_id", ctx.userId)
+        : { data: [] as any[] };
+      const labelByProperty = new Map((propertyRows || []).map((p: any) => [p.id, p.label]));
+
+      const monthLabel = (yyyymm: string) => {
+        const [y, m] = yyyymm.split("-").map(Number);
+        return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+      };
+
+      const files = receipts.map((r: any) => {
+        const propertyLabel = labelByProperty.get(propertyIdByLease.get(r.lease_id)) || "Bien";
+        return { receipt_id: r.id, label: `${propertyLabel} — ${monthLabel(String(r.period_start).slice(0, 7))}` };
+      });
+
+      return { files, count: files.length };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const periodStart = String(args.period_start);
+      const periodEnd = String(args.period_end);
+      const [ey, em] = periodEnd.split("-").map(Number);
+      const periodEndExclusive = new Date(Date.UTC(em === 12 ? ey + 1 : ey, em === 12 ? 0 : em, 1)).toISOString().slice(0, 10);
+      let leaseIds: string[];
+      if (args.lease_id) {
+        leaseIds = [String(args.lease_id)];
+      } else {
+        const { data: leases } = await admin.from("leases").select("id").eq("user_id", ctx.userId);
+        leaseIds = (leases || []).map((l: any) => l.id);
+      }
+      const { count } = leaseIds.length
+        ? await admin
+            .from("rent_receipts")
+            .select("id", { count: "exact", head: true })
+            .in("lease_id", leaseIds)
+            .not("pdf_url", "is", null)
+            .gte("period_start", `${periodStart}-01`)
+            .lt("period_start", periodEndExclusive)
+        : { count: 0 };
+      return [
+        { label: "Période", value: `${periodStart} → ${periodEnd}` },
+        { label: "Quittances trouvées", value: String(count || 0) },
+      ];
+    },
+    download_batch: true,
   },
   {
     name: "manage_deposit",
