@@ -10,7 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
     const { data: dpe } = await supabaseAdmin.from("property_dpe_documents").select("*").eq("id", String(req.query.id || "")).eq("user_id", auth.userId).maybeSingle();
     if (!dpe) return res.status(404).json({ error: "DPE introuvable." });
-    const { data, error } = await supabaseAdmin.storage.from(dpe.storage_bucket).createSignedUrl(dpe.storage_path, 600);
+    const wantsDownload = String(req.query.download || "") === "1";
+    const { data, error } = await supabaseAdmin.storage
+      .from(dpe.storage_bucket)
+      .createSignedUrl(dpe.storage_path, 600, wantsDownload ? { download: dpe.file_name || true } : undefined);
     if (error || !data?.signedUrl) throw error || new Error("Ouverture impossible.");
     return res.status(200).json({ signedUrl: data.signedUrl });
   } catch (error: any) {

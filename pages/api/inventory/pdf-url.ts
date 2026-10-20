@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // ======================================================
     const { data: report, error: reportErr } = await supabaseAdmin
       .from("inventory_reports")
-      .select("id,user_id,status,pdf_url")
+      .select("id,user_id,status,pdf_url,original_file_name")
       .eq("id", reportId)
       .single();
 
@@ -82,7 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // ======================================================
     // SIGNED URL
     // ======================================================
-    const { data, error: signErr } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 10); // 10 minutes
+    const wantsDownload = String(req.query.download || "") === "1";
+    const { data, error: signErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(path, 60 * 10, wantsDownload ? { download: report.original_file_name || true } : undefined); // 10 minutes
 
     if (signErr || !data?.signedUrl) {
       return res.status(500).json({ error: signErr?.message || "Impossible de signer l’URL." });

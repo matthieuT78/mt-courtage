@@ -60,6 +60,7 @@ type VaultDocument = {
   download?: () => Promise<void>;
   deletable?: boolean;
   manageHref?: string;
+  fileName?: string | null;
 };
 
 type StorageData = {
@@ -147,8 +148,15 @@ function folderForDocument(doc: VaultDocument): FolderKey {
   return "all";
 }
 
-function fileExtension(kind: DocumentKind) {
-  if (kind === "Photo") return "JPG/PNG";
+function fileExtension(doc: VaultDocument) {
+  // Une facture/EDL/DPE importé peut être un scan JPEG/PNG, pas forcément un
+  // PDF — on se base sur le vrai nom de fichier quand on le connaît, plutôt
+  // que de supposer PDF pour tout. Seuls les documents générés par lokt
+  // (quittance, bail/EDL non importés) n'ont pas de nom de fichier d'origine
+  // et sont effectivement toujours des PDF.
+  const match = doc.fileName ? /\.([a-zA-Z0-9]{2,5})$/.exec(doc.fileName) : null;
+  if (match) return match[1].toUpperCase();
+  if (doc.kind === "Photo") return "JPG/PNG";
   return "PDF";
 }
 
@@ -225,8 +233,9 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
     link.remove();
   };
 
-  const getLeaseDocumentUrl = async (documentId: string) => {
-    const response = await fetch(`/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(documentId)}`, {
+  const getLeaseDocumentUrl = async (documentId: string, forDownload = false) => {
+    const dl = forDownload ? "&download=1" : "";
+    const response = await fetch(`/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(documentId)}${dl}`, {
       headers: await authHeaders(),
     });
     const json = await response.json().catch(() => null);
@@ -234,8 +243,9 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
     return String(json.signedUrl);
   };
 
-  const getInventoryDocumentUrl = async (reportId: string) => {
-    const response = await fetch(`/api/inventory/pdf-url?reportId=${encodeURIComponent(reportId)}&userId=${encodeURIComponent(userId)}`, {
+  const getInventoryDocumentUrl = async (reportId: string, forDownload = false) => {
+    const dl = forDownload ? "&download=1" : "";
+    const response = await fetch(`/api/inventory/pdf-url?reportId=${encodeURIComponent(reportId)}&userId=${encodeURIComponent(userId)}${dl}`, {
       headers: await authHeaders(),
     });
     const json = await response.json().catch(() => null);
@@ -243,27 +253,28 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
     return String(json.signedUrl);
   };
 
-  const getDpeDocumentUrl = async (documentId: string) => {
-    const response = await fetch(`/api/account/dpe-url?id=${encodeURIComponent(documentId)}`, { headers: await authHeaders() });
+  const getDpeDocumentUrl = async (documentId: string, forDownload = false) => {
+    const dl = forDownload ? "&download=1" : "";
+    const response = await fetch(`/api/account/dpe-url?id=${encodeURIComponent(documentId)}${dl}`, { headers: await authHeaders() });
     const json = await response.json().catch(() => null);
     if (!response.ok || !json?.signedUrl) throw new Error(json?.error || "Impossible d’ouvrir le DPE.");
     return String(json.signedUrl);
   };
 
-  const getReceiptDocumentUrl = async (receiptId: string, pdfUrl: string) => {
+  const getReceiptDocumentUrl = async (receiptId: string, pdfUrl: string, forDownload = false) => {
     const response = await fetch("/api/receipts/signed-url", {
       method: "POST",
       headers: { ...(await authHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify({ receiptId, pdf_url: pdfUrl, expiresIn: 600 }),
+      body: JSON.stringify({ receiptId, pdf_url: pdfUrl, expiresIn: 600, ...(forDownload ? { download: true } : {}) }),
     });
     const json = await response.json().catch(() => null);
     if (!response.ok || !json?.signedUrl) throw new Error(json?.error || "Impossible d’ouvrir la quittance.");
     return String(json.signedUrl);
   };
 
-  const getStorageDocumentUrl = async (bucket: string, path: string) => {
+  const getStorageDocumentUrl = async (bucket: string, path: string, forDownload?: string | boolean) => {
     if (!supabase) throw new Error("Supabase n’est pas configuré.");
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 600);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 600, forDownload ? { download: forDownload } : undefined);
     if (error || !data?.signedUrl) throw error || new Error("Impossible d’ouvrir le document.");
     return data.signedUrl;
   };
@@ -293,7 +304,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
           const lease = doc.lease_id ? leaseById.get(String(doc.lease_id)) : null;
           const property = lease?.property_id ? propertyById.get(String(lease.property_id)) : null;
           const tenant = lease?.tenant_id ? tenantById.get(String(lease.tenant_id)) : null;
-          const getUrl = () => getLeaseDocumentUrl(doc.id);
+          const getUrl = (forDownload = false) => getLeaseDocumentUrl(doc.id, forDownload);
           documents.push({
             id: `contract-${doc.id}`,
             kind: "Bail",
@@ -305,9 +316,10 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             date: doc.signed_at || doc.generated_at || doc.updated_at || doc.created_at,
             source: "Baux",
             open: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
-            download: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async () => downloadUrl(await getUrl(), doc.original_file_name || "bail.pdf") : undefined,
+            download: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async () => downloadUrl(await getUrl(true), doc.original_file_name || "bail.pdf") : undefined,
             // Signé = pièce contractuelle définitive, jamais supprimable depuis cette section.
             deletable: !doc.signed_pdf_url,
+            fileName: doc.original_file_name,
           });
         });
 
@@ -316,7 +328,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
           const propertyId = lease?.property_id || null;
           const property = propertyId ? propertyById.get(String(propertyId)) : null;
           const title = report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d’entrée";
-          const getUrl = () => getInventoryDocumentUrl(report.id);
+          const getUrl = (forDownload = false) => getInventoryDocumentUrl(report.id, forDownload);
           documents.push({
             id: `inventory-${report.id}`,
             kind: "État des lieux",
@@ -328,15 +340,16 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             date: report.performed_at || report.updated_at || report.created_at,
             source: "États des lieux",
             open: report.pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
-            download: report.pdf_url ? async () => downloadUrl(await getUrl(), `${title}.pdf`) : undefined,
+            download: report.pdf_url ? async () => downloadUrl(await getUrl(true), report.original_file_name || `${title}.pdf`) : undefined,
             // Finalisé (prêt/signé/archivé) et généré par lokt = pièce contractuelle, pas supprimable.
             deletable: report.document_source === "external" || String(report.status || "").toLowerCase() === "draft",
+            fileName: report.original_file_name,
           });
         });
 
         dpes.forEach((dpe) => {
           const property = dpe.property_id ? propertyById.get(String(dpe.property_id)) : null;
-          const getUrl = () => getDpeDocumentUrl(dpe.id);
+          const getUrl = (forDownload = false) => getDpeDocumentUrl(dpe.id, forDownload);
           documents.push({
             id: `dpe-${dpe.id}`,
             kind: "DPE",
@@ -348,8 +361,9 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             sizeBytes: dpe.size_bytes,
             source: "Logements",
             open: async (win?: Window | null) => openUrl(await getUrl(), win),
-            download: async () => downloadUrl(await getUrl(), dpe.file_name || "dpe.pdf"),
+            download: async () => downloadUrl(await getUrl(true), dpe.file_name || "dpe.pdf"),
             deletable: true,
+            fileName: dpe.file_name,
           });
         });
 
@@ -360,7 +374,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             const property = lease?.property_id ? propertyById.get(String(lease.property_id)) : null;
             const tenant = lease?.tenant_id ? tenantById.get(String(lease.tenant_id)) : null;
             const title = `Quittance ${formatDate(receipt.period_start)} - ${formatDate(receipt.period_end)}`;
-            const getUrl = () => getReceiptDocumentUrl(receipt.id, receipt.pdf_url);
+            const getUrl = (forDownload = false) => getReceiptDocumentUrl(receipt.id, receipt.pdf_url, forDownload);
             documents.push({
               id: `receipt-${receipt.id}`,
               kind: "Quittance",
@@ -372,7 +386,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               date: receipt.issued_at || receipt.created_at,
               source: "Quittances",
               open: async (win?: Window | null) => openUrl(await getUrl(), win),
-              download: async () => downloadUrl(await getUrl(), `${title}.pdf`),
+              download: async () => downloadUrl(await getUrl(true), `${title}.pdf`),
             });
           });
 
@@ -380,7 +394,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
           const property = doc.property_id ? propertyById.get(String(doc.property_id)) : null;
           const bucket = doc.storage_bucket || "finance-documents";
           const path = doc.storage_path;
-          const getUrl = () => getStorageDocumentUrl(bucket, path);
+          const getUrl = (forDownload = false) => getStorageDocumentUrl(bucket, path, forDownload ? doc.file_name || true : undefined);
           documents.push({
             id: `finance-doc-${doc.id}`,
             kind: "Facture",
@@ -392,8 +406,9 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             sizeBytes: doc.size_bytes,
             source: "Finance",
             open: path ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
-            download: path ? async () => downloadUrl(await getUrl(), doc.file_name || "facture.pdf") : undefined,
+            download: path ? async () => downloadUrl(await getUrl(true), doc.file_name || "facture.pdf") : undefined,
             deletable: true,
+            fileName: doc.file_name,
           });
         });
 
@@ -412,6 +427,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               sizeBytes: allocation.invoice_size_bytes,
               source: "Boîte à outils",
               manageHref: "/espace-bailleur?tab=outils",
+              fileName: allocation.invoice_file_name,
             });
           });
 
@@ -428,6 +444,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               sizeBytes: reading.photo_size_bytes,
               source: "Boîte à outils",
               manageHref: "/espace-bailleur?tab=outils",
+              fileName: reading.photo_file_name,
             });
           });
 
@@ -762,7 +779,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-slate-950">{doc.title}</p>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span className="text-xs text-slate-500">{fileExtension(doc.kind)}</span>
+                          <span className="text-xs text-slate-500">{fileExtension(doc)}</span>
                           <span className="h-1 w-1 rounded-full bg-slate-300" />
                           <span className="text-xs text-slate-500">{statusLabel(doc.status)}</span>
                           <span className="h-1 w-1 rounded-full bg-slate-300" />
@@ -819,7 +836,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
                           className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 hover:bg-slate-100"
                         >
                           <ArrowDownTrayIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                          PDF
+                          {fileExtension(doc)}
                         </button>
                       ) : null}
                       {doc.deletable ? (

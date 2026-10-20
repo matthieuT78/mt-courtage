@@ -48,7 +48,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ ok: false, error: auth.error });
 
-    const { receiptId, pdf_url, expiresIn } = (req.body || {}) as { receiptId?: string; pdf_url?: string; expiresIn?: number };
+    const { receiptId, pdf_url, expiresIn, download } = (req.body || {}) as {
+      receiptId?: string;
+      pdf_url?: string;
+      expiresIn?: number;
+      download?: boolean | string;
+    };
 
     if (!receiptId) {
       return res.status(400).json({ ok: false, error: "receiptId requis." });
@@ -82,7 +87,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const exp = clampExpiresIn(expiresIn);
 
-    const signed = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, exp);
+    const signed = await supabaseAdmin.storage
+      .from(parsed.bucket)
+      .createSignedUrl(parsed.path, exp, download ? { download } : undefined);
     if (signed.error || !signed.data?.signedUrl) {
       return res.status(500).json({ ok: false, error: signed.error?.message || "Signed URL échoué." });
     }

@@ -15,6 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("*").eq("id", String(req.query.documentId || "")).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
 
+    const wantsDownload = String(req.query.download || "") === "1";
+    const downloadOption = wantsDownload ? { download: document.original_file_name || true } : undefined;
+
     // Ouverture d'une ancienne version archivée (bail modifié puis re-signé) :
     // on ne fait confiance qu'à une URL réellement listée dans les versions
     // archivées de CE document, jamais à une URL arbitraire fournie par le client.
@@ -26,14 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!known) return res.status(403).json({ error: "Version archivée introuvable pour ce contrat." });
       const parsedArchived = parseStoredLeaseContractUrl(archivedUrl);
       if (!parsedArchived) return res.status(409).json({ error: "PDF indisponible." });
-      const { data: signedArchived, error: archivedErr } = await supabaseAdmin.storage.from(parsedArchived.bucket).createSignedUrl(parsedArchived.path, 600);
+      const { data: signedArchived, error: archivedErr } = await supabaseAdmin.storage.from(parsedArchived.bucket).createSignedUrl(parsedArchived.path, 600, downloadOption);
       if (archivedErr || !signedArchived?.signedUrl) throw archivedErr || new Error("Ouverture impossible.");
       return res.status(200).json({ signedUrl: signedArchived.signedUrl, signed: true });
     }
 
     const parsed = parseStoredLeaseContractUrl(document.signed_pdf_url || document.external_pdf_url || document.pdf_url);
     if (!parsed) return res.status(409).json({ error: "PDF indisponible." });
-    const { data, error } = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, 600);
+    const { data, error } = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, 600, downloadOption);
     if (error || !data?.signedUrl) throw error || new Error("Ouverture impossible.");
     return res.status(200).json({ signedUrl: data.signedUrl, signed: !!document.signed_pdf_url });
   } catch (error: any) {
