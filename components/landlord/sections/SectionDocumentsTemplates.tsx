@@ -6,6 +6,7 @@ import {
   EyeIcon,
   FolderIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { SectionModeles, TEMPLATES as MODELES_TEMPLATES } from "./SectionModeles";
 
@@ -57,6 +58,7 @@ type VaultDocument = {
   source: string;
   open?: (win?: Window | null) => Promise<void>;
   download?: () => Promise<void>;
+  deletable?: boolean;
 };
 
 type StorageData = {
@@ -194,6 +196,9 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
   const [storageData, setStorageData] = useState<StorageData | null>(null);
   const [storageLoading, setStorageLoading] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<VaultDocument | null>(null);
 
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safeTenants = Array.isArray(tenants) ? tenants : [];
@@ -300,6 +305,8 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             source: "Baux",
             open: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async () => downloadUrl(await getUrl(), doc.original_file_name || "bail.pdf") : undefined,
+            // Signé = pièce contractuelle définitive, jamais supprimable depuis cette section.
+            deletable: !doc.signed_pdf_url,
           });
         });
 
@@ -321,6 +328,8 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             source: "États des lieux",
             open: report.pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: report.pdf_url ? async () => downloadUrl(await getUrl(), `${title}.pdf`) : undefined,
+            // Finalisé (prêt/signé/archivé) et généré par lokt = pièce contractuelle, pas supprimable.
+            deletable: report.document_source === "external" || String(report.status || "").toLowerCase() === "draft",
           });
         });
 
@@ -339,6 +348,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             source: "Logements",
             open: async (win?: Window | null) => openUrl(await getUrl(), win),
             download: async () => downloadUrl(await getUrl(), dpe.file_name || "dpe.pdf"),
+            deletable: true,
           });
         });
 
@@ -382,6 +392,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
             source: "Finance",
             open: path ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: path ? async () => downloadUrl(await getUrl(), doc.file_name || "facture.pdf") : undefined,
+            deletable: true,
           });
         });
 
@@ -430,7 +441,29 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
     return () => {
       cancelled = true;
     };
-  }, [userId, locked, leaseById, propertyById, tenantById]);
+  }, [userId, locked, leaseById, propertyById, tenantById, reloadToken]);
+
+  const deleteDocument = async (doc: VaultDocument) => {
+    setDeletingDocId(doc.id);
+    setDocsError(null);
+    setOk(null);
+    try {
+      const resp = await fetch("/api/documents/delete", {
+        method: "POST",
+        headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, documentId: doc.id }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error(json?.error || "Suppression impossible.");
+      setOk("Document supprimé.");
+      setConfirmDeleteDoc(null);
+      setReloadToken((t) => t + 1);
+    } catch (error: any) {
+      setDocsError(error?.message || "Suppression impossible.");
+    } finally {
+      setDeletingDocId(null);
+    }
+  };
 
   useEffect(() => {
     if (!userId || locked || !supabase) return;
@@ -778,6 +811,20 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
                           PDF
                         </button>
                       ) : null}
+                      {doc.deletable ? (
+                        <button
+                          type="button"
+                          disabled={deletingDocId === doc.id}
+                          onClick={() => setConfirmDeleteDoc(doc)}
+                          className={cx(
+                            "inline-flex h-8 items-center gap-1.5 rounded-full border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 hover:bg-red-50",
+                            deletingDocId === doc.id && "opacity-60"
+                          )}
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          Supprimer
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -793,6 +840,37 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
           )}
           </section>
       </div>
+
+      {confirmDeleteDoc ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+            <p className="text-sm font-semibold text-slate-950">Supprimer ce document ?</p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">
+              « {confirmDeleteDoc.title} » sera définitivement supprimé. Cette action est irréversible.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteDoc(null)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-100"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={deletingDocId === confirmDeleteDoc.id}
+                onClick={() => deleteDocument(confirmDeleteDoc)}
+                className={cx(
+                  "rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500",
+                  deletingDocId === confirmDeleteDoc.id && "opacity-60"
+                )}
+              >
+                {deletingDocId === confirmDeleteDoc.id ? "Suppression..." : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       </>}
     </div>
