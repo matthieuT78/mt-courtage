@@ -557,6 +557,71 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
     },
   },
   {
+    name: "extract_property_tax_document",
+    description: "Analyse un AVIS DE TAXE FONCIÈRE (pas une facture fournisseur) que l'utilisateur vient de joindre dans la conversation, et en extrait le montant total de taxe foncière ET, séparément, le montant de la ligne TEOM (taxe d'enlèvement des ordures ménagères) qui figure dans le détail du calcul sur ce même document. À utiliser à la place de extract_invoice_document dès que l'utilisateur mentionne la taxe foncière, la TEOM ou les ordures ménagères : extract_invoice_document ne sait extraire qu'un seul montant total, il ne peut pas isoler la ligne TEOM à l'intérieur du document — ne jamais dire à l'utilisateur que la TEOM n'est pas sur ce document avant d'avoir essayé cet outil-ci.",
+    input_schema: {
+      type: "object",
+      properties: {
+        staging_path: { type: "string", description: "Chemin exact donné dans l'annotation [Pièce jointe : chemin_document=\"...\"] du message utilisateur." },
+        file_name: { type: "string", description: "Nom de fichier donné dans la même annotation (nom_fichier=\"...\")." },
+      },
+      required: ["staging_path"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const path = String(args.staging_path || "");
+      if (!path.startsWith(`${ctx.userId}/loky-imports/`)) {
+        throw new Error("Document introuvable ou non autorisé.");
+      }
+      const { data: file, error: downloadError } = await admin.storage.from(LEASE_CONTRACT_BUCKET).download(path);
+      if (downloadError || !file) throw new Error("Document introuvable — a-t-il bien fini d'être envoyé ?");
+      const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error("Extraction indisponible (clé API manquante).");
+      const client = new Anthropic({ apiKey });
+      const model = process.env.ANTHROPIC_DOCUMENT_MODEL || "claude-sonnet-5";
+      const response = await client.messages.create({
+        model,
+        max_tokens: 500,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+              {
+                type: "text",
+                text: `Ce document est probablement un avis de taxe foncière français. Extrais les informations dans EXACTEMENT ce format JSON, sans aucun texte avant ou après, sans bloc markdown :
+{
+  "is_property_tax_notice": boolean (false si ce document n'est manifestement pas un avis de taxe foncière),
+  "property_tax_total": number|null (montant total à payer de la taxe foncière, en euros, sans symbole — case "Montant à payer" ou total en bas de l'avis),
+  "teom_amount": number|null (montant de la ligne "TEOM" ou "Taxe d'enlèvement des ordures ménagères", distincte du total — souvent une ligne à part dans le détail du calcul, pas le total),
+  "year": number|null (année d'imposition visible sur l'avis),
+  "notes": string (en français, signale ce qui est absent, ambigu, ou si la ligne TEOM n'apparaît pas séparément sur ce document — chaîne vide si rien à signaler)
+}
+N'invente jamais une valeur absente du document : utilise null.`,
+              },
+            ],
+          },
+        ],
+      });
+      const extraCostUsd = callCostUsd(response.usage as any, model);
+      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+      let parsed: Record<string, any>;
+      try {
+        const raw = (textBlock?.text || "").trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error("Le document n'a pas pu être analysé (réponse inattendue). Réessaie, ou renseigne les montants manuellement.");
+      }
+      if (parsed.is_property_tax_notice === false) {
+        return { is_property_tax_notice: false, notes: parsed.notes || "Ce document ne ressemble pas à un avis de taxe foncière.", _extra_cost_usd: extraCostUsd };
+      }
+      return { ...parsed, staging_path: path, file_name: args.file_name || null, _extra_cost_usd: extraCostUsd };
+    },
+  },
+  {
     name: "create_property",
     description: "Crée un nouveau bien. Pour un immeuble à plusieurs lots (type='building'), fournir la liste des lots dans 'lots' : chacun sera créé rattaché à l'immeuble. Action irréversible sans suppression manuelle ensuite : nécessite confirmation.",
     input_schema: {
