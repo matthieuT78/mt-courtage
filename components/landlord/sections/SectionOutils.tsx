@@ -965,6 +965,7 @@ function TeomTool({
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [previewSubject, setPreviewSubject] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
+  const [pendingTaxEntry, setPendingTaxEntry] = useState<Record<string, any> | null>(null);
   useEffect(() => {
     try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare })); } catch {}
   }, [storageKey, selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare]);
@@ -1050,8 +1051,12 @@ function TeomTool({
 
   // Bouton unique : enregistre ce qu'il y a à enregistrer (taxe foncière,
   // TEOM récupérable), et si la case est cochée, prépare l'envoi de la
-  // demande au locataire — mais ne l'envoie jamais sans montrer l'aperçu
-  // d'abord, cf confirmSendTeomEmail.
+  // demande au locataire. Si un email est prévu, RIEN n'est écrit en base
+  // ici : l'écriture "taxe foncière" est seulement préparée (pendingTaxEntry)
+  // et n'est créée qu'à la confirmation réelle dans confirmSendTeomEmail —
+  // pour que "Annuler" n'ait jamais besoin de défaire une écriture déjà
+  // posée (sinon 5 aperçus annulés laisseraient 5 écritures orphelines,
+  // même protégées par l'anti-doublon ça reste une écriture créée à tort).
   const saveTeomToFinance = async () => {
     if (!supabase || !userId) return;
     setSaving(true);
@@ -1059,31 +1064,38 @@ function TeomTool({
     setSaveOk(null);
     try {
       const year = String(periodEnd || new Date().getFullYear()).slice(0, 4);
-      const created: string[] = [];
-
-      if (num(propertyTax) > 0 && selectedPropertyId) {
-        const did = await insertIfNotDuplicate("property_id", selectedPropertyId, year, {
-          user_id: userId,
-          property_id: selectedPropertyId,
-          occurred_at: periodEnd || todayISO(),
-          direction: "out",
-          status: "paid",
-          category: "tax",
-          label: `Taxe foncière ${assetLabel || year}`.trim(),
-          amount: num(propertyTax),
-          notes: summary,
-          updated_at: new Date().toISOString(),
-        });
-        if (did) created.push("taxe foncière");
-      }
-
       const wantsEmail = includeEmail && !!selectedTenantEmail && recoverable > 0;
+
+      const taxPayload = num(propertyTax) > 0 && selectedPropertyId
+        ? {
+            user_id: userId,
+            property_id: selectedPropertyId,
+            occurred_at: periodEnd || todayISO(),
+            direction: "out" as const,
+            status: "paid" as const,
+            category: "tax" as const,
+            label: `Taxe foncière ${assetLabel || year}`.trim(),
+            amount: num(propertyTax),
+            notes: summary,
+            updated_at: new Date().toISOString(),
+          }
+        : null;
+
       if (wantsEmail) {
+        setPendingTaxEntry(taxPayload);
         const data = await callTeomEmailApi({ preview: true });
         setPreviewSubject(data.subject || "");
         setPreviewHtml(data.html || "");
         setShowEmailPreview(true);
-      } else if (recoverable > 0 && selectedLeaseId) {
+        return;
+      }
+
+      const created: string[] = [];
+      if (taxPayload) {
+        const did = await insertIfNotDuplicate("property_id", selectedPropertyId!, year, taxPayload);
+        if (did) created.push("taxe foncière");
+      }
+      if (recoverable > 0 && selectedLeaseId) {
         const did = await insertIfNotDuplicate("lease_id", selectedLeaseId, year, {
           user_id: userId,
           property_id: selectedPropertyId || null,
@@ -1099,12 +1111,7 @@ function TeomTool({
         });
         if (did) created.push("TEOM récupérable");
       }
-
-      if (!wantsEmail) {
-        setSaveOk(created.length ? `Enregistré dans Finance : ${created.join(", ")}.` : "Déjà enregistré pour ce bien/cette année — rien à ajouter.");
-      } else {
-        setSaveOk(created.length ? `Taxe foncière enregistrée. Vérifiez l'email avant envoi ci-dessous.` : null);
-      }
+      setSaveOk(created.length ? `Enregistré dans Finance : ${created.join(", ")}.` : "Déjà enregistré pour ce bien/cette année — rien à ajouter.");
     } catch (e: any) {
       setSaveError(e?.message || "Enregistrement impossible.");
     } finally {
@@ -1112,12 +1119,23 @@ function TeomTool({
     }
   };
 
+  const cancelEmailPreview = () => {
+    setShowEmailPreview(false);
+    setPendingTaxEntry(null);
+  };
+
   const confirmSendTeomEmail = async () => {
+    if (!supabase || !userId) return;
     setSaving(true);
     setSaveError(null);
     try {
+      if (pendingTaxEntry) {
+        const year = String(periodEnd || new Date().getFullYear()).slice(0, 4);
+        await insertIfNotDuplicate("property_id", pendingTaxEntry.property_id, year, pendingTaxEntry);
+      }
       await callTeomEmailApi({ preview: false });
       setShowEmailPreview(false);
+      setPendingTaxEntry(null);
       setSaveOk("Enregistré dans Finance et demande envoyée au locataire.");
     } catch (e: any) {
       setSaveError(e?.message || "Envoi impossible.");
@@ -1346,18 +1364,20 @@ function TeomTool({
 
         {showEmailPreview ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-            <div className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div className="flex max-h-[90vh] w-full max-w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
               <div className="border-b border-slate-200 px-5 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aperçu de l'email</p>
                 <p className="mt-0.5 text-sm font-semibold text-slate-900">{previewSubject}</p>
                 <p className="mt-0.5 text-xs text-slate-500">À : {selectedTenantEmail}</p>
               </div>
-              <iframe title="Aperçu email TEOM" srcDoc={previewHtml} sandbox="" className="min-h-[360px] flex-1 w-full" />
+              <div className="min-h-[420px] flex-1 overflow-auto bg-slate-100">
+                <iframe title="Aperçu email TEOM" srcDoc={previewHtml} sandbox="" className="h-[420px] w-full" />
+              </div>
               {saveError && <p className="px-5 pt-2 text-xs font-medium text-red-600">{saveError}</p>}
               <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
                 <button
                   type="button"
-                  onClick={() => setShowEmailPreview(false)}
+                  onClick={cancelEmailPreview}
                   disabled={saving}
                   className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
                 >
