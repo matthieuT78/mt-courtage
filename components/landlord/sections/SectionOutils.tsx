@@ -1824,6 +1824,10 @@ export function SectionOutils({
   const [ok, setOk] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [draftReady, setDraftReady] = useState(false);
+  const [waterEmailTarget, setWaterEmailTarget] = useState<{ allocationId: string; readingId: string } | null>(null);
+  const [waterEmailPreview, setWaterEmailPreview] = useState<{ subject: string; html: string; to: string } | null>(null);
+  const [sendingWaterEmail, setSendingWaterEmail] = useState(false);
+  const [waterEmailError, setWaterEmailError] = useState<string | null>(null);
   const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
 
   const selectedLines = useMemo(
@@ -2681,20 +2685,52 @@ export function SectionOutils({
   // Un email par occupant, avec uniquement SA consommation et SON montant —
   // jamais une liste groupée qui exposerait la conso/le montant des autres
   // occupants du même immeuble à chacun des destinataires.
-  const prepareOccupantEmail = (allocation: WaterAllocation, reading: WaterReading) => {
+  const callWaterEmailApi = async (allocationId: string, readingId: string, extra: Record<string, any>) => {
+    const { data: sessionData } = await supabase!.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error("Session expirée.");
+    const resp = await fetch("/api/tools/send-water-recap-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId, allocationId, readingId, ...extra }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Erreur.");
+    return data;
+  };
+
+  const prepareOccupantEmail = async (allocation: WaterAllocation, reading: WaterReading) => {
     if (!reading.occupant_email) return setError("Aucune adresse email renseignée pour cet occupant.");
-    const subject = `Répartition facture d’eau - ${allocationAddress(allocation) || allocation.scope_label || allocation.title}`;
-    const body = [
-      `Bonjour${reading.occupant_label ? ` ${reading.occupant_label}` : ""},`,
-      "",
-      `Voici la répartition de la facture d’eau pour la période ${allocation.period_start} au ${allocation.period_end}, concernant ${reading.unit_label}.`,
-      "",
-      `Consommation : ${Number(reading.consumption || 0).toLocaleString("fr-FR")} m³`,
-      `Montant dû : ${formatEuro(Number(reading.amount_due || 0))}`,
-      "",
-      "Cordialement,",
-    ].join("\n");
-    window.location.href = `mailto:${reading.occupant_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setWaterEmailError(null);
+    try {
+      const data = await callWaterEmailApi(allocation.id, reading.id, { preview: true });
+      setWaterEmailTarget({ allocationId: allocation.id, readingId: reading.id });
+      setWaterEmailPreview({ subject: data.subject || "", html: data.html || "", to: data.to || reading.occupant_email });
+    } catch (e: any) {
+      setError(e?.message || "Aperçu impossible.");
+    }
+  };
+
+  const cancelWaterEmailPreview = () => {
+    setWaterEmailPreview(null);
+    setWaterEmailTarget(null);
+    setWaterEmailError(null);
+  };
+
+  const confirmSendWaterEmail = async () => {
+    if (!waterEmailTarget) return;
+    setSendingWaterEmail(true);
+    setWaterEmailError(null);
+    try {
+      await callWaterEmailApi(waterEmailTarget.allocationId, waterEmailTarget.readingId, { preview: false });
+      setWaterEmailPreview(null);
+      setWaterEmailTarget(null);
+      setOk("Répartition envoyée à l'occupant par email.");
+    } catch (e: any) {
+      setWaterEmailError(e?.message || "Envoi impossible.");
+    } finally {
+      setSendingWaterEmail(false);
+    }
   };
 
   const openFinanceDraft = (draft: FinanceTransactionDraft) => {
@@ -3115,6 +3151,41 @@ export function SectionOutils({
             )}
           </aside>
         </div>
+
+        {waterEmailPreview ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+            <div className="flex max-h-[90vh] w-full max-w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div className="border-b border-slate-200 px-5 py-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aperçu de l'email</p>
+                <p className="mt-0.5 text-sm font-semibold text-slate-900">{waterEmailPreview.subject}</p>
+                <p className="mt-0.5 text-xs text-slate-500">À : {waterEmailPreview.to}</p>
+              </div>
+              <div className="min-h-[420px] flex-1 overflow-auto bg-slate-100">
+                <iframe title="Aperçu email eau" srcDoc={waterEmailPreview.html} sandbox="" className="h-[420px] w-full" />
+              </div>
+              {waterEmailError && <p className="px-5 pt-2 text-xs font-medium text-red-600">{waterEmailError}</p>}
+              <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
+                <button
+                  type="button"
+                  onClick={cancelWaterEmailPreview}
+                  disabled={sendingWaterEmail}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSendWaterEmail}
+                  disabled={sendingWaterEmail}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {sendingWaterEmail ? "Envoi..." : "Confirmer l'envoi"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {financeModal}
         {financeFeedback}
       </section>
