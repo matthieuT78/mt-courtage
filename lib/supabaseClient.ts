@@ -15,12 +15,13 @@ const isDev = process.env.NODE_ENV !== "production";
  * Timeout fetch + logs réseau.
  * Important: on ne log pas les headers (apikey/authorization).
  */
-function makeDebugFetch(timeoutMs = 15000): typeof fetch {
-  return async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : (input as any)?.url || String(input);
-    const method = (init?.method || "GET").toUpperCase();
-    const t0 = performance.now();
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+function makeDebugFetch(timeoutMs = 15000): typeof fetch {
+  const attempt = async (input: RequestInfo | URL, init: RequestInit | undefined, url: string, method: string) => {
+    const t0 = performance.now();
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
@@ -65,6 +66,29 @@ function makeDebugFetch(timeoutMs = 15000): typeof fetch {
       throw e;
     } finally {
       clearTimeout(timer);
+    }
+  };
+
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : (input as any)?.url || String(input);
+    const method = (init?.method || "GET").toUpperCase();
+
+    try {
+      return await attempt(input, init, url, method);
+    } catch (e: any) {
+      // Un seul retry, uniquement pour les lectures (GET) : les pics de
+      // latence Supabase observés (quelques requêtes sur plusieurs dizaines,
+      // 20s+ au lieu de 150ms) sont transitoires et disparaissent en général
+      // en moins d'une seconde. On ne retente jamais une mutation (POST/PATCH/
+      // DELETE) : si elle a réellement abouti côté serveur juste avant l'abort
+      // client, la retenter dupliquerait l'action.
+      if (method !== "GET") throw e;
+      await sleep(400);
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.warn(`[supabase:fetch] retry GET ${url}`);
+      }
+      return attempt(input, init, url, method);
     }
   };
 }
