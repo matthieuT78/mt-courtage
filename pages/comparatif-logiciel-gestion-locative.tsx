@@ -294,13 +294,6 @@ const schemas = [
     description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant, avec assistant IA (Loky) qui exécute les actions courantes, simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
     url: pageUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: TRUSTPILOT_RATING,
-      reviewCount: TRUSTPILOT_REVIEW_COUNT,
-      bestRating: 5,
-      worstRating: 1,
-    },
   },
   {
     "@context": "https://schema.org",
