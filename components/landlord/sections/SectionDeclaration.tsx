@@ -50,7 +50,6 @@ type ImportTotals = {
   repairs: number;
   managementFees: number;
   utilities: number;
-  interest: number;
   otherExpenses: number;
 };
 
@@ -267,6 +266,10 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const [managementFees, setManagementFees] = useState(0);
   const [utilities, setUtilities] = useState(0);
   const [otherExpenses, setOtherExpenses] = useState(0);
+  // Empêche le bouton "Ajouter" l'assurance emprunteur estimée de compter le même
+  // montant plusieurs fois (double-clic, ou nouvelle visite après l'avoir déjà
+  // appliquée) — remis à false partout où insurance est réinitialisé/rechargé.
+  const [loanInsuranceApplied, setLoanInsuranceApplied] = useState(false);
 
   // LMNP réel : amortissements (mobilier uniquement en non-pro — l'immobilier n'est pas
   // déductible en LMNP non-professionnel, pas de champ dédié pour cette raison)
@@ -381,7 +384,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     setRowId(null);
     setLocationKind("meuble_longue");
     setGrossRent(0); setChargesRecovered(0); setOtherIncome(0); setDepositReceived(0);
-    setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
+    setInterest(0); setInsurance(0); setLoanInsuranceApplied(false); setPropertyTax(0); setCopro(0);
     setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
     setAmortizationMobilier(0); setLmnpCarryForward(0); setCfe(0);
     setPinelCommitmentYears(6);
@@ -429,6 +432,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       setDepositReceived(toNumber(d.depositReceived));
       setInterest(toNumber(d.interest));
       setInsurance(toNumber(d.insurance));
+      setLoanInsuranceApplied(false);
       setPropertyTax(toNumber(d.propertyTax));
       setCopro(toNumber(d.copro));
       setRepairs(toNumber(d.repairs));
@@ -540,19 +544,19 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       grossRent: sum(receivedIncome.filter((r) => r.category === "rent")),
       chargesRecovered: sum(receivedIncome.filter((r) => r.category === "charges_recovered")),
       otherIncome: sum(receivedIncome.filter((r) => r.category !== "rent" && r.category !== "charges_recovered")),
-      interest: sum(paidExpenses.filter((r) => r.category === "loan_interest" || r.category === "interest")),
       propertyTax: sum(paidExpenses.filter((r) => r.category === "tax")),
       insurance: sum(paidExpenses.filter((r) => r.category === "insurance")),
       copro: sum(paidExpenses.filter((r) => r.category === "copro")),
       repairs: sum(paidExpenses.filter((r) => r.category === "repairs")),
       managementFees: sum(paidExpenses.filter((r) => r.category === "management" || r.category === "fees")),
       utilities: sum(paidExpenses.filter((r) => r.category === "utilities")),
+      // "loan" = mensualité crédit (capital + intérêts) → jamais déductible tel quel ; les
+      // intérêts seuls ne sont jamais une catégorie de transaction saisie par l'utilisateur
+      // (personne ne catégorise une écriture "intérêt d'emprunt" à part), ils viennent
+      // uniquement du calcul financeEstimates (tableau d'amortissement, voir plus haut) —
+      // ne pas réintroduire de champ "interest" ici, il serait toujours à 0.
       otherExpenses: sum(
-        paidExpenses.filter(
-          // "loan" = mensualité crédit (capital + intérêts) → non déductible en tant que tel
-          // seul "loan_interest" / "interest" l'est ; exclure "loan" évite de gonfler les charges
-          (r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities", "loan_interest", "interest", "loan"].includes(r.category)
-        )
+        paidExpenses.filter((r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities", "loan"].includes(r.category))
       ),
     };
   };
@@ -562,9 +566,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     setGrossRent(preview.grossRent);
     setChargesRecovered(preview.chargesRecovered);
     setOtherIncome(preview.otherIncome);
-    setInterest(preview.interest);
     setPropertyTax(preview.propertyTax);
     setInsurance(preview.insurance);
+    setLoanInsuranceApplied(false);
     setCopro(preview.copro);
     setRepairs(preview.repairs);
     setManagementFees(preview.managementFees);
@@ -1093,7 +1097,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
             Finance — {importPreview.rows.length} écriture{importPreview.rows.length > 1 ? "s" : ""} trouvée{importPreview.rows.length > 1 ? "s" : ""}
           </p>
           <p className="mt-1 text-xs text-slate-600">
-            Loyers : {eur(importPreview.grossRent)} · Intérêts : {eur(importPreview.interest)} · Assurance : {eur(importPreview.insurance)} · Taxe foncière : {eur(importPreview.propertyTax)}
+            Loyers : {eur(importPreview.grossRent)} · Assurance : {eur(importPreview.insurance)} · Taxe foncière : {eur(importPreview.propertyTax)}
           </p>
           <div className="mt-3 flex gap-2">
             <button type="button" onClick={() => applyImportPreview()} className={cx("rounded-full px-4 py-1.5 text-sm font-semibold", brandBg, brandText)}>Appliquer</button>
@@ -1120,7 +1124,17 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
             {financeEstimates.loanInsuranceAnnual > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2">
                 <span className="text-sm text-slate-800">Assurance emprunteur estimée : <strong>{eur(financeEstimates.loanInsuranceAnnual)}</strong> (s'ajoute à l'assurance déjà saisie : {eur(insurance)})</span>
-                <button type="button" onClick={() => setInsurance(insurance + financeEstimates.loanInsuranceAnnual)} className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100">Ajouter</button>
+                <button
+                  type="button"
+                  disabled={loanInsuranceApplied}
+                  onClick={() => {
+                    setInsurance(insurance + financeEstimates.loanInsuranceAnnual);
+                    setLoanInsuranceApplied(true);
+                  }}
+                  className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loanInsuranceApplied ? "Ajoutée ✓" : "Ajouter"}
+                </button>
               </div>
             )}
             {financeEstimates.cfeAnnual > 0 && (
