@@ -66,12 +66,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Array.isArray(req.body.imputed_months) ? req.body.imputed_months : [];
       const damageItems: Array<{ label: string; amount: number }> =
         Array.isArray(req.body.damage_items) ? req.body.damage_items : [];
+      // Écritures Finance "charges_recovered" en attente (ex: TEOM) retenues sur la
+      // caution plutôt que réclamées séparément — voir pending-charges-summary.ts.
+      const pendingCharges: Array<{ transaction_id: string; label: string; amount: number }> =
+        Array.isArray(req.body.pending_charges) ? req.body.pending_charges : [];
 
       // Auto-calculate retained_amount from items if provided, otherwise fall back to explicit value
       const imputedTotal = imputedMonths.reduce((s, m) => s + (safeNum(m.amount) ?? 0), 0);
       const damageTotal = damageItems.reduce((s, d) => s + (safeNum(d.amount) ?? 0), 0);
-      const hasItems = imputedTotal + damageTotal > 0;
-      const retainAmt = hasItems ? Math.round((imputedTotal + damageTotal) * 100) / 100 : (safeNum(retained_amount) ?? 0);
+      const pendingChargesTotal = pendingCharges.reduce((s, c) => s + (safeNum(c.amount) ?? 0), 0);
+      const hasItems = imputedTotal + damageTotal + pendingChargesTotal > 0;
+      const retainAmt = hasItems ? Math.round((imputedTotal + damageTotal + pendingChargesTotal) * 100) / 100 : (safeNum(retained_amount) ?? 0);
       const retAmt = safeNum(returned_amount) ?? 0;
 
       if (retAmt < 0 || retainAmt < 0) return res.status(400).json({ error: "Les montants ne peuvent pas être négatifs." });
@@ -88,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const parts: string[] = [];
         if (imputedMonths.length) parts.push(`Loyers/charges : ${imputedMonths.map((m) => `${m.period_start.slice(0, 7)} (${safeNum(m.amount) ?? 0} €)`).join(", ")}`);
         if (damageItems.length) parts.push(`Dommages : ${damageItems.map((d) => `${d.label} (${safeNum(d.amount) ?? 0} €)`).join(", ")}`);
+        if (pendingCharges.length) parts.push(`Charges récupérables : ${pendingCharges.map((c) => `${c.label} (${safeNum(c.amount) ?? 0} €)`).join(", ")}`);
         reasonLabel = parts.join(" — ").slice(0, 500);
       }
       if (retainAmt > 0 && !reasonLabel) {
@@ -177,6 +183,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             created_at: new Date().toISOString(),
           });
         }
+      }
+
+      // Marque les charges récupérables en attente comme réglées (retenues sur la
+      // caution plutôt que réclamées séparément) — .eq("user_id")/.eq("lease_id")
+      // en garde-fou pour ne jamais toucher une écriture d'un autre bail/compte.
+      for (const charge of pendingCharges) {
+        if (!charge.transaction_id) continue;
+        await supabaseAdmin
+          .from("transactions")
+          .update({ status: "received", notes: "[lokt:deposit] Réglée par retenue sur dépôt de garantie", updated_at: new Date().toISOString() })
+          .eq("id", charge.transaction_id)
+          .eq("user_id", userId)
+          .eq("lease_id", leaseId);
       }
 
       const { data: updated, error: updErr } = await supabaseAdmin.from("leases").update(patch).eq("id", leaseId).eq("user_id", userId).select("*").single();

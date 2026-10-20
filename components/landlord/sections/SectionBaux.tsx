@@ -965,12 +965,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
   type DepositForm = { paid_at: string; paid_amount: string; returned_at: string; returned_amount: string; retained_amount: string; retained_reason: string };
   type ImputedMonthRow = { yyyymm: string; period_start: string; period_end: string; label: string; missing_amount: number; checked: boolean; amount: string };
   type DamageItem = { id: string; label: string; amount: string };
+  type PendingChargeRow = { id: string; label: string; occurred_at: string; amount: number; checked: boolean };
   const [depositActionByLease, setDepositActionByLease] = useState<Record<string, DepositAction>>({});
   const [depositFormByLease, setDepositFormByLease] = useState<Record<string, DepositForm>>({});
   const [depositLoadingByLease, setDepositLoadingByLease] = useState<Record<string, boolean>>({});
   const [depositErrByLease, setDepositErrByLease] = useState<Record<string, string | null>>({});
   const [imputedMonthsByLease, setImputedMonthsByLease] = useState<Record<string, ImputedMonthRow[]>>({});
   const [damageItemsByLease, setDamageItemsByLease] = useState<Record<string, DamageItem[]>>({});
+  const [pendingChargesByLease, setPendingChargesByLease] = useState<Record<string, PendingChargeRow[]>>({});
   const [unpaidLoadingByLease, setUnpaidLoadingByLease] = useState<Record<string, boolean>>({});
   const [unpaidAfterReturnByLease, setUnpaidAfterReturnByLease] = useState<Record<string, any[] | null>>({});
 
@@ -1022,15 +1024,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
     if (action === "return") {
       setImputedMonthsByLease((p) => ({ ...p, [leaseId]: [] }));
       setDamageItemsByLease((p) => ({ ...p, [leaseId]: [] }));
+      setPendingChargesByLease((p) => ({ ...p, [leaseId]: [] }));
       setUnpaidLoadingByLease((p) => ({ ...p, [leaseId]: true }));
       try {
         if (!supabase) return;
         const { data: { session } } = await supabase.auth.getSession();
-        const resp = await fetch(`/api/deposits/unpaid-summary?userId=${encodeURIComponent(userId)}&leaseId=${encodeURIComponent(leaseId)}`, {
-          headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
-        });
-        const json = await resp.json().catch(() => ({}));
-        const months: any[] = json.months || [];
+        const authHeader = { Authorization: `Bearer ${session?.access_token ?? ""}` };
+        const [unpaidResp, pendingResp] = await Promise.all([
+          fetch(`/api/deposits/unpaid-summary?userId=${encodeURIComponent(userId)}&leaseId=${encodeURIComponent(leaseId)}`, { headers: authHeader }),
+          fetch(`/api/deposits/pending-charges-summary?userId=${encodeURIComponent(userId)}&leaseId=${encodeURIComponent(leaseId)}`, { headers: authHeader }),
+        ]);
+        const unpaidJson = await unpaidResp.json().catch(() => ({}));
+        const months: any[] = unpaidJson.months || [];
         setImputedMonthsByLease((p) => ({
           ...p,
           [leaseId]: months.map((m: any) => ({
@@ -1042,6 +1047,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
             checked: true,
             amount: String(Math.round(Number(m.missing_amount || 0) * 100) / 100),
           })),
+        }));
+
+        const pendingJson = await pendingResp.json().catch(() => ({}));
+        const charges: any[] = pendingJson.charges || [];
+        setPendingChargesByLease((p) => ({
+          ...p,
+          [leaseId]: charges.map((c: any) => ({ id: c.id, label: c.label, occurred_at: c.occurred_at, amount: Number(c.amount || 0), checked: true })),
         }));
       } catch {
         // ignore — user can still enter amounts manually
@@ -1073,11 +1085,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
           .filter((d) => d.label.trim() && Number(d.amount) > 0)
           .map((d) => ({ label: d.label.trim(), amount: Math.round(Number(d.amount) * 100) / 100 }));
 
-        const totalRetained = [...imputed, ...damages].reduce((s, i) => s + i.amount, 0);
+        const pendingCharges = (pendingChargesByLease[leaseId] || [])
+          .filter((c) => c.checked && Number(c.amount) > 0)
+          .map((c) => ({ transaction_id: c.id, label: c.label, amount: Math.round(Number(c.amount) * 100) / 100 }));
+
+        const totalRetained = [...imputed, ...damages, ...pendingCharges].reduce((s, i) => s + i.amount, 0);
         const paidAmount = Number(form.paid_amount || 0);
         const totalReturned = Math.max(0, Math.round((paidAmount - totalRetained) * 100) / 100);
 
-        body = { ...body, imputed_months: imputed, damage_items: damages, retained_amount: totalRetained, returned_amount: totalReturned };
+        body = { ...body, imputed_months: imputed, damage_items: damages, pending_charges: pendingCharges, retained_amount: totalRetained, returned_amount: totalReturned };
       }
 
       const resp = await fetch("/api/deposits", {
@@ -2393,6 +2409,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
               {depositAction === "return" ? (() => {
                 const imputedMonths = imputedMonthsByLease[l.id] || [];
                 const damageItems = damageItemsByLease[l.id] || [];
+                const pendingCharges = pendingChargesByLease[l.id] || [];
                 const unpaidLoading = unpaidLoadingByLease[l.id] || false;
                 const paidAmt = Number(depositForm?.paid_amount || l.deposit_paid_amount || l.deposit_amount || 0);
 
@@ -2402,7 +2419,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                 const damageTotal = damageItems
                   .filter((d) => d.label.trim() && Number(d.amount) > 0)
                   .reduce((s, d) => s + (Number(d.amount) || 0), 0);
-                const totalRetained = Math.round((checkedImputedTotal + damageTotal) * 100) / 100;
+                const checkedPendingChargesTotal = pendingCharges
+                  .filter((c) => c.checked)
+                  .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+                const totalRetained = Math.round((checkedImputedTotal + damageTotal + checkedPendingChargesTotal) * 100) / 100;
                 const totalReturned = Math.max(0, Math.round((paidAmt - totalRetained) * 100) / 100);
                 const overRetained = totalRetained > paidAmt + 0.01;
 
@@ -2410,6 +2430,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                   setImputedMonthsByLease((p) => ({ ...p, [l.id]: fn(p[l.id] || []) }));
                 const setDamages = (fn: (prev: (typeof damageItems)) => (typeof damageItems)) =>
                   setDamageItemsByLease((p) => ({ ...p, [l.id]: fn(p[l.id] || []) }));
+                const setPendingCharges = (fn: (prev: (typeof pendingCharges)) => (typeof pendingCharges)) =>
+                  setPendingChargesByLease((p) => ({ ...p, [l.id]: fn(p[l.id] || []) }));
 
                 return (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
@@ -2455,7 +2477,41 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                       )}
                     </div>
 
-                    {/* Bloc 2 : Dégradations matérielles */}
+                    {/* Bloc 2 : Charges récupérables en attente (ex: TEOM calculée via Loky/l'outil dédié, jamais réclamée) */}
+                    <div className="space-y-2">
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-slate-500">Charges récupérables en attente</p>
+                      {unpaidLoading ? (
+                        <p className="text-xs text-slate-400 italic">Chargement…</p>
+                      ) : pendingCharges.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">Aucune charge récupérable en attente sur ce bail (ex : TEOM).</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {pendingCharges.map((c, i) => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={c.checked}
+                                onChange={(e) => setPendingCharges((prev) => prev.map((x, j) => j === i ? { ...x, checked: e.target.checked } : x))}
+                                className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+                              />
+                              <span className="flex-1 text-xs text-slate-700">{c.label}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={c.amount}
+                                onChange={(e) => setPendingCharges((prev) => prev.map((x, j) => j === i ? { ...x, amount: Number(e.target.value) || 0 } : x))}
+                                className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                                disabled={!c.checked}
+                              />
+                              <span className="text-xs text-slate-500">€</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bloc 3 : Dégradations matérielles */}
                     <div className="space-y-2">
                       <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-slate-500">Dégradations matérielles</p>
                       {damageItems.length === 0 ? (
