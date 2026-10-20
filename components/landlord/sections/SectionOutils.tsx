@@ -27,7 +27,7 @@ import type { Lease, Property } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
-import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
+import { xhrUploadDirect, xhrUploadToSignedUrl } from "../../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../../UploadProgressBar";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import { NiceSelect } from "../ui/NiceSelect";
@@ -941,9 +941,24 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
   );
 }
 
-function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+function TeomTool({
+  userId,
+  properties = [],
+  leases = [],
+  tenants = [],
+  onBack,
+  onFinanceDraft,
+}: {
+  userId: string;
+  properties?: Property[];
+  leases?: Lease[];
+  tenants?: Tenant[];
+  onBack: () => void;
+  onFinanceDraft: (draft: FinanceTransactionDraft) => void;
+}) {
   const storageKey = `lokt:teom-tool:draft:${userId}`;
   const load = <T,>(key: string, fallback: T): T => { try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const v = JSON.parse(s)[key]; if (v !== undefined) return v as T; } } catch {} return fallback; };
+  const [selectedPropertyId, setSelectedPropertyId] = useState(() => load("selectedPropertyId", ""));
   const [assetLabel, setAssetLabel] = useState(() => load("assetLabel", ""));
   const [occupantLabel, setOccupantLabel] = useState(() => load("occupantLabel", ""));
   const [propertyTax, setPropertyTax] = useState(() => load("propertyTax", ""));
@@ -953,9 +968,86 @@ function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: 
   const [occupancyStart, setOccupancyStart] = useState(() => load("occupancyStart", `${new Date().getFullYear()}-01-01`));
   const [occupancyEnd, setOccupancyEnd] = useState(() => load("occupancyEnd", `${new Date().getFullYear()}-12-31`));
   const [lotShare, setLotShare] = useState(() => load("lotShare", "100"));
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractNote, setExtractNote] = useState<string | null>(null);
   useEffect(() => {
-    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare })); } catch {}
-  }, [storageKey, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare]);
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare })); } catch {}
+  }, [storageKey, selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare]);
+
+  // Bien sélectionné → déduit automatiquement le locataire et la période
+  // d'occupation réelle sur l'exercice depuis le bail le plus pertinent
+  // (celui qui chevauche le plus la période de taxe), au lieu de laisser
+  // "01/01 au 31/12" par défaut qui est faux dès qu'il y a eu un changement
+  // de locataire en cours d'année. Baux terminés inclus (voir
+  // isEDLSelectableLease pour la même logique rétrospective) : la taxe
+  // porte sur une année passée, le bail pertinent peut très bien être clos.
+  useEffect(() => {
+    if (!selectedPropertyId) return;
+    const property = properties.find((p) => p.id === selectedPropertyId);
+    if (property) setAssetLabel(property.label || propertyAddress(property) || "");
+
+    const propertyLeases = leases.filter((l) => l.property_id === selectedPropertyId);
+    let best: Lease | null = null;
+    let bestOverlap = -1;
+    for (const l of propertyLeases) {
+      const overlap = overlapDaysInclusive(periodStart, periodEnd, l.start_date, l.end_date || periodEnd);
+      if (overlap > bestOverlap) { bestOverlap = overlap; best = l; }
+    }
+    if (best && bestOverlap > 0) {
+      const tenant = tenants.find((t) => t.id === best!.tenant_id);
+      if (tenant?.full_name) setOccupantLabel(tenant.full_name);
+      setOccupancyStart(best.start_date > periodStart ? best.start_date : periodStart);
+      setOccupancyEnd(best.end_date && best.end_date < periodEnd ? best.end_date : periodEnd);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPropertyId]);
+
+  const uploadAndExtractPropertyTax = async (file: File) => {
+    if (!supabase) return setExtractError("Supabase indisponible.");
+    setExtracting(true);
+    setExtractError(null);
+    setExtractNote(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Session expirée.");
+      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+
+      const uploadRes = await fetch("/api/landlord/assistant/document-upload-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ sizeBytes: file.size }),
+      });
+      const uploadData = await uploadRes.json().catch(() => ({}));
+      if (!uploadRes.ok) throw new Error(uploadData?.error || "Import impossible.");
+      await xhrUploadToSignedUrl(uploadData.signedUrl, file, () => {});
+
+      const extractRes = await fetch("/api/tools/extract-property-tax", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ stagingPath: uploadData.path }),
+      });
+      const extractData = await extractRes.json().catch(() => ({}));
+      if (!extractRes.ok) throw new Error(extractData?.error || "Extraction impossible.");
+      if (!extractData.isPropertyTaxNotice) {
+        setExtractError(extractData.notes || "Ce document ne ressemble pas à un avis de taxe foncière.");
+        return;
+      }
+      if (extractData.propertyTaxTotal != null) setPropertyTax(String(extractData.propertyTaxTotal));
+      if (extractData.teomAmount != null) setTeomAmount(String(extractData.teomAmount));
+      if (extractData.year) {
+        setPeriodStart(`${extractData.year}-01-01`);
+        setPeriodEnd(`${extractData.year}-12-31`);
+      }
+      if (extractData.notes) setExtractNote(extractData.notes);
+    } catch (e: any) {
+      setExtractError(e?.message || "Extraction impossible.");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const teom = num(teomAmount);
   const share = clampPercent(lotShare);
   const periodDays = daysInclusive(periodStart, periodEnd);
@@ -998,6 +1090,41 @@ function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: 
           ]}
           finance="L’import Finance peut créer une recette attendue de TEOM récupérable. Vous pouvez aussi importer la taxe foncière comme dépense si elle n’est pas déjà saisie."
         />
+        {properties.length > 0 && (
+          <label className="mb-3 block space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Sélectionner le bien</span>
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              className={toolInputClass}
+            >
+              <option value="">— Choisir pour pré-remplir bien/occupant/période d'occupation —</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.label || propertyAddress(p)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold text-slate-600">Importer l'avis de taxe foncière (PDF)</p>
+          <p className="mt-0.5 text-xs text-slate-500">Remplit automatiquement la taxe foncière totale et le montant TEOM ci-dessous.</p>
+          <input
+            type="file"
+            accept="application/pdf"
+            disabled={extracting}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void uploadAndExtractPropertyTax(file);
+            }}
+            className="mt-2 block w-full text-xs text-slate-600 file:mr-3 file:rounded-full file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-slate-800 disabled:opacity-50"
+          />
+          {extracting && <p className="mt-2 text-xs font-medium text-slate-500">Analyse du document…</p>}
+          {extractError && <p className="mt-2 text-xs font-medium text-red-600">{extractError}</p>}
+          {extractNote && <p className="mt-2 text-xs font-medium text-amber-700">{extractNote}</p>}
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-4">
           <label className="space-y-1 lg:col-span-2">
             <span className="text-xs font-semibold text-slate-600">Bien / adresse</span>
@@ -2475,7 +2602,7 @@ export function SectionOutils({
   if (activeTool === "teom") {
     return (
       <>
-        <TeomTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <TeomTool userId={userId} properties={properties} leases={leases} tenants={tenants} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
         {financeModal}
         {financeFeedback}
       </>
