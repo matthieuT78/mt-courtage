@@ -956,6 +956,11 @@ function TeomTool({
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractNote, setExtractNote] = useState<string | null>(null);
+  const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(null);
+  const [selectedTenantEmail, setSelectedTenantEmail] = useState<string | null>(null);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendOk, setSendOk] = useState<string | null>(null);
   useEffect(() => {
     try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare })); } catch {}
   }, [storageKey, selectedPropertyId, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare]);
@@ -984,9 +989,50 @@ function TeomTool({
       if (tenant?.full_name) setOccupantLabel(tenant.full_name);
       setOccupancyStart(best.start_date > periodStart ? best.start_date : periodStart);
       setOccupancyEnd(best.end_date && best.end_date < periodEnd ? best.end_date : periodEnd);
+      setSelectedLeaseId(best.id);
+      setSelectedTenantEmail(tenant?.email || null);
+    } else {
+      setSelectedLeaseId(null);
+      setSelectedTenantEmail(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPropertyId]);
+
+  const sendTeomRecoveryEmail = async () => {
+    if (!supabase || !selectedLeaseId) return;
+    setSendingRequest(true);
+    setSendError(null);
+    setSendOk(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Session expirée.");
+      const resp = await fetch("/api/tools/send-teom-recovery-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          userId,
+          leaseId: selectedLeaseId,
+          periodStart,
+          periodEnd,
+          occupancyStart,
+          occupancyEnd,
+          occupiedDays,
+          periodDays,
+          teomAmount: teom,
+          lotSharePercent: share,
+          recoverableAmount: recoverable,
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || "Envoi impossible.");
+      setSendOk("Demande envoyée au locataire par email.");
+    } catch (e: any) {
+      setSendError(e?.message || "Envoi impossible.");
+    } finally {
+      setSendingRequest(false);
+    }
+  };
 
   const uploadAndExtractPropertyTax = async (file: File) => {
     if (!supabase) return setExtractError("Supabase indisponible.");
@@ -1076,19 +1122,20 @@ function TeomTool({
           finance="L’import Finance peut créer une recette attendue de TEOM récupérable. Vous pouvez aussi importer la taxe foncière comme dépense si elle n’est pas déjà saisie."
         />
         {properties.length > 0 && (
-          <label className="mb-3 block space-y-1">
+          <div className="mb-3 space-y-1">
             <span className="text-xs font-semibold text-slate-600">Sélectionner le bien</span>
-            <select
+            <NiceSelect
+              icon={HomeModernIcon}
               value={selectedPropertyId}
-              onChange={(e) => setSelectedPropertyId(e.target.value)}
-              className={toolInputClass}
-            >
-              <option value="">— Choisir pour pré-remplir bien/occupant/période d'occupation —</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>{p.label || propertyAddress(p)}</option>
-              ))}
-            </select>
-          </label>
+              onChange={setSelectedPropertyId}
+              placeholder="Choisir pour pré-remplir bien/occupant/période d'occupation"
+              options={properties.map((p) => ({
+                value: p.id,
+                label: p.label || propertyAddress(p) || "Bien",
+                subtitle: p.city || undefined,
+              }))}
+            />
+          </div>
         )}
 
         <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -1214,6 +1261,29 @@ function TeomTool({
             Importer la TEOM récupérable
           </button>
         </FinanceImportActions>
+
+        {selectedLeaseId ? (
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold text-slate-600">Demander la régularisation au locataire</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {selectedTenantEmail
+                ? `Envoie un email explicatif avec le détail du calcul à ${selectedTenantEmail}.`
+                : "Ce locataire n'a pas d'adresse email enregistrée — impossible d'envoyer la demande."}
+            </p>
+            <button
+              type="button"
+              disabled={!selectedTenantEmail || recoverable <= 0 || sendingRequest}
+              onClick={sendTeomRecoveryEmail}
+              className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              <EnvelopeIcon className="h-4 w-4" />
+              {sendingRequest ? "Envoi..." : "Envoyer la demande au locataire"}
+            </button>
+            {sendOk && <p className="mt-2 text-xs font-medium text-emerald-700">{sendOk}</p>}
+            {sendError && <p className="mt-2 text-xs font-medium text-red-600">{sendError}</p>}
+          </div>
+        ) : null}
+
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => copyToolSummary(summary, setCopied)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800">
             <DocumentTextIcon className="h-4 w-4" />
