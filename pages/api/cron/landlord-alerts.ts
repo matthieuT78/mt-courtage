@@ -5,6 +5,7 @@ import { hasValidCronSecret } from "../../../lib/cronAuth";
 import {
   normalizeLandlordAlertPreferences,
   planAllowsLandlordAlert,
+  planAllowsAllLandlordAlerts,
   type LandlordAlertPreferenceKey,
   type LandlordAlertPreferences,
 } from "../../../lib/landlordAlertPreferences";
@@ -13,6 +14,7 @@ import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 import type { DelegatedServiceKey } from "../../../lib/landlord/delegatedServices";
+import { emailLayout } from "../../../lib/emails/layout";
 
 type AlertTone = "red" | "amber" | "slate";
 
@@ -25,6 +27,10 @@ type AlertItem = {
   href: string;
   propertyId?: string;
   actionable?: boolean; // false pour les alertes purement informatives (rien à traiter côté lokt)
+  // HTML additionnel affiché sous le "pourquoi/comment" — réservé au pitch
+  // lokt·one + tuto manuel, montré uniquement aux comptes gratuits sur
+  // l'alerte "Loyer à valider" (cf. late_payment ci-dessous).
+  upsellHtml?: string;
 };
 
 type LeaseRow = Record<string, any>;
@@ -190,8 +196,8 @@ async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
 // au bailleur le sens métier de chaque titre technique.
 const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; how: string }>> = {
   late_payment: {
-    why: "Un loyer non réglé à l'échéance doit être traité vite : plus l'inaction dure, plus les démarches ultérieures (relance, mise en demeure, procédure) prennent du retard.",
-    how: "Contactez d'abord le locataire pour un rappel amiable. Si le retard persiste, passez à une relance formelle puis à une mise en demeure par lettre recommandée.",
+    why: "Cette alerte signale que le paiement n'a pas été validé dans lokt — pas que votre locataire est en retard. Sans synchronisation bancaire, l'outil ne peut pas savoir si le loyer est arrivé tant que vous ne le confirmez pas vous-même.",
+    how: "Si le loyer est bien arrivé, validez-le en quelques secondes depuis la section Quittances. S'il n'est pas arrivé, c'est le moment de relancer votre locataire.",
   },
   receipt_to_finalize: {
     why: "Le paiement est confirmé mais la quittance ne lui a pas encore été envoyée — le locataire n'a donc pas de preuve de paiement officielle.",
@@ -243,19 +249,99 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
   },
 };
 
+function euro(n: number) {
+  return Number(n || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
+
+// Reprend le visuel de lib/freePlanQuittanceReminderEmail.ts (tableau récap,
+// étapes numérotées en cercles, bloc CTA sombre) plutôt que le style brut des
+// autres cartes d'alerte — celle-ci a un but marketing, elle doit avoir fière
+// allure, pas ressembler à une notification technique.
+function buildFreePlanLatePaymentUpsell(params: {
+  propertyLabel: string;
+  tenantName: string;
+  rentPeriod: { rent: number; charges: number; total: number } | null;
+}) {
+  const baseUrl = appUrl();
+  const tarifsUrl = `${baseUrl}/tarifs?ref=late_payment_alert`;
+  const quittancesUrl = `${baseUrl}/espace-bailleur?tab=quittances`;
+  const total = params.rentPeriod?.total ?? 0;
+  const tenantFirstName = params.tenantName.split(" ")[0];
+
+  const steps: Array<{ label: string; action: string; rest: string }> = [
+    { label: "Ouvrez la section", action: "« Quittances »", rest: "depuis le menu de votre espace bailleur." },
+    { label: "Cliquez sur", action: "« Confirmer payé »", rest: "(ou « Solde reçu » si le paiement est partiel) en face de ce locataire." },
+    { label: "Vérifiez le montant, et laissez cochée", action: "« Envoyer la quittance au locataire par email une fois générée »", rest: "." },
+    { label: "Validez", action: "— paiement confirmé, PDF généré et quittance envoyée à votre locataire", rest: "en un seul clic." },
+  ];
+  const stepsHtml = steps
+    .map(
+      (s, i) => `
+    <tr>
+      <td style="padding:7px 10px 7px 0;vertical-align:top;width:26px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;background:#0f172a;color:#ffffff;font-size:12px;font-weight:800;">${i + 1}</span>
+      </td>
+      <td style="padding:7px 0;font-size:13px;line-height:1.5;color:#334155;">
+        ${s.label} <b style="color:#0f172a;">${s.action}</b> ${s.rest}
+      </td>
+    </tr>`
+    )
+    .join("");
+
+  return `
+    <div style="margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;padding:14px 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:13px;">
+        <tr>
+          <td style="padding:4px 0;color:#64748b;">Locataire</td>
+          <td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${params.tenantName}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#64748b;">Montant attendu</td>
+          <td style="padding:4px 0;text-align:right;font-weight:800;color:#0f172a;">${euro(total)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div style="margin-top:12px;padding:20px;border-radius:12px;background:#0f172a;">
+      <p style="margin:0 0 4px;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;font-weight:700;">
+        La solution simple
+      </p>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:#e2e8f0;">
+        Avec <b style="color:#ffffff;">lokt·one</b>, la confirmation du paiement, la quittance et l'envoi à ${tenantFirstName} se font automatiquement, chaque mois, sans que vous ayez à vous reconnecter.
+      </p>
+      <a href="${tarifsUrl}" style="display:block;text-align:center;padding:14px 18px;border-radius:10px;background:#ffffff;color:#0f172a;text-decoration:none;font-weight:800;font-size:15px;">
+        Automatiser mes quittances — 6,90&nbsp;€/mois
+      </a>
+    </div>
+
+    <p style="margin:18px 0 8px;text-align:center;font-size:13px;color:#64748b;">
+      Ou faites-le vous-même maintenant, en 4 étapes :
+    </p>
+    <div style="border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;padding:10px 14px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+        ${stepsHtml}
+      </table>
+    </div>
+    <a href="${quittancesUrl}" style="display:block;text-align:center;margin-top:12px;padding:12px 18px;border-radius:10px;border:1px solid #cbd5e1;color:#0f172a;text-decoration:none;font-weight:700;font-size:14px;">
+      Aller dans la section Quittances
+    </a>
+  `;
+}
+
 function renderAlertCard(alert: AlertItem) {
   const baseUrl = appUrl();
-  const color = alert.tone === "red" ? "#b91c1c" : alert.tone === "amber" ? "#92400e" : "#334155";
-  const bg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f8fafc";
+  const accent = alert.tone === "red" ? "#dc2626" : alert.tone === "amber" ? "#d97706" : "#94a3b8";
   const actionable = alert.actionable !== false;
   const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
 
   const guidance = ALERT_GUIDANCE[alert.preferenceKey];
   const guidanceNote = guidance
-    ? `<p style="margin:8px 0 0;color:#334155;font-size:12px;line-height:1.5">
-        <strong>Pourquoi :</strong> ${guidance.why}<br/>
-        <strong>Comment traiter :</strong> ${guidance.how}
-      </p>`
+    ? `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#f8fafc;">
+        <p style="margin:0;color:#475569;font-size:12.5px;line-height:1.55;">
+          <strong style="color:#0f172a;">Pourquoi :</strong> ${guidance.why}<br/>
+          <strong style="color:#0f172a;">Comment traiter :</strong> ${guidance.how}
+        </p>
+      </div>`
     : "";
 
   // L'état des lieux (entrée ou sortie) reste géré par le bailleur pour ce bail précis : si
@@ -269,11 +355,23 @@ function renderAlertCard(alert: AlertItem) {
         </p>`
       : "";
 
+  // Carte à visée marketing (upsellHtml) : pas de boîte ambre/rouge imbriquée
+  // autour d'un bloc déjà riche visuellement — juste un titre sobre, puis le
+  // contenu prend toute la place.
+  if (alert.upsellHtml) {
+    return `
+      <div style="margin-bottom:16px;">
+        <p style="margin:0 0 4px;font-weight:700;color:#0f172a;font-size:15px;">${alert.title}</p>
+        <p style="margin:0;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
+        ${alert.upsellHtml}
+      </div>`;
+  }
+
   return `
-      <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg};margin-bottom:12px;">
-        <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
-        <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
-        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
+      <div style="margin-bottom:14px;padding:16px 18px;border-radius:12px;border:1px solid #e2e8f0;border-left:4px solid ${accent};background:#ffffff;">
+        <p style="margin:0 0 6px;font-weight:700;color:#0f172a;font-size:15px;">${alert.title}</p>
+        <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.5;">${alert.detail}</p>
+        <a href="${baseUrl}${alert.href}" style="display:inline-block;padding:10px 16px;border-radius:10px;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;">${linkLabel}</a>
         ${guidanceNote}
         ${optOutNote}
       </div>`;
@@ -300,16 +398,19 @@ function renderDigestEmail(alerts: AlertItem[]) {
     ? "Cet email automatique suit l'échéancier métier de chaque alerte. Chacune disparaît dès que l'action correspondante est traitée."
     : "Cet email automatique regroupe vos rappels du jour. Aucune action n'est requise pour les points marqués comme préventifs.";
 
-  return `
-    <div style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#0f172a">
-      <p>Bonjour,</p>
-      <p>${intro}</p>
+  const contentHtml = `
+    <p style="margin:12px 0 0;font-size:14px;color:#334155;">${intro}</p>
+    <div style="margin-top:16px;">
       ${alerts.map(renderAlertCard).join("")}
-      <p style="margin-top:4px;font-size:12px;color:#64748b">
-        ${footer}
-      </p>
     </div>
   `;
+
+  return emailLayout({
+    title: digestSubject(alerts),
+    preheader: intro,
+    contentHtml,
+    footerText: footer,
+  });
 }
 
 function digestSubject(alerts: AlertItem[]) {
@@ -488,17 +589,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!paid && daysToDue < 0) {
             // Premier palier à J+3 (pas J+1) : laisse le temps au mail de confirmation
-            // de paiement (envoyé à J+1) de faire son travail avant de parler de retard.
+            // de paiement (envoyé à J+1, plan payant) de faire son travail avant de
+            // reparler de cette période.
             const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [3, 7, 14], 7);
             if (scheduleKey) {
+              // "Loyer à valider", pas "Retard de paiement" : sans synchro bancaire,
+              // on sait seulement que le bailleur n'a pas confirmé — pas que le
+              // locataire n'a pas payé. Accuser à tort serait trompeur (et le ton
+              // rouge/urgent avec).
+              const isFreePlan = !planAllowsAllLandlordAlerts(userPlan);
+              const rentPeriod = isFreePlan ? getLeaseRentPeriod(lease, period.start.slice(0, 7)) : null;
               alerts.push({
                 key: scheduleKey,
                 preferenceKey: "late_payment",
-                tone: "red",
-                title: `Retard de paiement - ${labels.property}`,
-                detail: `${labels.tenant} n'est pas marqué payé pour la période ${period.start} au ${period.end}. Échéance dépassée depuis ${Math.abs(daysToDue)} jour(s).`,
-                href: "/espace-bailleur",
+                tone: "amber",
+                title: `Loyer à valider - ${labels.property}`,
+                detail: `Le loyer de ${labels.tenant} n'a pas été validé dans lokt pour la période ${period.start} au ${period.end} — échéance dépassée depuis ${Math.abs(daysToDue)} jour(s). Cela ne veut pas dire qu'il n'a pas été payé, juste que ce n'est pas encore confirmé dans l'outil.`,
+                href: "/espace-bailleur?tab=quittances",
                 propertyId: lease.property_id,
+                upsellHtml: isFreePlan ? buildFreePlanLatePaymentUpsell({ propertyLabel: labels.property, tenantName: labels.tenant, rentPeriod }) : undefined,
               });
             }
           }
