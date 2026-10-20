@@ -743,7 +743,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
                         <button
                           type="button"
                           onClick={async () => {
-                            const win = window.open("about:blank", "_blank", "noopener,noreferrer");
+                            const win = window.open("about:blank", "_blank");
                             if (win) win.document.write("<p style=\"font-family:system-ui,sans-serif;padding:24px\">Chargement...</p>");
                             try {
                               await doc.open?.(win);
