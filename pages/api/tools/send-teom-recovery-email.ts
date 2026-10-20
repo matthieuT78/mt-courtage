@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-    const { userId, leaseId, periodStart, periodEnd, occupancyStart, occupancyEnd, occupiedDays, periodDays, teomAmount, lotSharePercent, recoverableAmount } =
+    const { userId, leaseId, periodStart, periodEnd, occupancyStart, occupancyEnd, occupiedDays, periodDays, teomAmount, lotSharePercent, recoverableAmount, preview } =
       (req.body || {}) as Record<string, any>;
     const userCheck = requireMatchingUser(auth, String(userId || ""));
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
@@ -51,6 +51,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       lotSharePercent: Number(lotSharePercent ?? 100),
       recoverableAmount: amount,
     });
+
+    if (preview) {
+      return res.status(200).json({ ok: true, preview: true, subject: built.subject, html: built.html, to: tenant.email });
+    }
 
     const mail = await sendEmailViaResend({ to: tenant.email, subject: built.subject, html: built.html });
     if (!mail.ok) return res.status(500).json({ error: mail.error || "Envoi impossible." });
