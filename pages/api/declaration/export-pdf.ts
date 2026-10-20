@@ -76,8 +76,9 @@ function buildHtml(params: {
     isDeficit: boolean;
     accountantNote: string | null;
   } | null;
+  depositMovements: Array<{ date: string; property: string; tenant: string; label: string; amount: number; sign: "+" | "-" }>;
 }) {
-  const { year, categoryLabel, regimeLabel, rows, guide } = params;
+  const { year, categoryLabel, regimeLabel, rows, guide, depositMovements } = params;
   const eur = (n: number) =>
     Number.isFinite(n) ? new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n) : "0 €";
   const generatedAt = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
@@ -85,6 +86,19 @@ function buildHtml(params: {
   const rowsHtml = rows
     .map(([label, value]) => `<tr><td>${escapeHtml(label)}</td><td class="val">${escapeHtml(value)}</td></tr>`)
     .join("");
+
+  const depositHtml = depositMovements.length
+    ? `
+    <p class="section-title">Mouvements du dépôt de garantie — ${year}</p>
+    <table><thead><tr><td class="th">Date</td><td class="th">Bien</td><td class="th">Locataire</td><td class="th">Mouvement</td><td class="th val">Montant</td></tr></thead><tbody>
+      ${depositMovements
+        .map(
+          (m) =>
+            `<tr><td>${escapeHtml(m.date)}</td><td>${escapeHtml(m.property)}</td><td>${escapeHtml(m.tenant)}</td><td>${escapeHtml(m.label)}</td><td class="val ${m.sign === "+" ? "pos" : "neg"}">${m.sign} ${escapeHtml(eur(m.amount))}</td></tr>`
+        )
+        .join("")}
+    </tbody></table>`
+    : "";
 
   const guideHtml = guide
     ? `
@@ -125,6 +139,10 @@ function buildHtml(params: {
   table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
   td { padding: 7px 4px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
   td.val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: #0f172a; }
+  td.th { border-top: none; border-bottom: 2px solid #e2e8f0; font-size: 8.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #94a3b8; }
+  td.pos { color: #047857; }
+  td.neg { color: #b91c1c; }
+  .section-title { font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
   .guide { border: 2px solid #e0e7ff; border-radius: 14px; padding: 16px; background: #f5f5ff; margin-bottom: 16px; }
   .guide-eyebrow { font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #4f46e5; }
   .guide-row { display: flex; justify-content: space-between; gap: 16px; margin-top: 8px; }
@@ -151,6 +169,7 @@ function buildHtml(params: {
     </div>
     <table><tbody>${rowsHtml}</tbody></table>
     ${guideHtml}
+    ${depositHtml}
     <div class="footer">
       Document généré via lokt.fr à titre d'aide à la préparation — ce n'est pas un logiciel de déclaration officiel.
       Les cases et numéros de formulaires sont indicatifs et peuvent changer chaque année : vérifiez sur impots.gouv.fr avant de déclarer.
@@ -166,12 +185,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-    const { year, categoryLabel, regimeLabel, rows, guide } = (req.body || {}) as {
+    const { year, categoryLabel, regimeLabel, rows, guide, depositMovements } = (req.body || {}) as {
       year?: number;
       categoryLabel?: string;
       regimeLabel?: string;
       rows?: Array<[string, string]>;
       guide?: any;
+      depositMovements?: Array<{ date: string; property: string; tenant: string; label: string; amount: number; sign: "+" | "-" }>;
     };
 
     if (!year || !Array.isArray(rows)) return res.status(400).json({ error: "Données de déclaration invalides." });
@@ -182,6 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       regimeLabel: String(regimeLabel || ""),
       rows,
       guide: guide || null,
+      depositMovements: Array.isArray(depositMovements) ? depositMovements : [],
     });
 
     const pdfBuf = await renderPdfFromHtml(html);

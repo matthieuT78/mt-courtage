@@ -157,7 +157,11 @@ function statusToneClass(tone: "emerald" | "amber" | "red" | "slate") {
 }
 
 // Catégories Finance qui ne sont pas des revenus fiscaux
-const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "deposit"]);
+// "deposit_retained" (retenue sur caution) doit aussi être exclue des recettes
+// importées depuis Finance comme les deux autres : sans ça, une retenue tombe
+// par défaut dans "otherIncome" (ligne 538, aucune catégorie "rent"/"charges_recovered"
+// ne la capte), mélangée aux vraies autres recettes sans que l'utilisateur le sache.
+const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "deposit_retained", "deposit"]);
 
 // Taux de réduction d'impôt Pinel "classique" selon durée d'engagement et année d'acquisition —
 // le dispositif a été dégressif en 2023 puis 2024 avant sa fermeture aux nouveaux investissements
@@ -858,12 +862,55 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     lmnpBicDeficit, amortizationUsed, amortizationDeferred, amortizationTotal, commonCharges, year, cfe,
   ]);
 
+  // Mouvements de dépôt de garantie (encaissement/restitution/retenue) sur
+  // l'année sélectionnée, pour les biens du régime affiché — contrairement
+  // aux autres montants du formulaire, calculé à la volée à l'export plutôt
+  // que stocké, puisqu'il doit refléter Finance au moment de la transmission
+  // au comptable plutôt qu'une saisie manuelle resaisie chaque année.
+  const loadDepositMovements = async (): Promise<Array<{ date: string; property: string; tenant: string; label: string; amount: number; sign: "+" | "-" }>> => {
+    if (!supabase || !userId) return [];
+    const { start, end } = yearRange(year);
+    let query = supabase
+      .from("transactions")
+      .select("occurred_at,property_id,lease_id,category,label,amount")
+      .eq("user_id", userId)
+      .in("category", ["deposit_collected", "deposit_returned", "deposit_retained"])
+      .gte("occurred_at", start)
+      .lte("occurred_at", end)
+      .order("occurred_at", { ascending: true });
+    if (relevantPropertyIds.size > 0) query = query.in("property_id", Array.from(relevantPropertyIds));
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return [];
+
+    const leaseIds = Array.from(new Set(data.map((r: any) => r.lease_id).filter(Boolean)));
+    let tenantByLeaseId = new Map<string, string>();
+    if (leaseIds.length > 0) {
+      const { data: leaseRows } = await supabase.from("leases").select("id,tenant_id").in("id", leaseIds);
+      const tenantIds = Array.from(new Set((leaseRows || []).map((l: any) => l.tenant_id).filter(Boolean)));
+      const { data: tenantRows } = tenantIds.length
+        ? await supabase.from("tenants").select("id,full_name").in("id", tenantIds)
+        : { data: [] as any[] };
+      const nameByTenantId = new Map((tenantRows || []).map((t: any) => [t.id, t.full_name || ""]));
+      tenantByLeaseId = new Map((leaseRows || []).map((l: any) => [l.id, nameByTenantId.get(l.tenant_id) || ""]));
+    }
+
+    return data.map((r: any) => ({
+      date: new Date(String(r.occurred_at) + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }),
+      property: properties?.find((p) => p.id === r.property_id)?.label || "—",
+      tenant: (r.lease_id && tenantByLeaseId.get(r.lease_id)) || "—",
+      label: r.label || (r.category === "deposit_collected" ? "Dépôt encaissé" : r.category === "deposit_returned" ? "Dépôt restitué" : "Dépôt retenu"),
+      amount: Number(r.amount || 0),
+      sign: r.category === "deposit_collected" ? ("+" as const) : ("-" as const),
+    }));
+  };
+
   // Récap PDF prêt à imprimer/transmettre — distinct du CSV (données brutes pour import
   // comptable) : ici on veut un document lisible pour ses propres archives.
   const exportPdf = async () => {
     setPdfExporting(true);
     setErr(null);
     try {
+      const depositMovements = await loadDepositMovements();
       const rows: Array<[string, string]> = [
         ["Recettes loyers", eur(grossRent)],
         ["Charges récupérées", eur(chargesRecovered)],
@@ -896,7 +943,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       const res = await fetch("/api/declaration/export-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session?.access_token}` },
-        body: JSON.stringify({ year, categoryLabel, regimeLabel: regimeLabel(regime), rows, guide: declarationGuide }),
+        body: JSON.stringify({ year, categoryLabel, regimeLabel: regimeLabel(regime), rows, guide: declarationGuide, depositMovements }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
