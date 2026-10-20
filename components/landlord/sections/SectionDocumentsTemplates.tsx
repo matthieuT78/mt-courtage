@@ -59,6 +59,7 @@ type VaultDocument = {
   open?: (win?: Window | null) => Promise<void>;
   download?: () => Promise<void>;
   deletable?: boolean;
+  manageHref?: string;
 };
 
 type StorageData = {
@@ -410,6 +411,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               date: allocation.period_end || allocation.updated_at || allocation.created_at,
               sizeBytes: allocation.invoice_size_bytes,
               source: "Boîte à outils",
+              manageHref: "/espace-bailleur?tab=outils",
             });
           });
 
@@ -425,6 +427,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
               date: reading.created_at,
               sizeBytes: reading.photo_size_bytes,
               source: "Boîte à outils",
+              manageHref: "/espace-bailleur?tab=outils",
             });
           });
 
@@ -791,6 +794,14 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases,
                           <EyeIcon className="h-3.5 w-3.5" aria-hidden="true" />
                           Voir
                         </button>
+                      ) : doc.manageHref ? (
+                        <Link
+                          href={doc.manageHref}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-900 hover:bg-slate-100"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          Gérer dans la Boîte à outils
+                        </Link>
                       ) : (
                         <span className="inline-flex h-8 items-center rounded-full border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-500">Dans {doc.source}</span>
                       )}
