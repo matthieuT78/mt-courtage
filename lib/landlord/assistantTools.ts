@@ -1613,7 +1613,7 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
   },
   {
     name: "attach_invoice_document",
-    description: "Classe dans une écriture Finance le PDF de facture précédemment importé (via extract_invoice_document) et déplace le fichier de son emplacement de transit vers le dossier définitif de l'écriture. À appeler seulement après que l'écriture correspondante a été créée (add_finance_transaction confirmé) et que l'utilisateur a confirmé vouloir y attacher ce document.",
+    description: "Classe dans une écriture Finance le PDF de facture précédemment importé (via extract_invoice_document) et déplace le fichier de son emplacement de transit vers le dossier définitif de l'écriture. Fonctionne aussi bien juste après la création d'une écriture (add_finance_transaction confirmé) que pour attacher rétroactivement un justificatif manquant sur une écriture déjà existante (ex. 'ajoute cette facture à l'écriture X') — dans les deux cas, demande d'abord confirmation à l'utilisateur avant d'appeler cet outil.",
     input_schema: {
       type: "object",
       properties: {
@@ -1969,6 +1969,62 @@ N'invente jamais une valeur absente du document : utilise null. Les montants son
       rows.push({ label: "Écriture", value: tx.label || FINANCE_CATEGORY_LABEL[tx.category] || tx.category });
       rows.push({ label: "Montant", value: euro(tx.amount) });
       rows.push({ label: "Conséquence", value: "Arrêtée à partir d'aujourd'hui, occurrences futures supprimées" });
+      return rows;
+    },
+  },
+  {
+    name: "update_finance_transaction",
+    description: "Modifie une écriture Finance simple (non récurrente) déjà créée : montant, libellé, catégorie, date et/ou notes. Jamais pour une écriture récurrente (utilise update_recurring_transaction) ni pour une écriture liée à un loyer/une quittance (le montant d'un loyer se corrige uniquement via confirm_payment).",
+    input_schema: {
+      type: "object",
+      properties: {
+        transaction_id: { type: "string" },
+        amount: { type: "number" },
+        label: { type: "string" },
+        category: { type: "string", enum: ["fees", "management", "repairs", "copro", "insurance", "tax", "utilities", "charges_recovered", "regularization", "loan", "other"] },
+        occurred_at: { type: "string", description: "YYYY-MM-DD." },
+        notes: { type: "string" },
+      },
+      required: ["transaction_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin
+        .from("transactions")
+        .select("id,is_recurring,recurrence_parent_id,receipt_id")
+        .eq("id", args.transaction_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!tx) throw new Error("Écriture introuvable ou non autorisée.");
+      if (tx.is_recurring || tx.recurrence_parent_id) throw new Error("Cette écriture est récurrente — utilise update_recurring_transaction.");
+      if (tx.receipt_id) throw new Error("Cette écriture est liée à un loyer confirmé — son montant se corrige uniquement via confirm_payment, pas directement.");
+      if (args.amount == null && !args.label && !args.category && !args.occurred_at && args.notes == null) {
+        throw new Error("Indique au moins un champ à modifier (montant, libellé, catégorie, date ou notes).");
+      }
+
+      const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+      if (args.amount != null) patch.amount = Number(args.amount);
+      if (args.label) patch.label = String(args.label).trim();
+      if (args.category) patch.category = String(args.category);
+      if (args.occurred_at) patch.occurred_at = String(args.occurred_at);
+      if (args.notes != null) patch.notes = String(args.notes).trim() || null;
+
+      const { error } = await admin.from("transactions").update(patch).eq("id", args.transaction_id).eq("user_id", ctx.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: tx } = await admin.from("transactions").select("label,category,amount,property_id").eq("id", args.transaction_id).eq("user_id", ctx.userId).maybeSingle();
+      const rows: Array<{ label: string; value: string }> = [];
+      if (tx?.property_id) rows.push({ label: "Bien", value: await resolvePropertyLabel(admin, ctx.userId, tx.property_id) });
+      rows.push({ label: "Écriture", value: tx?.label || FINANCE_CATEGORY_LABEL[String(tx?.category)] || String(tx?.category || "—") });
+      if (tx) rows.push({ label: "Montant actuel", value: euro(tx.amount) });
+      if (args.amount != null) rows.push({ label: "Nouveau montant", value: euro(args.amount) });
+      if (args.label) rows.push({ label: "Nouveau libellé", value: String(args.label) });
+      if (args.category) rows.push({ label: "Nouvelle catégorie", value: FINANCE_CATEGORY_LABEL[String(args.category)] || String(args.category) });
+      if (args.occurred_at) rows.push({ label: "Nouvelle date", value: String(args.occurred_at) });
       return rows;
     },
   },

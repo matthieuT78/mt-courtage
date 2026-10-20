@@ -46,6 +46,7 @@ const TOOL_ACTION_LABEL: Record<string, string> = {
   delete_finance_transaction: "Supprimer cette écriture",
   stop_recurring_transaction: "Arrêter cette récurrente",
   update_recurring_transaction: "Modifier cette récurrente",
+  update_finance_transaction: "Modifier cette écriture",
   send_rent_revision: "Envoyer cette révision de loyer",
   cancel_rent_revision: "Annuler cette révision",
   generate_mise_en_demeure: "Générer cette mise en demeure",
