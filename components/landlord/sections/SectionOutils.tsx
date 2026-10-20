@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
@@ -431,10 +431,14 @@ function FinanceValidationModal({
   const [form, setForm] = useState<FinanceTransactionDraft | null>(draft);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [duplicateWarning, setDuplicateWarning] = useState("");
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
   useEffect(() => {
     setForm(draft);
     setError("");
+    setDuplicateWarning("");
+    setDuplicateConfirmed(false);
   }, [draft]);
 
   const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
@@ -447,6 +451,15 @@ function FinanceValidationModal({
 
   if (!draft || !form) return null;
   const amount = Number(form.amount || 0);
+  const dupKey = `${form.propertyId || ""}|${form.leaseId || ""}|${form.category}|${form.occurredAt}|${amount}`;
+  const lastDupKeyRef = useRef(dupKey);
+  if (lastDupKeyRef.current !== dupKey) {
+    lastDupKeyRef.current = dupKey;
+    if (duplicateConfirmed || duplicateWarning) {
+      setDuplicateConfirmed(false);
+      setDuplicateWarning("");
+    }
+  }
 
   const save = async () => {
     if (!supabase || !userId) return;
@@ -454,6 +467,31 @@ function FinanceValidationModal({
     setError("");
     try {
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Montant invalide.");
+
+      // Garde anti-doublon : même bien/bail, même catégorie, même montant,
+      // même date — le cas typique d'un clic "Importer" répété sur le même
+      // outil. On avertit plutôt que bloquer, car un même bien/catégorie
+      // peut légitimement avoir plusieurs écritures dans l'année (ex :
+      // charges appelées par trimestre).
+      if (!duplicateConfirmed) {
+        let dupQuery = supabase
+          .from("transactions")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("category", form.category)
+          .eq("occurred_at", form.occurredAt)
+          .eq("amount", amount);
+        dupQuery = form.propertyId ? dupQuery.eq("property_id", form.propertyId) : dupQuery.is("property_id", null);
+        dupQuery = form.leaseId ? dupQuery.eq("lease_id", form.leaseId) : dupQuery.is("lease_id", null);
+        const { data: existing } = await dupQuery.maybeSingle();
+        if (existing) {
+          setDuplicateWarning("Une écriture identique (même bien, catégorie, montant et date) existe déjà dans Finance. Cliquez à nouveau pour l'ajouter malgré tout.");
+          setDuplicateConfirmed(true);
+          setSaving(false);
+          return;
+        }
+      }
+
       const payload = {
         user_id: userId,
         property_id: form.propertyId || null,
@@ -570,14 +608,23 @@ function FinanceValidationModal({
           </label>
         </div>
 
+        {duplicateWarning ? <div className="mx-5 mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">{duplicateWarning}</div> : null}
         {error ? <div className="mx-5 mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div> : null}
 
         <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
           <button type="button" onClick={onClose} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100">
             Annuler
           </button>
-          <button type="button" onClick={save} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-            {saving ? "Enregistrement..." : "Enregistrer dans Finance"}
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className={
+              "inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold text-white disabled:opacity-60 " +
+              (duplicateWarning ? "bg-amber-600 hover:bg-amber-700" : "bg-slate-950 hover:bg-slate-800")
+            }
+          >
+            {saving ? "Enregistrement..." : duplicateWarning ? "Ajouter malgré tout" : "Enregistrer dans Finance"}
           </button>
         </div>
       </div>
@@ -2631,27 +2678,23 @@ export function SectionOutils({
     popup.print();
   };
 
-  const prepareAllocationEmail = (allocation: WaterAllocation) => {
-    const allocationReadings = readings[allocation.id] || [];
-    const emails = Array.from(new Set(allocationReadings.map((reading) => reading.occupant_email).filter(Boolean))) as string[];
-    if (!emails.length) return setError("Aucune adresse email renseignée pour les occupants impactés.");
+  // Un email par occupant, avec uniquement SA consommation et SON montant —
+  // jamais une liste groupée qui exposerait la conso/le montant des autres
+  // occupants du même immeuble à chacun des destinataires.
+  const prepareOccupantEmail = (allocation: WaterAllocation, reading: WaterReading) => {
+    if (!reading.occupant_email) return setError("Aucune adresse email renseignée pour cet occupant.");
     const subject = `Répartition facture d’eau - ${allocationAddress(allocation) || allocation.scope_label || allocation.title}`;
     const body = [
-      "Bonjour,",
+      `Bonjour${reading.occupant_label ? ` ${reading.occupant_label}` : ""},`,
       "",
-      `Veuillez trouver ci-dessous la répartition de la facture d’eau pour la période ${allocation.period_start} au ${allocation.period_end}.`,
+      `Voici la répartition de la facture d’eau pour la période ${allocation.period_start} au ${allocation.period_end}, concernant ${reading.unit_label}.`,
       "",
-      ...allocationReadings.map(
-        (reading) =>
-          `${reading.unit_label}${reading.occupant_label ? ` - ${reading.occupant_label}` : ""} : ${Number(reading.consumption || 0).toLocaleString("fr-FR")} m³, montant ${formatEuro(Number(reading.amount_due || 0))}`
-      ),
-      "",
-      `Facture totale : ${formatEuro(Number(allocation.invoice_total_amount || 0))}`,
-      `Compteur général : ${Number(allocation.global_consumption || 0).toLocaleString("fr-FR")} m³`,
+      `Consommation : ${Number(reading.consumption || 0).toLocaleString("fr-FR")} m³`,
+      `Montant dû : ${formatEuro(Number(reading.amount_due || 0))}`,
       "",
       "Cordialement,",
     ].join("\n");
-    window.location.href = `mailto:${emails.join(",")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = `mailto:${reading.occupant_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const openFinanceDraft = (draft: FinanceTransactionDraft) => {
@@ -2981,14 +3024,10 @@ export function SectionOutils({
                     Ouvrir la facture
                   </button>
                 ) : null}
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   <button type="button" onClick={() => exportAllocationPdf(selectedAllocation)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">
                     <PrinterIcon className="h-4 w-4" />
                     Export PDF
-                  </button>
-                  <button type="button" onClick={() => prepareAllocationEmail(selectedAllocation)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-700 px-3 py-2 text-sm font-semibold text-white hover:bg-cyan-800">
-                    <EnvelopeIcon className="h-4 w-4" />
-                    Préparer email
                   </button>
                   <button
                     type="button"
@@ -3055,6 +3094,16 @@ export function SectionOutils({
                         </div>
                         <p className="text-sm font-semibold text-slate-950">{formatEuro(Number(reading.amount_due || 0))}</p>
                       </div>
+                      {reading.occupant_email ? (
+                        <button
+                          type="button"
+                          onClick={() => prepareOccupantEmail(selectedAllocation, reading)}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-cyan-800 hover:bg-cyan-50"
+                        >
+                          <EnvelopeIcon className="h-3.5 w-3.5" />
+                          Email à {reading.occupant_label || "l’occupant"}
+                        </button>
+                      ) : null}
                     </div>
                   ))}
                 </div>
