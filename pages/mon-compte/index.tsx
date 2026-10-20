@@ -142,6 +142,7 @@ export default function MonCompteIndexPage() {
 
   // register (profile)
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [cguAccepted, setCguAccepted] = useState(false);
   const [refCode, setRefCode] = useState("");
 
   const [authLoading, setAuthLoading] = useState(false);
@@ -271,6 +272,7 @@ export default function MonCompteIndexPage() {
     if (!regPassword) return setAuthError("Merci de renseigner un mot de passe.");
     if (regPassword.length < 8) return setAuthError("Le mot de passe doit contenir au moins 8 caractères.");
     if (regPassword !== regPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
+    if (!cguAccepted) return setAuthError("Merci d'accepter les conditions générales d'utilisation.");
 
     setAuthLoading(true);
     try {
@@ -302,6 +304,7 @@ export default function MonCompteIndexPage() {
           data: {
             referred_by_input: referredByInput,
             marketing_opt_in: !!marketingOptIn,
+            cgu_accepted: !!cguAccepted,
           },
         },
       });
@@ -797,6 +800,27 @@ export default function MonCompteIndexPage() {
                       {refCode ? (
                         <p className="text-xs text-emerald-600">Code de parrainage appliqué — vous bénéficierez de 3 mois à −50 % après souscription.</p>
                       ) : null}
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="inline-flex items-start gap-2 text-sm text-slate-800">
+                        <input
+                          id="reg_cgu"
+                          name="cgu_accepted"
+                          type="checkbox"
+                          required
+                          checked={cguAccepted}
+                          onChange={(e) => setCguAccepted(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                        />
+                        <span>
+                          J’accepte les{" "}
+                          <Link href="/cgu" target="_blank" className="font-medium text-[#635bff] underline underline-offset-2">
+                            conditions générales d’utilisation
+                          </Link>
+                          .
+                        </span>
+                      </label>
                     </div>
 
                     <div className="mt-3">
