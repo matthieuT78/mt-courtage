@@ -624,7 +624,7 @@ N'invente jamais une valeur absente du document : utilise null.`,
   },
   {
     name: "compute_teom_recovery",
-    description: "Calcule le montant de TEOM récupérable auprès du locataire pour un bien et une période de taxe donnés, à partir du montant TEOM extrait de l'avis (extract_property_tax_document). Résout automatiquement le prorata d'occupation depuis les baux du bien (quel locataire a occupé le logement sur la période, baux terminés inclus) — n'invente jamais ce prorata toi-même, c'est cet outil qui le calcule. La taxe foncière n'est pas une charge collective répartie par tantièmes comme les charges de copropriété : chaque lot a son propre avis, déjà spécifique à ce logement — lot_share_percent vaut donc 100 dans l'immense majorité des cas (bien simple), sans avoir besoin de le demander. Ne demander une quote-part différente que si le bien est un immeuble à plusieurs lots recevant un avis global pour tout l'immeuble.",
+    description: "Calcule le montant de TEOM récupérable auprès du ou des locataires pour un bien et une période de taxe donnés, à partir du montant TEOM extrait de l'avis (extract_property_tax_document). Résout automatiquement l'occupation depuis TOUS les baux du bien qui chevauchent la période (baux terminés inclus) — s'il y a eu plusieurs locataires sur l'année (changement en cours d'exercice), répartit le montant au prorata des jours d'occupation de chacun, et calcule aussi la part restant à la charge du propriétaire pour les éventuels jours de vacance locative entre deux baux. N'invente jamais ce prorata toi-même ni ne suppose un seul locataire sur toute l'année, c'est cet outil qui résout la situation réelle. La taxe foncière n'est pas une charge collective répartie par tantièmes comme les charges de copropriété : chaque lot a son propre avis, déjà spécifique à ce logement — lot_share_percent vaut donc 100 dans l'immense majorité des cas (bien simple), sans avoir besoin de le demander. Ne demander une quote-part différente que si le bien est un immeuble à plusieurs lots recevant un avis global pour tout l'immeuble.",
     input_schema: {
       type: "object",
       properties: {
@@ -644,48 +644,62 @@ N'invente jamais une valeur absente du document : utilise null.`,
       const periodEnd = String(args.period_end);
       const teomAmount = Number(args.teom_amount || 0);
       const lotSharePercent = Math.min(100, Math.max(0, Number(args.lot_share_percent ?? 100)));
+      const teomAfterLotShare = teomAmount * (lotSharePercent / 100);
+      const periodDays = overlapDaysInclusive(periodStart, periodEnd, periodStart, periodEnd);
 
       const { data: leases } = await admin.from("leases").select("id,start_date,end_date,tenant_id").eq("user_id", ctx.userId).eq("property_id", propertyId);
 
-      let best: any = null;
-      let bestOverlap = -1;
-      for (const l of leases || []) {
-        const overlap = overlapDaysInclusive(periodStart, periodEnd, l.start_date, l.end_date || periodEnd);
-        if (overlap > bestOverlap) { bestOverlap = overlap; best = l; }
+      // Tous les baux qui chevauchent la période, pas seulement le plus long —
+      // un changement de locataire en cours d'année donne plusieurs entrées.
+      const overlapping = (leases || [])
+        .map((l: any) => ({
+          lease: l,
+          occupancyStart: l.start_date > periodStart ? l.start_date : periodStart,
+          occupancyEnd: l.end_date && l.end_date < periodEnd ? l.end_date : periodEnd,
+          occupiedDays: overlapDaysInclusive(periodStart, periodEnd, l.start_date, l.end_date || periodEnd),
+        }))
+        .filter((x) => x.occupiedDays > 0)
+        .sort((a, b) => (a.occupancyStart < b.occupancyStart ? -1 : a.occupancyStart > b.occupancyStart ? 1 : 0));
+
+      const propertyLabel = await resolvePropertyLabel(admin, ctx.userId, propertyId);
+
+      if (overlapping.length === 0) {
+        return { property_label: propertyLabel, error: "Aucun bail trouvé sur ce bien ne chevauche la période de taxe indiquée — impossible de calculer un prorata d'occupation." };
       }
 
-      if (!best || bestOverlap <= 0) {
+      const tenantIds = Array.from(new Set(overlapping.map((x) => x.lease.tenant_id).filter(Boolean)));
+      const { data: tenantRows } = tenantIds.length
+        ? await admin.from("tenants").select("id,full_name").in("id", tenantIds)
+        : { data: [] as any[] };
+      const nameByTenantId = new Map((tenantRows || []).map((t: any) => [t.id, t.full_name || "—"]));
+
+      const tenantShares = overlapping.map((x) => {
+        const rate = periodDays > 0 ? x.occupiedDays / periodDays : 0;
         return {
-          property_label: await resolvePropertyLabel(admin, ctx.userId, propertyId),
-          error: "Aucun bail trouvé sur ce bien ne chevauche la période de taxe indiquée — impossible de calculer un prorata d'occupation.",
+          lease_id: x.lease.id,
+          tenant_name: nameByTenantId.get(x.lease.tenant_id) || "—",
+          occupancy_start: x.occupancyStart,
+          occupancy_end: x.occupancyEnd,
+          occupied_days: x.occupiedDays,
+          occupancy_rate_percent: Math.round(rate * 1000) / 10,
+          recoverable_amount: Math.round(teomAfterLotShare * rate * 100) / 100,
         };
-      }
+      });
 
-      const occupancyStart = best.start_date > periodStart ? best.start_date : periodStart;
-      const occupancyEnd = best.end_date && best.end_date < periodEnd ? best.end_date : periodEnd;
-      const periodDays = overlapDaysInclusive(periodStart, periodEnd, periodStart, periodEnd);
-      const occupiedDays = bestOverlap;
-      const occupancyRate = periodDays > 0 ? occupiedDays / periodDays : 0;
-      const recoverable = Math.round(teomAmount * (lotSharePercent / 100) * occupancyRate * 100) / 100;
-
-      const [propertyLabel, tenantName] = await Promise.all([
-        resolvePropertyLabel(admin, ctx.userId, propertyId),
-        resolveTenantName(admin, ctx.userId, best.tenant_id),
-      ]);
+      const coveredDays = overlapping.reduce((sum, x) => sum + x.occupiedDays, 0);
+      const vacantDays = Math.max(0, periodDays - coveredDays);
+      const totalRecoverable = Math.round(tenantShares.reduce((s, t) => s + t.recoverable_amount, 0) * 100) / 100;
 
       return {
         property_label: propertyLabel,
-        tenant_name: tenantName,
-        lease_id: best.id,
-        occupancy_start: occupancyStart,
-        occupancy_end: occupancyEnd,
-        occupied_days: occupiedDays,
         period_days: periodDays,
-        occupancy_rate_percent: Math.round(occupancyRate * 1000) / 10,
         lot_share_percent: lotSharePercent,
         teom_amount: teomAmount,
-        recoverable_amount: recoverable,
-        owner_retained_amount: Math.round((teomAmount - recoverable) * 100) / 100,
+        tenant_count: tenantShares.length,
+        tenant_shares: tenantShares,
+        vacant_days: vacantDays,
+        total_recoverable_amount: totalRecoverable,
+        owner_retained_amount: Math.round((teomAfterLotShare - totalRecoverable) * 100) / 100,
       };
     },
   },
