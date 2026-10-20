@@ -52,8 +52,9 @@ function shell(params: {
   ctaLabel: string;
   ctaHref: string;
   secondaryHtml?: string;
+  unsubscribeHref: string;
 }) {
-  const { heroEmoji, heroLabel, title, intro, benefitsHtml, noteHtml, lokyTipHtml, ctaLabel, ctaHref, secondaryHtml } = params;
+  const { heroEmoji, heroLabel, title, intro, benefitsHtml, noteHtml, lokyTipHtml, ctaLabel, ctaHref, secondaryHtml, unsubscribeHref } = params;
   return `<!doctype html>
 <html lang="fr">
 <head>
@@ -104,7 +105,10 @@ function shell(params: {
                   <td style="font-size:12px;"><a href="https://lokt.fr/tarifs" style="color:#4f46e5;text-decoration:none;">Tarifs</a></td>
                 </tr>
               </table>
-              <p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#cbd5e1;">Vous recevez cet email suite à la création de votre compte. © lokt</p>
+              <p style="margin:16px 0 0;font-size:11px;line-height:1.5;color:#cbd5e1;">
+                Vous recevez cet email suite à la création de votre compte. ©&nbsp;lokt ·
+                <a href="${unsubscribeHref}" style="color:#94a3b8;text-decoration:underline;">Ne plus recevoir ces relances</a>
+              </p>
             </td>
           </tr>
         </table>
@@ -120,40 +124,71 @@ function greet(landlordName: string) {
   return landlordName ? `Bonjour ${landlordName},` : "Bonjour,";
 }
 
-export function buildNoPropertyEmail(params: { baseUrl: string; landlordName: string }) {
-  const { baseUrl, landlordName } = params;
+type LifecycleEmailParams = { baseUrl: string; landlordName: string; unsubscribeHref: string; attemptNumber: number };
+
+function withRappel(subject: string, attemptNumber: number) {
+  return attemptNumber > 1 ? `Rappel : ${subject}` : subject;
+}
+
+export function buildNoPropertyEmail(params: LifecycleEmailParams) {
+  const { baseUrl, landlordName, unsubscribeHref, attemptNumber } = params;
   const benefitsHtml = [
     benefitRow({ emoji: "📊", bg: "#eef2ff", title: "Suivi automatique", text: "Occupation et loyers attendus visibles chaque mois, sans tableur." }),
     benefitRow({ emoji: "🧾", bg: "#ecfdf5", title: "Quittances générées", text: "Dès qu'un locataire est rattaché, plus rien à faire à la main." }),
     benefitRow({ emoji: "🔔", bg: "#fff7ed", title: "Alertes intelligentes", text: "Retard de paiement ou échéance à venir : lokt vous prévient." }),
   ].join("");
   return {
-    subject: "Un pas vous sépare de votre tableau de bord lokt",
+    subject: withRappel("Un pas vous sépare de votre tableau de bord lokt", attemptNumber),
     html: shell({
       heroEmoji: "🏠",
-      heroLabel: "Étape 1 sur 2",
+      heroLabel: "Étape 1 sur 3",
       title: `${greet(landlordName)} ajoutez votre premier bien`,
       intro: "Ajouter votre premier bien est la première brique sur lokt : adresse, type de logement, quelques infos — 2 minutes suffisent. C'est ce qui débloque tout le reste.",
       benefitsHtml,
       lokyTipHtml: lokyTip("Une fois connecté, vous pouvez aussi simplement me demander de créer votre bien : dites-moi juste l'adresse, je m'occupe du reste."),
       ctaLabel: "Ajouter mon premier bien",
       ctaHref: `${baseUrl}/espace-bailleur?tab=biens`,
+      unsubscribeHref,
     }),
   };
 }
 
-export function buildNoLeaseEmail(params: { baseUrl: string; landlordName: string }) {
-  const { baseUrl, landlordName } = params;
+export function buildNoTenantEmail(params: LifecycleEmailParams) {
+  const { baseUrl, landlordName, unsubscribeHref, attemptNumber } = params;
+  const benefitsHtml = [
+    benefitRow({ emoji: "👤", bg: "#eef2ff", title: "Coordonnées centralisées", text: "Nom, email et téléphone du locataire, au même endroit que le bien." }),
+    benefitRow({ emoji: "📨", bg: "#ecfdf5", title: "Partage facilité", text: "Documents et quittances pourront lui être envoyés directement." }),
+    benefitRow({ emoji: "🔗", bg: "#fff7ed", title: "Prochaine étape débloquée", text: "Une fois le locataire ajouté, il ne restera qu'à créer la location." }),
+  ].join("");
+  return {
+    subject: withRappel("Votre bien est prêt — ajoutez votre locataire", attemptNumber),
+    html: shell({
+      heroEmoji: "👥",
+      heroLabel: "Étape 2 sur 3",
+      title: `${greet(landlordName)} ajoutez votre locataire`,
+      intro: "Votre bien est enregistré dans lokt. L'étape suivante : renseigner le locataire qui l'occupe (ou qui va l'occuper).",
+      benefitsHtml,
+      noteHtml: "Sans cette étape, impossible de créer la location qui relie le bien et le locataire — et donc pas de quittances ni de suivi des loyers.",
+      lokyTipHtml: lokyTip("Vous pouvez aussi me demander directement d'ajouter votre locataire : donnez-moi son nom, je m'occupe du reste."),
+      ctaLabel: "Ajouter mon locataire",
+      ctaHref: `${baseUrl}/espace-bailleur?tab=locataires`,
+      unsubscribeHref,
+    }),
+  };
+}
+
+export function buildNoLeaseEmail(params: LifecycleEmailParams) {
+  const { baseUrl, landlordName, unsubscribeHref, attemptNumber } = params;
   const benefitsHtml = [
     benefitRow({ emoji: "💶", bg: "#eef2ff", title: "Loyer et échéance fixés", text: "Montant, charges et date de paiement enregistrés une fois pour toutes." }),
     benefitRow({ emoji: "🧾", bg: "#ecfdf5", title: "Quittances activées", text: "Génération et relances de retard deviennent possibles." }),
     benefitRow({ emoji: "🔗", bg: "#fff7ed", title: "Tout relié", text: "Le bien et le locataire apparaissent liés partout dans le tableau de bord." }),
   ].join("");
   return {
-    subject: "Il ne vous manque qu'une étape pour tout activer",
+    subject: withRappel("Il ne vous manque qu'une étape pour tout activer", attemptNumber),
     html: shell({
       heroEmoji: "🔑",
-      heroLabel: "Étape 2 sur 2",
+      heroLabel: "Étape 3 sur 3",
       title: `${greet(landlordName)} créez votre première location`,
       intro: "Bien et locataire sont prêts dans lokt — il ne reste qu'à créer la <strong>location</strong> qui les rattache l'un à l'autre.",
       benefitsHtml,
@@ -161,6 +196,7 @@ export function buildNoLeaseEmail(params: { baseUrl: string; landlordName: strin
       lokyTipHtml: lokyTip("Vous pouvez aussi me demander directement de créer la location : dites-moi qui loue quoi, je fais le lien."),
       ctaLabel: "Créer la location",
       ctaHref: `${baseUrl}/espace-bailleur?tab=baux`,
+      unsubscribeHref,
     }),
   };
 }
