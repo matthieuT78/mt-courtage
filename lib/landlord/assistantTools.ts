@@ -18,6 +18,7 @@ import { randomUUID } from "crypto";
 import { LEASE_CONTRACT_BUCKET, externalContractPdfPath, isLeaseContractKind } from "../leaseContract";
 import { invalidateStorageCache } from "../storageQuota";
 import { callCostUsd } from "./assistantCost";
+import { overlapDaysInclusive } from "./dateOverlap";
 
 export type AssistantToolContext = {
   userId: string;
@@ -619,6 +620,73 @@ N'invente jamais une valeur absente du document : utilise null.`,
         return { is_property_tax_notice: false, notes: parsed.notes || "Ce document ne ressemble pas à un avis de taxe foncière.", _extra_cost_usd: extraCostUsd };
       }
       return { ...parsed, staging_path: path, file_name: args.file_name || null, _extra_cost_usd: extraCostUsd };
+    },
+  },
+  {
+    name: "compute_teom_recovery",
+    description: "Calcule le montant de TEOM récupérable auprès du locataire pour un bien et une période de taxe donnés, à partir du montant TEOM extrait de l'avis (extract_property_tax_document). Résout automatiquement le prorata d'occupation depuis les baux du bien (quel locataire a occupé le logement sur la période, baux terminés inclus) — n'invente jamais ce prorata toi-même, c'est cet outil qui le calcule. La taxe foncière n'est pas une charge collective répartie par tantièmes comme les charges de copropriété : chaque lot a son propre avis, déjà spécifique à ce logement — lot_share_percent vaut donc 100 dans l'immense majorité des cas (bien simple), sans avoir besoin de le demander. Ne demander une quote-part différente que si le bien est un immeuble à plusieurs lots recevant un avis global pour tout l'immeuble.",
+    input_schema: {
+      type: "object",
+      properties: {
+        property_id: { type: "string" },
+        period_start: { type: "string", description: "Début de la période de taxe, YYYY-MM-DD (généralement 1er janvier de l'année d'imposition)." },
+        period_end: { type: "string", description: "Fin de la période de taxe, YYYY-MM-DD (généralement 31 décembre de l'année d'imposition)." },
+        teom_amount: { type: "number", description: "Montant TEOM extrait de l'avis." },
+        lot_share_percent: { type: "number", description: "Quote-part du lot dans la taxe foncière, en %. 100 si non précisé." },
+      },
+      required: ["property_id", "period_start", "period_end", "teom_amount"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const propertyId = String(args.property_id);
+      const periodStart = String(args.period_start);
+      const periodEnd = String(args.period_end);
+      const teomAmount = Number(args.teom_amount || 0);
+      const lotSharePercent = Math.min(100, Math.max(0, Number(args.lot_share_percent ?? 100)));
+
+      const { data: leases } = await admin.from("leases").select("id,start_date,end_date,tenant_id").eq("user_id", ctx.userId).eq("property_id", propertyId);
+
+      let best: any = null;
+      let bestOverlap = -1;
+      for (const l of leases || []) {
+        const overlap = overlapDaysInclusive(periodStart, periodEnd, l.start_date, l.end_date || periodEnd);
+        if (overlap > bestOverlap) { bestOverlap = overlap; best = l; }
+      }
+
+      if (!best || bestOverlap <= 0) {
+        return {
+          property_label: await resolvePropertyLabel(admin, ctx.userId, propertyId),
+          error: "Aucun bail trouvé sur ce bien ne chevauche la période de taxe indiquée — impossible de calculer un prorata d'occupation.",
+        };
+      }
+
+      const occupancyStart = best.start_date > periodStart ? best.start_date : periodStart;
+      const occupancyEnd = best.end_date && best.end_date < periodEnd ? best.end_date : periodEnd;
+      const periodDays = overlapDaysInclusive(periodStart, periodEnd, periodStart, periodEnd);
+      const occupiedDays = bestOverlap;
+      const occupancyRate = periodDays > 0 ? occupiedDays / periodDays : 0;
+      const recoverable = Math.round(teomAmount * (lotSharePercent / 100) * occupancyRate * 100) / 100;
+
+      const [propertyLabel, tenantName] = await Promise.all([
+        resolvePropertyLabel(admin, ctx.userId, propertyId),
+        resolveTenantName(admin, ctx.userId, best.tenant_id),
+      ]);
+
+      return {
+        property_label: propertyLabel,
+        tenant_name: tenantName,
+        lease_id: best.id,
+        occupancy_start: occupancyStart,
+        occupancy_end: occupancyEnd,
+        occupied_days: occupiedDays,
+        period_days: periodDays,
+        occupancy_rate_percent: Math.round(occupancyRate * 1000) / 10,
+        lot_share_percent: lotSharePercent,
+        teom_amount: teomAmount,
+        recoverable_amount: recoverable,
+        owner_retained_amount: Math.round((teomAmount - recoverable) * 100) / 100,
+      };
     },
   },
   {

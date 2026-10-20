@@ -28,6 +28,7 @@ import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlo
 import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
 import { xhrUploadDirect, xhrUploadToSignedUrl } from "../../../lib/uploadWithProgress";
+import { daysInclusive, overlapDaysInclusive } from "../../../lib/landlord/dateOverlap";
 import { UploadProgressBar } from "../../UploadProgressBar";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import { NiceSelect } from "../ui/NiceSelect";
@@ -244,22 +245,6 @@ const num = (value: string) => {
 };
 const clampPercent = (value: string) => Math.min(100, Math.max(0, num(value)));
 const formatPercent = (value: number) => `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %`;
-const daysInclusive = (start: string, end: string) => {
-  if (!start || !end) return 0;
-  const startTime = new Date(`${start}T00:00:00`).getTime();
-  const endTime = new Date(`${end}T00:00:00`).getTime();
-  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) return 0;
-  return Math.floor((endTime - startTime) / 86400000) + 1;
-};
-// Jours communs aux deux périodes (pas juste la durée la plus courte) : si les deux
-// plages ne se chevauchent pas du tout, le résultat doit être 0, pas une fraction
-// calculée sur une durée sans rapport avec la période réellement commune.
-const overlapDaysInclusive = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
-  if (!aStart || !aEnd || !bStart || !bEnd) return 0;
-  const start = aStart > bStart ? aStart : bStart;
-  const end = aEnd < bEnd ? aEnd : bEnd;
-  return daysInclusive(start, end);
-};
 const copyToolSummary = async (summary: string, onDone: (message: string) => void) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(summary);
