@@ -129,13 +129,17 @@ export default function App({ Component, pageProps }: AppProps) {
                   t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
                   y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
                 })(window, document, "clarity", "script", "${CLARITY_ID}");
-                // ✅ certains projets Clarity attendent un signal de consentement
-                // explicite avant de collecter quoi que ce soit, même une fois le
-                // script chargé — on ne charge déjà ce script qu'après consentement
-                // (bandeau cookies), donc ce signal est toujours légitime ici.
-                // try/catch plutôt qu'un typeof strict : selon le timing, le
-                // stub peut déjà avoir été remplacé par le vrai objet Clarity.
-                try { window.clarity("consent"); } catch (e) {}
+                // consentv2 (API actuelle, cf. learn.microsoft.com/clarity/setup-and-installation/clarity-consent-api-v2) —
+                // l'ancien appel "consent" sans second argument (legacy API,
+                // qui attend en réalité un booléen : clarity("consent", true))
+                // faisait planter le script Clarity chargé de manière
+                // asynchrone ("a[c] is not a function", visible sur toutes
+                // les pages après clic sur "Tout accepter"). On ne charge ce
+                // script qu'après consentement (bandeau cookies), donc ce
+                // signal "granted" est toujours légitime ici.
+                try {
+                  window.clarity("consentv2", { ad_Storage: "granted", analytics_Storage: "granted" });
+                } catch (e) {}
               `}
             </Script>
           )}
