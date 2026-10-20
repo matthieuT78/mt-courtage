@@ -69,27 +69,35 @@ function makeDebugFetch(timeoutMs = 15000): typeof fetch {
     }
   };
 
+  // Jusqu'à 3 tentatives pour les lectures (GET) : avec le taux de pics de
+  // latence Supabase observé (jusqu'à ~1 requête sur 2 lors de l'incident du
+  // 2026-10-20 — vérifié en direct, hors connexion utilisateur, base de
+  // données elle-même saine), un seul retry ne suffisait plus. On ne retente
+  // jamais une mutation (POST/PATCH/DELETE) : si elle a réellement abouti
+  // côté serveur juste avant l'abort client, la retenter la dupliquerait.
+  const MAX_GET_ATTEMPTS = 3;
+
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : (input as any)?.url || String(input);
     const method = (init?.method || "GET").toUpperCase();
+    const maxAttempts = method === "GET" ? MAX_GET_ATTEMPTS : 1;
 
-    try {
-      return await attempt(input, init, url, method);
-    } catch (e: any) {
-      // Un seul retry, uniquement pour les lectures (GET) : les pics de
-      // latence Supabase observés (quelques requêtes sur plusieurs dizaines,
-      // 20s+ au lieu de 150ms) sont transitoires et disparaissent en général
-      // en moins d'une seconde. On ne retente jamais une mutation (POST/PATCH/
-      // DELETE) : si elle a réellement abouti côté serveur juste avant l'abort
-      // client, la retenter dupliquerait l'action.
-      if (method !== "GET") throw e;
-      await sleep(400);
-      if (isDev) {
-        // eslint-disable-next-line no-console
-        console.warn(`[supabase:fetch] retry GET ${url}`);
+    let lastError: any;
+    for (let i = 0; i < maxAttempts; i++) {
+      if (i > 0) {
+        await sleep(300);
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.warn(`[supabase:fetch] retry ${i + 1}/${maxAttempts} GET ${url}`);
+        }
       }
-      return attempt(input, init, url, method);
+      try {
+        return await attempt(input, init, url, method);
+      } catch (e: any) {
+        lastError = e;
+      }
     }
+    throw lastError;
   };
 }
 
@@ -102,7 +110,7 @@ function makeClient(): SupabaseClient | null {
     return null;
   }
 
-  const debugFetch = makeDebugFetch(15000);
+  const debugFetch = makeDebugFetch(6000);
 
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {

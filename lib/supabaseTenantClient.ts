@@ -19,17 +19,24 @@ function makeFetchWithTimeout(timeoutMs = 15000): typeof fetch {
     return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
   };
 
+  // Jusqu'à 3 tentatives en lecture — cf. lib/supabaseClient.ts pour le détail
+  // (taux de pics de latence Supabase monté à ~1 requête sur 2 le 2026-10-20).
+  const MAX_GET_ATTEMPTS = 3;
+
   return async (input, init) => {
     const method = ((init as RequestInit | undefined)?.method || "GET").toUpperCase();
-    try {
-      return await attempt(input, init);
-    } catch (e: any) {
-      // Un seul retry, uniquement pour les lectures (GET) — cf. lib/supabaseClient.ts
-      // pour le détail (pics de latence transitoires côté Supabase).
-      if (method !== "GET") throw e;
-      await sleep(400);
-      return attempt(input, init);
+    const maxAttempts = method === "GET" ? MAX_GET_ATTEMPTS : 1;
+
+    let lastError: any;
+    for (let i = 0; i < maxAttempts; i++) {
+      if (i > 0) await sleep(300);
+      try {
+        return await attempt(input, init);
+      } catch (e: any) {
+        lastError = e;
+      }
     }
+    throw lastError;
   };
 }
 
@@ -42,7 +49,7 @@ function makeClient(): SupabaseClient | null {
       detectSessionInUrl: true,
       storageKey: "lokt-tenant-auth",
     },
-    global: { fetch: makeFetchWithTimeout(15000) },
+    global: { fetch: makeFetchWithTimeout(6000) },
   });
 }
 
