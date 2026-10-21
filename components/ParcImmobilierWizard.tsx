@@ -1,6 +1,7 @@
 // components/ParcImmobilierWizard.tsx
 import { useMemo, useState } from "react";
 import { BuildingOffice2Icon, ChartBarIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import InfoBadge from "./calculators/InfoBadge";
 
 function formatEuro(val: number) {
   if (!Number.isFinite(val)) return "-";
@@ -117,19 +118,6 @@ function scoreParc(resume: ResumeGlobal, advancedMode: boolean) {
   score += resume.ltvGlobal <= 60 ? 14 : resume.ltvGlobal <= 80 ? 4 : -12;
   score += resume.dscrGlobal >= 1.2 ? 14 : resume.dscrGlobal >= 1.05 ? 4 : -14;
   return Math.round(clamp(score, 0, 100));
-}
-
-function InfoBadge({ text }: { text: string }) {
-  return (
-    <span className="relative inline-flex items-center group ml-1 align-middle">
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
-        i
-      </span>
-      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
-        {text}
-      </span>
-    </span>
-  );
 }
 
 function defaultBien(idx: number): Bien {

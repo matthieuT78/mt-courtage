@@ -14,6 +14,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
+import InfoBadge from "./calculators/InfoBadge";
 import {
   safeEmail,
   loadLeadEmail,
@@ -63,19 +64,6 @@ function clamp(n: number, a: number, b: number) {
 }
 
 /* ------------------------ UI helpers ------------------------ */
-function InfoBadge({ text }: { text: string }) {
-  return (
-    <span className="relative inline-flex items-center group ml-1 align-middle">
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
-        i
-      </span>
-      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-72 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
-        {text}
-      </span>
-    </span>
-  );
-}
-
 function StepHint({
   title,
   bullets,

@@ -15,6 +15,7 @@ import {
   ReceiptPercentIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
+import InfoBadge from "./calculators/InfoBadge";
 import { usePermissions } from "./PermissionProvider";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
@@ -146,19 +147,6 @@ function actionItemsToString(items: ActionPlanItem[]): string {
 }
 
 /* ======================== Small UI ======================== */
-function InfoBadge({ text }: { text: string }) {
-  return (
-    <span className="relative inline-flex items-center group ml-1 align-middle">
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
-        i
-      </span>
-      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
-        {text}
-      </span>
-    </span>
-  );
-}
-
 /* ======================== Gate / lead (même UX) ======================== */
 const LOKT_INVEST_CONSENT_STORAGE_KEY = "lokt_invest_consent_v1"; // { email: string, consent: true, ts: string }
 
