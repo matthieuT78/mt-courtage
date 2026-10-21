@@ -156,7 +156,7 @@ export default function AProposPage() {
               ["Décider", "Capacité d’emprunt, rentabilité, prêt relais, plus-value et vision du parc : les calculettes donnent un ordre de grandeur avant de s’engager."],
               ["Gérer", "Biens, baux, locataires, loyers, quittances, candidatures, états des lieux, inventaire, finance et historique restent reliés au bon logement."],
               ["Documenter", "Les événements importants du bail doivent laisser une trace : paiement, relance, travaux, départ, dépôt de garantie et justificatifs."],
-              ["Se former", "25 articles de blog et 8 guides pratiques couvrent la fiscalité (LMNP, régime réel, IRL), les contrats, les diagnostics et les procédures du quotidien."],
+              ["Se former", "75 articles de blog et 18 guides pratiques couvrent la fiscalité (LMNP, régime réel, IRL), les contrats, les diagnostics et les procédures du quotidien."],
             ].map(([heading, text], index) => (
               <article key={heading} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className={["mb-4 h-1.5 w-12 rounded-full bg-cyan-500", "mb-4 h-1.5 w-12 rounded-full bg-indigo-500", "mb-4 h-1.5 w-12 rounded-full bg-emerald-500", "mb-4 h-1.5 w-12 rounded-full bg-violet-500"][index]} />
