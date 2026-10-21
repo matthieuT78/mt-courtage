@@ -66,7 +66,8 @@ export default function CGUPage() {
                   <li>un module de candidature locative : dépôt de dossier en ligne via un lien dédié, scoring automatique, et agenda de visite permettant aux candidats de réserver un créneau (confirmation par email avec invitation calendrier) ;</li>
                   <li>des workflows d’automatisation, d’alertes et d’aide à la déclaration selon l’offre souscrite ;</li>
                   <li>un cockpit de pilotage : score de gestion, alertes météo sur les biens, widget d’actualité immobilière et indicateurs financiers ;</li>
-                  <li>un portail locataire permettant d’accéder aux documents partagés par le bailleur.</li>
+                  <li>un portail locataire permettant d’accéder aux documents partagés par le bailleur ;</li>
+                  <li>un assistant conversationnel (Loky) pour aider à la gestion du compte, avec un usage inclus selon l’offre souscrite (voir section 9).</li>
                 </ul>
                 <p>
                   Le service peut évoluer régulièrement afin d’améliorer les fonctionnalités, la présentation et les limites d’usage proposées.
@@ -165,7 +166,20 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="9. Simulations, fiscalité et aide à la déclaration">
+              <Section title="9. Assistant IA (Loky)">
+                <p>
+                  lokt.fr propose un assistant conversationnel (Loky), reposant sur des modèles d’intelligence artificielle de prestataires tiers,
+                  pour aider à la gestion du compte : création d’écritures financières, rédaction et envoi de messages ou de documents, extraction
+                  d’informations depuis des fichiers importés par l’utilisateur. Les réponses et suggestions de Loky peuvent contenir des erreurs ou
+                  des approximations : l’utilisateur reste seul responsable de vérifier leur exactitude avant de s’en servir.
+                </p>
+                <p>
+                  Toute action de Loky ayant un effet sur les données du compte (création ou modification d’une écriture, envoi d’un email à un
+                  tiers, etc.) est soumise à une confirmation explicite de l’utilisateur avant exécution.
+                </p>
+              </Section>
+
+              <Section title="10. Simulations, fiscalité et aide à la déclaration">
                 <p>
                   Les résultats de simulation, analyses de rentabilité, calculs fiscaux et aides à la déclaration sont fournis à titre indicatif. Ils
                   peuvent être incomplets, approximatifs ou dépendre de règles qui évoluent. Ils ne constituent ni un conseil juridique, ni un conseil
@@ -177,7 +191,7 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="10. Responsabilité">
+              <Section title="11. Responsabilité">
                 <p>
                   lokt.fr est fourni « en l’état ». Malgré le soin apporté au service, l’éditeur ne garantit pas l’absence d’erreurs, d’interruptions,
                   de pertes de données, de retards d’email ou d’écarts entre les calculs et la situation réelle de l’utilisateur.
@@ -188,14 +202,14 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="11. Usage acceptable">
+              <Section title="12. Usage acceptable">
                 <p>
                   L’utilisateur s’engage à ne pas utiliser le service pour porter atteinte aux droits de tiers, contourner les limites d’usage,
                   perturber l’infrastructure, extraire massivement les données ou générer des documents frauduleux.
                 </p>
               </Section>
 
-              <Section title="12. Propriété intellectuelle">
+              <Section title="13. Propriété intellectuelle">
                 <p>
                   L’interface, les textes, les modèles, les workflows, les calculs, le nom lokt.fr et les éléments graphiques du site sont protégés. Toute
                   reproduction, extraction ou réutilisation non autorisée est interdite, sauf usage strictement personnel des documents générés pour
@@ -203,7 +217,7 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="12. Données personnelles">
+              <Section title="14. Données personnelles">
                 <p>
                   Les traitements de données personnelles sont décrits dans la{" "}
                   <Link href="/confidentialite" className="underline">
@@ -213,7 +227,7 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="13. Suspension, résiliation et évolution du service">
+              <Section title="15. Suspension, résiliation et évolution du service">
                 <p>
                   L’utilisateur peut cesser d’utiliser le service ou demander la suppression de son compte. lokt.fr peut suspendre un compte en cas
                   d’usage abusif, de non-paiement ou de violation des présentes conditions. Le service peut évoluer, être suspendu ou interrompu pour
@@ -221,7 +235,7 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="14. Droit applicable">
+              <Section title="16. Droit applicable">
                 <p>
                   Les présentes conditions sont soumises au droit français. En cas de difficulté, l’utilisateur est invité à contacter lokt.fr afin de
                   rechercher une solution amiable.
@@ -230,7 +244,7 @@ export default function CGUPage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 10 août 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 21 octobre 2026</p>
               <Link href="/" className="text-sm font-semibold text-slate-700 underline">
                 Retour à l’accueil
               </Link>
