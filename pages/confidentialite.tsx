@@ -102,6 +102,12 @@ export default function ConfidentialitePage() {
                     <strong>Resend</strong> — envoi des emails opérationnels (quittances, alertes, rappels, confirmations) à destination des bailleurs et locataires.
                   </li>
                   <li>
+                    <strong>Anthropic, PBC</strong> (États-Unis) — alimente l'assistant Loky et l'extraction automatique de documents (avis de taxe foncière, factures, baux). Les documents PDF importés par l'utilisateur ainsi que les données de son espace bailleur consultées par l'assistant (biens, baux, locataires, montants) peuvent être transmis à ce prestataire pour traitement. Transfert encadré par les clauses contractuelles types de la Commission européenne.
+                  </li>
+                  <li>
+                    <strong>Telegram</strong> — notifications internes à l'équipe lokt.fr (nouvelle inscription, nouveau lead, suppression de compte) à des fins de suivi opérationnel, pouvant inclure l'email, la ville/code postal ou le nom de l'utilisateur concerné. Ces notifications ne sont jamais visibles par d'autres utilisateurs.
+                  </li>
+                  <li>
                     <strong>Google LLC</strong> via Google Analytics 4 — mesure d’audience du site public, chargée uniquement après votre consentement (voir section 8). L’adresse IP est anonymisée avant traitement statistique. Aucun cookie publicitaire n’est utilisé.
                   </li>
                   <li>
@@ -245,7 +251,7 @@ export default function ConfidentialitePage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 10 août 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 21 octobre 2026</p>
               <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
                 Voir les CGU/CGV
               </Link>
