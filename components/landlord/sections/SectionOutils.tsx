@@ -1710,9 +1710,24 @@ function TeomTool({
   );
 }
 
-function ChargeRegularizationTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+function ChargeRegularizationTool({
+  userId,
+  properties = [],
+  leases = [],
+  tenants = [],
+  onBack,
+  onFinanceDraft,
+}: {
+  userId: string;
+  properties?: Property[];
+  leases?: Lease[];
+  tenants?: Tenant[];
+  onBack: () => void;
+  onFinanceDraft: (draft: FinanceTransactionDraft) => void;
+}) {
   const storageKey = `lokt:regularization-tool:draft:${userId}`;
   const load = <T,>(key: string, fallback: T): T => { try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const v = JSON.parse(s)[key]; if (v !== undefined) return v as T; } } catch {} return fallback; };
+  const [selectedPropertyId, setSelectedPropertyId] = useState(() => load("selectedPropertyId", ""));
   const [assetLabel, setAssetLabel] = useState(() => load("assetLabel", ""));
   const [occupantLabel, setOccupantLabel] = useState(() => load("occupantLabel", ""));
   const [periodStart, setPeriodStart] = useState(() => load("periodStart", `${new Date().getFullYear()}-01-01`));
@@ -1725,8 +1740,31 @@ function ChargeRegularizationTool({ userId, onBack, onFinanceDraft }: { userId: 
     return [newRegularizationExpenseLine("Charges de copropriété récupérables"), newRegularizationExpenseLine("Eau / entretien / petites fournitures")];
   });
   useEffect(() => {
-    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses })); } catch {}
-  }, [storageKey, assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses]);
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ selectedPropertyId, assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses })); } catch {}
+  }, [storageKey, selectedPropertyId, assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses]);
+
+  // Même logique que l'outil TEOM : le bien sélectionné déduit
+  // automatiquement le locataire via le bail qui chevauche le plus la
+  // période de régularisation (baux terminés inclus).
+  useEffect(() => {
+    if (!selectedPropertyId) return;
+    const property = properties.find((p) => p.id === selectedPropertyId);
+    if (property) setAssetLabel(property.label || propertyAddress(property) || "");
+
+    const propertyLeases = leases.filter((l) => l.property_id === selectedPropertyId);
+    let best: Lease | null = null;
+    let bestOverlap = -1;
+    for (const l of propertyLeases) {
+      const overlap = overlapDaysInclusive(periodStart, periodEnd, l.start_date, l.end_date || periodEnd);
+      if (overlap > bestOverlap) { bestOverlap = overlap; best = l; }
+    }
+    if (best && bestOverlap > 0) {
+      const tenant = tenants.find((t) => t.id === best!.tenant_id);
+      if (tenant?.full_name) setOccupantLabel(tenant.full_name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPropertyId]);
+
   const periodDays = daysInclusive(periodStart, periodEnd);
   const estimatedMonths = periodDays > 0 ? periodDays / 30.4375 : 0;
   const paid = useManualProvisions ? num(manualProvisions) : num(monthlyProvision) * estimatedMonths;
@@ -1777,6 +1815,22 @@ function ChargeRegularizationTool({ userId, onBack, onFinanceDraft }: { userId: 
           ]}
           finance="L’import Finance crée uniquement le solde de régularisation : recette attendue si le locataire doit payer, dépense si vous devez rembourser."
         />
+        {properties.length > 0 && (
+          <div className="mb-3 space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Sélectionner le bien</span>
+            <NiceSelect
+              icon={HomeModernIcon}
+              value={selectedPropertyId}
+              onChange={setSelectedPropertyId}
+              placeholder="Choisir pour pré-remplir bien et occupant"
+              options={properties.map((p) => ({
+                value: p.id,
+                label: p.label || propertyAddress(p) || "Bien",
+                subtitle: p.city || undefined,
+              }))}
+            />
+          </div>
+        )}
         <div className="grid gap-3 lg:grid-cols-4">
           <label className="space-y-1 lg:col-span-2">
             <span className="text-xs font-semibold text-slate-600">Bien / adresse</span>
@@ -3124,7 +3178,14 @@ export function SectionOutils({
   if (activeTool === "regularization") {
     return (
       <>
-        <ChargeRegularizationTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <ChargeRegularizationTool
+          userId={userId}
+          properties={properties}
+          leases={leases}
+          tenants={tenants}
+          onBack={() => setActiveTool(null)}
+          onFinanceDraft={openFinanceDraft}
+        />
         {financeModal}
         {financeFeedback}
       </>
