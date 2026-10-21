@@ -940,7 +940,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const labels = labelForLease(lease, propertiesById, tenantsById);
         alerts.push({
-          key: `teom_overcharge:${charge.transaction_id}:${lease.end_date}`,
+          key: weeklyScheduleKey(`teom-overcharge:${charge.transaction_id}:${lease.end_date}`, today, daysBetween(realEnd, today)),
           preferenceKey: "teom_overcharge_risk",
           tone: "amber",
           title: `TEOM récupérée : départ plus tôt que prévu - ${labels.property}`,

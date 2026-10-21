@@ -158,7 +158,7 @@ const ALERTS: AlertConfig[] = [
     key: "teom_overcharge_risk",
     title: "TEOM récupérée : départ plus tôt que prévu",
     desc: "Une récupération de TEOM a été calculée en supposant que le locataire reste jusqu'à une date donnée. S'il part avant cette date, le montant facturé est trop élevé — un remboursement partiel est probablement dû.",
-    schedule: "Chaque jour tant que l'écart n'est pas résolu",
+    schedule: "Chaque semaine tant que l'écart n'est pas résolu",
     group: "Paiements et loyers",
     level: "Anticipation",
   },
