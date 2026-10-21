@@ -35,6 +35,7 @@ export type Property = {
   delegation_agency_name?: string | null;
   type?: string | null;
   energy_class?: string | null;
+  tantiemes_base?: number | null;
 };
 
 // Lot au sein d'un bien de type "building" (immeuble en monopropriété) : un seul
@@ -50,6 +51,7 @@ export type PropertyLot = {
   energy_value?: number | null;
   ghg_class?: string | null;
   description?: string | null;
+  tantiemes?: number | null;
   status?: string | null;
   sort_order?: number;
   created_at: string;

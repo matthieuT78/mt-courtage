@@ -23,7 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import type { Tenant } from "../../../lib/landlord/types";
 import { supabase } from "../../../lib/supabaseClient";
-import type { Lease, Property } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyLot } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
@@ -196,6 +196,9 @@ type SimpleShareLine = {
   tantiemes: string;
   recoverablePercent: string;
   notes: string;
+  lotId?: string | null;
+  leaseId?: string | null;
+  occupantEmail?: string;
 };
 
 type RegularizationExpenseLine = {
@@ -229,6 +232,9 @@ const newShareLine = (index: number): SimpleShareLine => ({
   tantiemes: "",
   recoverablePercent: "100",
   notes: "",
+  lotId: null,
+  leaseId: null,
+  occupantEmail: "",
 });
 const newRegularizationExpenseLine = (label = "Charge récupérable", amount = "", recoverablePercent = "100"): RegularizationExpenseLine => ({
   id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -748,8 +754,27 @@ function FinanceImportActions({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+function ChargesAllocationTool({
+  userId,
+  properties = [],
+  propertyLots = [],
+  leases = [],
+  tenants = [],
+  onBack,
+  onFinanceDraft,
+}: {
+  userId: string;
+  properties?: Property[];
+  propertyLots?: PropertyLot[];
+  leases?: Lease[];
+  tenants?: Tenant[];
+  onBack: () => void;
+  onFinanceDraft: (draft: FinanceTransactionDraft) => void;
+}) {
   const storageKey = `lokt:charges-tool:draft:${userId}`;
+  const [selectedPropertyId, setSelectedPropertyId] = useState(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).selectedPropertyId ?? ""; } catch {} return "";
+  });
   const [periodLabel, setPeriodLabel] = useState(() => {
     try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).periodLabel ?? `${new Date().getFullYear()}`; } catch {}
     return `${new Date().getFullYear()}`;
@@ -768,8 +793,51 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
     return [newShareLine(1), newShareLine(2)];
   });
   useEffect(() => {
-    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ periodLabel, assetLabel, totalCharges, totalTantiemes, lines })); } catch {}
-  }, [storageKey, periodLabel, assetLabel, totalCharges, totalTantiemes, lines]);
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ selectedPropertyId, periodLabel, assetLabel, totalCharges, totalTantiemes, lines })); } catch {}
+  }, [storageKey, selectedPropertyId, periodLabel, assetLabel, totalCharges, totalTantiemes, lines]);
+
+  const buildings = useMemo(() => properties.filter((p) => p.type === "building" && isActivePropertyLike(p)), [properties]);
+
+  // Immeuble sélectionné → récupère ses lots et, pour chacun, le locataire
+  // actuellement en place (via leases.lot_id) et ses tantièmes déjà
+  // enregistrés s'ils existent — à défaut de bien "building" avec des lots,
+  // l'outil reste utilisable en mode manuel comme avant.
+  useEffect(() => {
+    if (!selectedPropertyId) return;
+    const property = properties.find((p) => p.id === selectedPropertyId);
+    if (!property) return;
+    setAssetLabel(property.label || [property.address_line1, property.city].filter(Boolean).join(", ") || "");
+    if (property.tantiemes_base != null) setTotalTantiemes(String(property.tantiemes_base));
+
+    const lots = propertyLots.filter((l) => l.property_id === selectedPropertyId && l.status !== "archived").sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    if (lots.length === 0) return;
+
+    const nextLines: SimpleShareLine[] = lots.map((lot) => {
+      const lotLeases = leases.filter((l) => l.lot_id === lot.id);
+      const best = lotLeases.find((l) => isSelectableLeaseLike(l)) || [...lotLeases].sort((a, b) => (b.start_date || "").localeCompare(a.start_date || ""))[0] || null;
+      const tenant = best ? tenants.find((t) => t.id === best.tenant_id) : null;
+      return {
+        id: lot.id,
+        label: lot.label,
+        occupant: tenant?.full_name || "",
+        tantiemes: lot.tantiemes != null ? String(lot.tantiemes) : "",
+        recoverablePercent: "100",
+        notes: "",
+        lotId: lot.id,
+        leaseId: best?.id || null,
+        occupantEmail: tenant?.email || "",
+      };
+    });
+    setLines(nextLines);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPropertyId]);
+
+  const [tantiemesSaving, setTantiemesSaving] = useState(false);
+  const [tantiemesSaveMsg, setTantiemesSaveMsg] = useState<string | null>(null);
+  const [chargeEmailTarget, setChargeEmailTarget] = useState<{ leaseId: string; lotLabel: string; tantiemes: number; baseTantiemes: number; sharePercent: number; grossAmount: number; recoverablePercent: number; recoverableAmount: number } | null>(null);
+  const [chargeEmailPreview, setChargeEmailPreview] = useState<{ subject: string; html: string; to: string } | null>(null);
+  const [sendingChargeEmail, setSendingChargeEmail] = useState(false);
+  const [chargeEmailError, setChargeEmailError] = useState<string | null>(null);
   const total = num(totalCharges);
   const baseTantiemes = num(totalTantiemes);
   const usedTantiemes = lines.reduce((sum, line) => sum + num(line.tantiemes), 0);
@@ -794,6 +862,104 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
   const updateLine = (id: string, patch: Partial<SimpleShareLine>) => {
     setLines((prev) => prev.map((line) => (line.id === id ? { ...line, ...patch } : line)));
   };
+
+  // Les tantièmes viennent du règlement de copropriété, une donnée externe à
+  // lokt — on ne peut jamais les déduire automatiquement. Ce bouton permet
+  // de ne les saisir qu'une fois : enregistrés sur l'immeuble et ses lots,
+  // ils sont ensuite pré-remplis à chaque nouvelle répartition.
+  const saveTantiemesToProperty = async () => {
+    if (!supabase || !selectedPropertyId) return;
+    setTantiemesSaving(true);
+    setTantiemesSaveMsg(null);
+    try {
+      const { error: propError } = await supabase.from("properties").update({ tantiemes_base: baseTantiemes, updated_at: new Date().toISOString() }).eq("id", selectedPropertyId).eq("user_id", userId);
+      if (propError) throw propError;
+      const lotUpdates = computedShares.filter((line) => line.lotId);
+      for (const line of lotUpdates) {
+        const { error: lotError } = await supabase.from("property_lots").update({ tantiemes: line.tantiemes, updated_at: new Date().toISOString() }).eq("id", line.lotId).eq("user_id", userId);
+        if (lotError) throw lotError;
+      }
+      setTantiemesSaveMsg("Tantièmes enregistrés sur l'immeuble — ils seront pré-remplis la prochaine fois.");
+    } catch (e: any) {
+      setTantiemesSaveMsg(e?.message || "Enregistrement des tantièmes impossible.");
+    } finally {
+      setTantiemesSaving(false);
+    }
+  };
+
+  const callChargeEmailApi = async (leaseId: string, extra: Record<string, any>) => {
+    const { data: sessionData } = await supabase!.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) throw new Error("Session expirée.");
+    const resp = await fetch("/api/tools/send-charge-call-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId, leaseId, periodLabel, baseTantiemes: denominator, ...extra }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.error || "Erreur.");
+    return data;
+  };
+
+  const prepareChargeEmail = async (line: (typeof computedShares)[number]) => {
+    if (!line.leaseId || !line.occupantEmail) return;
+    setChargeEmailError(null);
+    const target = {
+      leaseId: line.leaseId,
+      lotLabel: line.label,
+      tantiemes: line.tantiemes,
+      baseTantiemes: denominator,
+      sharePercent: line.sharePercent,
+      grossAmount: line.grossAmount,
+      recoverablePercent: line.recoverablePercent,
+      recoverableAmount: line.recoverableAmount,
+    };
+    try {
+      const data = await callChargeEmailApi(line.leaseId, {
+        lotLabel: target.lotLabel,
+        tantiemes: target.tantiemes,
+        sharePercent: target.sharePercent,
+        grossAmount: target.grossAmount,
+        recoverablePercent: target.recoverablePercent,
+        recoverableAmount: target.recoverableAmount,
+        preview: true,
+      });
+      setChargeEmailTarget(target);
+      setChargeEmailPreview({ subject: data.subject || "", html: data.html || "", to: data.to || line.occupantEmail || "" });
+    } catch (e: any) {
+      setChargeEmailError(e?.message || "Aperçu impossible.");
+    }
+  };
+
+  const cancelChargeEmailPreview = () => {
+    setChargeEmailPreview(null);
+    setChargeEmailTarget(null);
+    setChargeEmailError(null);
+  };
+
+  const confirmSendChargeEmail = async () => {
+    if (!chargeEmailTarget) return;
+    setSendingChargeEmail(true);
+    setChargeEmailError(null);
+    try {
+      await callChargeEmailApi(chargeEmailTarget.leaseId, {
+        lotLabel: chargeEmailTarget.lotLabel,
+        tantiemes: chargeEmailTarget.tantiemes,
+        sharePercent: chargeEmailTarget.sharePercent,
+        grossAmount: chargeEmailTarget.grossAmount,
+        recoverablePercent: chargeEmailTarget.recoverablePercent,
+        recoverableAmount: chargeEmailTarget.recoverableAmount,
+        preview: false,
+      });
+      setChargeEmailPreview(null);
+      setChargeEmailTarget(null);
+    } catch (e: any) {
+      setChargeEmailError(e?.message || "Envoi impossible.");
+    } finally {
+      setSendingChargeEmail(false);
+    }
+  };
+
   const summary = [
     "Répartition des charges",
     assetLabel ? `Bien : ${assetLabel}` : null,
@@ -815,6 +981,7 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
     .join("\n");
 
   return (
+    <>
     <CalculatorShell
       tone="violet"
       eyebrow="Répartition des charges"
@@ -846,6 +1013,21 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
             Les lots totalisent {usedTantiemes.toLocaleString("fr-FR")} tantièmes pour une base de {baseTantiemes.toLocaleString("fr-FR")} — dépassement de {overAllocatedTantiemes.toLocaleString("fr-FR")}. Vérifiez la saisie.
           </div>
         )}
+        {buildings.length > 0 ? (
+          <div className="mb-3 space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Immeuble (optionnel — préremplit les lots et locataires)</span>
+            <NiceSelect
+              icon={HomeModernIcon}
+              value={selectedPropertyId}
+              onChange={(pid) => setSelectedPropertyId(pid || "")}
+              placeholder="Saisie manuelle (aucun immeuble sélectionné)"
+              options={buildings.map((property) => ({
+                value: property.id,
+                label: property.label || [property.address_line1, property.city].filter(Boolean).join(", ") || "Immeuble sans libellé",
+              }))}
+            />
+          </div>
+        ) : null}
         <div className="grid gap-3 lg:grid-cols-[1.2fr,1fr,0.8fr,0.8fr]">
           <label className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Bien / immeuble</span>
@@ -864,6 +1046,19 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
             <input inputMode="decimal" value={totalTantiemes} onChange={(e) => setTotalTantiemes(e.target.value)} placeholder="Ex : 1000" className={toolInputClass} />
           </label>
         </div>
+        {selectedPropertyId ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={saveTantiemesToProperty}
+              disabled={tantiemesSaving}
+              className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+            >
+              {tantiemesSaving ? "Enregistrement..." : "Enregistrer les tantièmes sur l'immeuble"}
+            </button>
+            {tantiemesSaveMsg ? <span className="text-xs font-medium text-slate-600">{tantiemesSaveMsg}</span> : null}
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
@@ -884,7 +1079,7 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
         </div>
 
         <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-          <div className="grid min-w-[920px] grid-cols-[1.2fr,1fr,110px,110px,130px,130px,44px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-slate-500">
+          <div className="grid min-w-[980px] grid-cols-[1.2fr,1fr,110px,110px,130px,130px,44px,44px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-slate-500">
             <span>Lot</span>
             <span>Occupant</span>
             <span>Tantièmes</span>
@@ -892,10 +1087,11 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
             <span>Quote-part</span>
             <span>À appeler</span>
             <span />
+            <span />
           </div>
           {computedShares.map((line) => {
             return (
-              <div key={line.id} className="grid min-w-[920px] grid-cols-[1.2fr,1fr,110px,110px,130px,130px,44px] gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0">
+              <div key={line.id} className="grid min-w-[980px] grid-cols-[1.2fr,1fr,110px,110px,130px,130px,44px,44px] gap-2 border-b border-slate-100 px-3 py-3 last:border-b-0">
                 <input value={line.label} onChange={(e) => updateLine(line.id, { label: e.target.value })} className={toolInputClass + " rounded-xl py-2"} />
                 <input value={line.occupant} onChange={(e) => updateLine(line.id, { occupant: e.target.value })} placeholder="Nom" className={toolInputClass + " rounded-xl py-2"} />
                 <input inputMode="decimal" value={line.tantiemes} onChange={(e) => updateLine(line.id, { tantiemes: e.target.value })} className={toolInputClass + " rounded-xl py-2"} />
@@ -905,6 +1101,20 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
                   <span className="block text-[0.68rem] font-medium text-slate-500">{formatPercent(line.sharePercent)}</span>
                 </div>
                 <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-950">{formatEuro(line.recoverableAmount)}</div>
+                {line.leaseId && line.occupantEmail ? (
+                  <button
+                    type="button"
+                    onClick={() => prepareChargeEmail(line)}
+                    disabled={line.recoverableAmount <= 0}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-40"
+                    aria-label={`Email à ${line.occupant || "l'occupant"}`}
+                    title={`Envoyer l'appel de charges à ${line.occupant || "l'occupant"}`}
+                  >
+                    <EnvelopeIcon className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span />
+                )}
                 {lines.length > 1 ? (
                   <button type="button" onClick={() => setLines((prev) => prev.filter((item) => item.id !== line.id))} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 text-red-600 hover:bg-red-50" aria-label="Supprimer le lot">
                     <TrashIcon className="h-4 w-4" />
@@ -970,6 +1180,40 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
           </button>
         </FinanceImportActions>
     </CalculatorShell>
+    {chargeEmailPreview ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+        <div className="flex max-h-[90vh] w-full max-w-[min(720px,96vw)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+          <div className="border-b border-slate-200 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Aperçu de l'email</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">{chargeEmailPreview.subject}</p>
+            <p className="mt-0.5 text-xs text-slate-500">À : {chargeEmailPreview.to}</p>
+          </div>
+          <div className="min-h-[420px] flex-1 overflow-auto bg-slate-100">
+            <iframe title="Aperçu email charges" srcDoc={chargeEmailPreview.html} sandbox="" className="h-[420px] w-full" />
+          </div>
+          {chargeEmailError && <p className="px-5 pt-2 text-xs font-medium text-red-600">{chargeEmailError}</p>}
+          <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
+            <button
+              type="button"
+              onClick={cancelChargeEmailPreview}
+              disabled={sendingChargeEmail}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={confirmSendChargeEmail}
+              disabled={sendingChargeEmail}
+              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              {sendingChargeEmail ? "Envoi..." : "Confirmer l'envoi"}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 
@@ -1767,6 +2011,7 @@ function PreavisTool({ onBack }: { onBack: () => void }) {
 export function SectionOutils({
   userId,
   properties = [],
+  propertyLots = [],
   leases = [],
   tenants = [],
   plan = "calc_full",
@@ -1774,6 +2019,7 @@ export function SectionOutils({
 }: {
   userId: string;
   properties?: Property[];
+  propertyLots?: PropertyLot[];
   leases?: Lease[];
   tenants?: Tenant[];
   plan?: Plan;
@@ -2838,7 +3084,15 @@ export function SectionOutils({
   if (activeTool === "charges") {
     return (
       <>
-        <ChargesAllocationTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <ChargesAllocationTool
+          userId={userId}
+          properties={properties}
+          propertyLots={propertyLots}
+          leases={leases}
+          tenants={tenants}
+          onBack={() => setActiveTool(null)}
+          onFinanceDraft={openFinanceDraft}
+        />
         {financeModal}
         {financeFeedback}
       </>
