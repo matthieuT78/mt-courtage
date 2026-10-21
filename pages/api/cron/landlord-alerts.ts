@@ -247,6 +247,10 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     why: "Sans état des lieux de sortie signé, impossible de justifier une retenue sur le dépôt de garantie en cas de dégradations, et le délai légal de restitution de la caution ne peut pas être respecté correctement.",
     how: "Planifiez et réalisez l'état des lieux de sortie avec le locataire, puis finalisez-le dans lokt.fr.",
   },
+  teom_overcharge_risk: {
+    why: "La récupération de TEOM a été calculée au prorata d'une occupation supposée jusqu'à une certaine date. Si le locataire part avant cette date, il a payé pour des jours qu'il n'a pas occupés.",
+    how: "Vérifiez le montant recalculé indiqué ci-dessus et remboursez la différence au locataire (directement ou en le créditant lors de la restitution de sa caution).",
+  },
 };
 
 function euro(n: number) {
@@ -489,6 +493,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: reports, error: reportsError },
       { data: preferences, error: preferencesError },
       { data: contractDocs, error: contractDocsError },
+      { data: teomRecoveryCharges, error: teomRecoveryChargesError },
     ] = await Promise.all([
       supabaseAdmin.from("leases").select("*"),
       supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status,delegated_services,energy_class"),
@@ -499,6 +504,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       supabaseAdmin.from("inventory_reports").select("id,user_id,lease_id,report_type,status,performed_at"),
       supabaseAdmin.from("landlord_alert_preferences").select("*"),
       supabaseAdmin.from("lease_contract_documents").select("lease_id,generated_at"),
+      supabaseAdmin.from("teom_recovery_charges").select("id,user_id,transaction_id,lease_id,occupancy_start,assumed_occupancy_end,transactions(amount)"),
     ]);
 
     if (leasesError) throw leasesError;
@@ -510,6 +516,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (reportsError) throw reportsError;
     if (preferencesError) throw preferencesError;
     if (contractDocsError) throw contractDocsError;
+    if (teomRecoveryChargesError) throw teomRecoveryChargesError;
 
     const leasesList = (leases || []) as LeaseRow[];
     const propertiesById = new Map((properties || []).map((p: any) => [p.id, p]));
@@ -545,6 +552,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!lease.user_id) continue;
       if (!userLeases.has(lease.user_id)) userLeases.set(lease.user_id, []);
       userLeases.get(lease.user_id)!.push(lease);
+    }
+
+    const teomChargesByUserId = new Map<string, any[]>();
+    for (const charge of (teomRecoveryCharges || []) as any[]) {
+      if (!charge.user_id) continue;
+      if (!teomChargesByUserId.has(charge.user_id)) teomChargesByUserId.set(charge.user_id, []);
+      teomChargesByUserId.get(charge.user_id)!.push(charge);
     }
 
     const results: any[] = [];
@@ -899,6 +913,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         }
+      }
+
+      // Garde-fou TEOM : une récupération calculée en supposant une occupation
+      // jusqu'à assumed_occupancy_end peut devenir trop élevée si le bail se
+      // termine plus tôt. On recalcule le montant réellement dû au même taux
+      // journalier que le calcul d'origine (on n'a pas besoin de refaire tout
+      // le calcul TEOM pour ça, juste le même ratio de jours).
+      const leasesByIdForUser = new Map(userLeaseList.map((l) => [l.id, l]));
+      for (const charge of teomChargesByUserId.get(userId) || []) {
+        const lease = leasesByIdForUser.get(charge.lease_id);
+        if (!lease || !lease.end_date) continue;
+        const realEnd = parseISODate(lease.end_date);
+        const assumedEnd = parseISODate(charge.assumed_occupancy_end);
+        const occupancyStart = parseISODate(charge.occupancy_start);
+        if (!realEnd || !assumedEnd || !occupancyStart || realEnd >= assumedEnd) continue;
+
+        const originalAmount = Number(charge.transactions?.amount || 0);
+        const assumedDays = daysBetween(occupancyStart, assumedEnd) + 1;
+        const realDays = Math.max(0, daysBetween(occupancyStart, realEnd) + 1);
+        if (!(originalAmount > 0) || assumedDays <= 0) continue;
+
+        const correctedAmount = (originalAmount / assumedDays) * realDays;
+        const overcharge = originalAmount - correctedAmount;
+        if (overcharge < 0.5) continue;
+
+        const labels = labelForLease(lease, propertiesById, tenantsById);
+        alerts.push({
+          key: `teom_overcharge:${charge.transaction_id}:${lease.end_date}`,
+          preferenceKey: "teom_overcharge_risk",
+          tone: "amber",
+          title: `TEOM récupérée : départ plus tôt que prévu - ${labels.property}`,
+          detail: `La récupération de TEOM de ${euro(originalAmount)} auprès de ${labels.tenant} avait été calculée en supposant une occupation jusqu'au ${charge.assumed_occupancy_end}. Son bail s'est terminé le ${lease.end_date} — le montant réellement dû pour sa période d'occupation est d'environ ${euro(correctedAmount)}, soit ${euro(overcharge)} probablement à lui rembourser.`,
+          href: "/espace-bailleur?tab=outils",
+          propertyId: lease.property_id,
+        });
       }
 
       const uniqueAlerts = Array.from(

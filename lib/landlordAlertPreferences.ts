@@ -14,6 +14,7 @@ export const LANDLORD_ALERT_PREFERENCE_KEYS = [
   "avenant_pending",
   "insurance_certificate_missing",
   "dpe_missing",
+  "teom_overcharge_risk",
 ] as const;
 
 export type LandlordAlertPreferenceKey = (typeof LANDLORD_ALERT_PREFERENCE_KEYS)[number];
@@ -55,6 +56,7 @@ export const DEFAULT_LANDLORD_ALERT_PREFERENCES: LandlordAlertPreferences = {
   avenant_pending: true,
   insurance_certificate_missing: true,
   dpe_missing: true,
+  teom_overcharge_risk: true,
 };
 
 export function normalizeLandlordAlertPreferences(row?: Record<string, unknown> | null): LandlordAlertPreferences {

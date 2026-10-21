@@ -1334,10 +1334,10 @@ function TeomTool({
       .gte("occurred_at", `${year}-01-01`)
       .lte("occurred_at", `${year}-12-31`)
       .maybeSingle();
-    if (existing) return false;
-    const { error } = await supabase!.from("transactions").insert(payload);
+    if (existing) return { created: false, id: existing.id as string };
+    const { data, error } = await supabase!.from("transactions").insert(payload).select("id").single();
     if (error) throw error;
-    return true;
+    return { created: true, id: data.id as string };
   };
 
   // Bouton unique : enregistre ce qu'il y a à enregistrer (taxe foncière,
@@ -1383,11 +1383,11 @@ function TeomTool({
 
       const created: string[] = [];
       if (taxPayload) {
-        const did = await insertIfNotDuplicate("property_id", selectedPropertyId!, year, taxPayload);
-        if (did) created.push("taxe foncière");
+        const taxResult = await insertIfNotDuplicate("property_id", selectedPropertyId!, year, taxPayload);
+        if (taxResult.created) created.push("taxe foncière");
       }
       if (recoverable > 0 && selectedLeaseId) {
-        const did = await insertIfNotDuplicate("lease_id", selectedLeaseId, year, {
+        const teomResult = await insertIfNotDuplicate("lease_id", selectedLeaseId, year, {
           user_id: userId,
           property_id: selectedPropertyId || null,
           lease_id: selectedLeaseId,
@@ -1400,7 +1400,19 @@ function TeomTool({
           notes: summary,
           updated_at: new Date().toISOString(),
         });
-        if (did) created.push("TEOM récupérable");
+        if (teomResult.created) {
+          created.push("TEOM récupérable");
+          // Garde-fou : on mémorise la date d'occupation supposée pour ce
+          // calcul, pour pouvoir détecter plus tard un départ anticipé qui
+          // rendrait ce montant trop élevé (cf. cron de vérification).
+          await supabase!.from("teom_recovery_charges").insert({
+            user_id: userId,
+            transaction_id: teomResult.id,
+            lease_id: selectedLeaseId,
+            occupancy_start: occupancyStart,
+            assumed_occupancy_end: occupancyEnd,
+          });
+        }
       }
       setSaveOk(created.length ? `Enregistré dans Finance : ${created.join(", ")}.` : "Déjà enregistré pour ce bien/cette année — rien à ajouter.");
     } catch (e: any) {

@@ -74,18 +74,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
 
     if (!existing) {
-      await supabaseAdmin.from("transactions").insert({
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from("transactions")
+        .insert({
+          user_id: userId,
+          property_id: lease.property_id,
+          lease_id: leaseId,
+          direction: "in",
+          status: "expected",
+          category: "charges_recovered",
+          label: `TEOM récupérable ${year} — ${propertyLabel}`,
+          amount,
+          occurred_at: String(periodEnd || new Date().toISOString().slice(0, 10)),
+          notes: "[lokt:teom] Demande envoyée au locataire par email.",
+          updated_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (insertError) throw insertError;
+
+      // Garde-fou : mémorise la date d'occupation supposée pour ce calcul,
+      // pour détecter plus tard un départ anticipé qui rendrait ce montant
+      // trop élevé (cf. cron de vérification TEOM).
+      await supabaseAdmin.from("teom_recovery_charges").insert({
         user_id: userId,
-        property_id: lease.property_id,
+        transaction_id: inserted.id,
         lease_id: leaseId,
-        direction: "in",
-        status: "expected",
-        category: "charges_recovered",
-        label: `TEOM récupérable ${year} — ${propertyLabel}`,
-        amount,
-        occurred_at: String(periodEnd || new Date().toISOString().slice(0, 10)),
-        notes: "[lokt:teom] Demande envoyée au locataire par email.",
-        updated_at: new Date().toISOString(),
+        occupancy_start: String(occupancyStart || periodStart || ""),
+        assumed_occupancy_end: String(occupancyEnd || periodEnd || ""),
       });
     }
 
