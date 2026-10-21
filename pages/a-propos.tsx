@@ -14,6 +14,9 @@ import {
 } from "@heroicons/react/24/outline";
 import AppFooter from "../components/AppFooter";
 import AppHeader from "../components/AppHeader";
+import TrustpilotStars from "../components/TrustpilotStars";
+import ReviewsSection from "../components/ReviewsSection";
+import { TRUSTPILOT_RATING, TRUSTPILOT_REVIEW_COUNT, TRUSTPILOT_URL } from "../lib/trustpilot";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/a-propos`;
@@ -109,6 +112,17 @@ export default function AProposPage() {
                     Lire les guides
                   </Link>
                 </div>
+
+                <a
+                  href={TRUSTPILOT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3.5 py-2 text-xs font-medium text-cyan-900 ring-1 ring-cyan-100 transition hover:bg-cyan-100"
+                >
+                  <TrustpilotStars rating={TRUSTPILOT_RATING} size={15} />
+                  <span className="font-semibold text-cyan-950">{TRUSTPILOT_RATING.toFixed(1).replace(".", ",")}</span>
+                  <span className="text-cyan-800/70">· {TRUSTPILOT_REVIEW_COUNT} avis sur Trustpilot</span>
+                </a>
               </div>
             </div>
 
@@ -238,6 +252,8 @@ export default function AProposPage() {
             </aside>
           </div>
         </section>
+
+        <ReviewsSection />
       </main>
 
       <AppFooter />
