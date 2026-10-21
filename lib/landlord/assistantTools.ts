@@ -1703,6 +1703,19 @@ N'invente jamais une valeur absente du document : utilise null.`,
         label: { type: "string", description: "Libellé court de l'écriture." },
         amount: { type: "number" },
         occurred_at: { type: "string", description: "Date de l'écriture, YYYY-MM-DD." },
+        status: {
+          type: "string",
+          enum: ["received", "expected", "paid"],
+          description: "Statut de l'écriture. Par défaut (si omis) : 'received' pour une recette, 'paid' pour une dépense. Utilise explicitement 'expected' pour une recette pas encore encaissée — notamment une charge récupérable (ex. TEOM) facturée au locataire mais pas encore payée : sans ça elle serait vue à tort comme déjà réglée.",
+        },
+        occupancy_start: {
+          type: "string",
+          description: "Uniquement pour une récupération de TEOM (category=charges_recovered) via compute_teom_recovery : date de début d'occupation retenue pour ce calcul (occupancy_start de la part concernée), YYYY-MM-DD.",
+        },
+        assumed_occupancy_end: {
+          type: "string",
+          description: "Uniquement pour une récupération de TEOM (category=charges_recovered) via compute_teom_recovery, pour un locataire encore en place : date d'occupation supposée au moment du calcul (occupancy_end de la part concernée), YYYY-MM-DD. Avec occupancy_start, permet de détecter plus tard un départ anticipé qui rendrait le montant trop élevé.",
+        },
         notes: { type: "string" },
       },
       required: ["direction", "category", "amount", "occurred_at"],
@@ -1734,7 +1747,7 @@ N'invente jamais une valeur absente du document : utilise null.`,
         lease_id: args.lease_id || null,
         receipt_id: null,
         direction: String(args.direction),
-        status: args.direction === "in" ? "received" : "paid",
+        status: args.status ? String(args.status) : args.direction === "in" ? "received" : "paid",
         category: String(args.category),
         label: args.label ? String(args.label).trim() : null,
         amount: Number(args.amount),
@@ -1744,6 +1757,20 @@ N'invente jamais une valeur absente du document : utilise null.`,
       };
       const { data, error } = await admin.from("transactions").insert(payload).select("id").single();
       if (error) throw new Error(error.message);
+
+      // Garde-fou TEOM : si cette écriture est une récupération calculée
+      // avec une occupation supposée, on la mémorise pour que le cron
+      // landlord-alerts puisse détecter un départ anticipé plus tard.
+      if (String(args.category) === "charges_recovered" && args.lease_id && args.occupancy_start && args.assumed_occupancy_end) {
+        await admin.from("teom_recovery_charges").insert({
+          user_id: ctx.userId,
+          transaction_id: data.id,
+          lease_id: String(args.lease_id),
+          occupancy_start: String(args.occupancy_start),
+          assumed_occupancy_end: String(args.assumed_occupancy_end),
+        });
+      }
+
       return { transaction_id: data.id };
     },
     summarize: async (ctx, args) => {
