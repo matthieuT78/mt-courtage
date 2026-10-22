@@ -55,17 +55,24 @@ const WIDGET_OPTIONS: WidgetOption[] = [
   },
 ];
 
-const SIZE_META: Record<WidgetSize, { label: string; desc: string }> = {
-  small: { label: "Petit", desc: "Teaser compact — 2 champs, 1 chiffre, idéal en sidebar." },
-  medium: { label: "Moyen", desc: "Formulaire condensé avec Score lokt.fr — pour une section dédiée." },
-  large: { label: "Grand", desc: "Analyse complète — pour une page financement à part entière." },
+// Même contenu (même wizard, mêmes questions, même analyse) pour les 3
+// tailles — seule la largeur change. En dessous de 640px, le simulateur
+// bascule déjà naturellement sur sa mise en page mobile (une colonne) :
+// contraindre la largeur d'intégration suffit à obtenir un format compact,
+// sans retirer la moindre information.
+const SIZE_META: Record<WidgetSize, { label: string; desc: string; maxWidth: number | null }> = {
+  small: { label: "Petit", desc: "~360px de large — pour une sidebar ou un encart étroit.", maxWidth: 360 },
+  medium: { label: "Moyen", desc: "~520px de large — pour une colonne ou une section dédiée.", maxWidth: 520 },
+  large: { label: "Grand", desc: "Pleine largeur — pour une page financement à part entière.", maxWidth: null },
 };
 
 function iframeSnippetFor(opt: WidgetOption, size: WidgetSize) {
-  const sizeParam = opt.sizes && size !== "large" ? `?size=${size}` : "";
-  return `<iframe
+  const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
+  const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
+  const wrapClose = maxWidth ? `\n</div>` : "";
+  return `${wrapOpen}<iframe
   data-lokt-widget
-  src="https://lokt.fr${opt.embedPath}${sizeParam}"
+  src="https://lokt.fr${opt.embedPath}"
   width="100%"
   height="700"
   style="border:0;border-radius:16px;"
@@ -74,7 +81,7 @@ function iframeSnippetFor(opt: WidgetOption, size: WidgetSize) {
 </iframe>
 <p style="margin-top:8px;font-size:12px;color:#64748b;text-align:center;">
   Simulateur propulsé par <a href="https://lokt.fr" target="_blank" rel="noopener">lokt.fr</a>
-</p>
+</p>${wrapClose}
 <script>
   // Ajuste automatiquement la hauteur de l'iframe au contenu réel
   // (le simulateur grandit quand le résultat s'affiche) — à garder une
@@ -132,7 +139,7 @@ export default function WidgetPage() {
   const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
-  const demoSrc = selected.sizes && selectedSize !== "large" ? `${selected.embedPath}?size=${selectedSize}` : selected.embedPath;
+  const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
 
   // La démo ci-dessous est une iframe comme celle que l'agence intègre :
   // même mécanisme d'auto-redimensionnement que le script fourni dans le
@@ -154,10 +161,6 @@ export default function WidgetPage() {
     setDemoHeight(700);
     if (!selected.sizes) setSelectedSize("large");
   }, [selectedId, selected.sizes]);
-
-  useEffect(() => {
-    setDemoHeight(700);
-  }, [selectedSize]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -267,8 +270,11 @@ export default function WidgetPage() {
                 <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Choisissez une taille</p>
                 <div className="mt-4 flex flex-wrap items-end justify-center gap-4">
                   {(["small", "medium", "large"] as WidgetSize[]).map((size) => {
-                    const previewHeight = size === "small" ? 72 : size === "medium" ? 108 : 144;
-                    const previewWidth = size === "small" ? 72 : size === "medium" ? 160 : 160;
+                    // La hauteur de l'aperçu augmente quand la largeur diminue — reflète
+                    // ce qui se passe réellement (même contenu, qui se replie davantage
+                    // à la verticale dans un conteneur plus étroit).
+                    const previewWidth = size === "small" ? 64 : size === "medium" ? 104 : 168;
+                    const previewHeight = size === "small" ? 140 : size === "medium" ? 112 : 96;
                     return (
                       <button
                         key={size}
@@ -293,11 +299,14 @@ export default function WidgetPage() {
               </div>
             )}
 
-            <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5">
+            <div
+              className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5 transition-all"
+              style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
+            >
               <iframe
-                key={`${selected.id}-${selectedSize}`}
+                key={selected.id}
                 ref={demoFrameRef}
-                src={demoSrc}
+                src={selected.embedPath}
                 width="100%"
                 height={demoHeight}
                 style={{ border: 0, display: "block", transition: "height 150ms ease" }}
@@ -360,8 +369,12 @@ export default function WidgetPage() {
                   a: "Oui, les 3 simulateurs ci-dessus sont chacun disponibles en intégration indépendante — vous pouvez n'en mettre qu'un, ou les trois sur des pages différentes de votre site. Besoin d'un autre simulateur de notre catalogue ? Écrivez-nous à contact@lokt.fr.",
                 },
                 {
+                  q: "La taille « petite » retire-t-elle des questions au simulateur ?",
+                  a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie — seule la largeur d'intégration change, pour s'adapter à une sidebar, une colonne ou une page entière. En dessous de 640px de large, l'affichage bascule simplement sur une présentation verticale, comme sur mobile.",
+                },
+                {
                   q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
-                  a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs n'existent qu'en taille grande — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
+                  a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs s'intègrent en pleine largeur — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
                 },
                 {
                   q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
