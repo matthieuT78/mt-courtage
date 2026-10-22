@@ -18,6 +18,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
+import StyledSelect from "./calculators/StyledSelect";
 import {
   buildCapaciteEmailHtml,
   buildCapaciteEmailText,
@@ -247,15 +248,12 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
 
   /* ======================== Common input styles ======================== */
   const inputBase =
-    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
+    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition " +
     "placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
   const inputSmall =
-    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm transition " +
+    "w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition " +
     "placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
-  const selectBase =
-    "calc-select w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
-    "focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
-  const labelBase = "flex min-h-[1.5rem] items-center gap-1 text-sm font-semibold leading-tight text-slate-700";
+  const labelBase = "flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700";
 
   /* ======================== Step 1: Votre projet ======================== */
   const [projectDepartment, setProjectDepartment] = useState<string>("");
@@ -993,11 +991,15 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                     Usage du futur bien
                     <InfoBadge text="Résidence principale, secondaire ou investissement : la banque ne lit pas toujours le dossier de la même façon." />
                   </label>
-                  <select value={projectUsageUI} onChange={(e) => setProjectUsageUI(e.target.value as ProjectUsageUI)} className={selectBase}>
-                    <option value="rp">Résidence principale</option>
-                    <option value="rs">Résidence secondaire</option>
-                    <option value="invest">Investissement locatif</option>
-                  </select>
+                  <StyledSelect
+                    value={projectUsageUI}
+                    onChange={(v) => setProjectUsageUI(v)}
+                    options={[
+                      { value: "rp", label: "Résidence principale" },
+                      { value: "rs", label: "Résidence secondaire" },
+                      { value: "invest", label: "Investissement locatif" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1005,12 +1007,16 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                     Type de bien
                     <InfoBadge text="Permet de qualifier le projet et de contextualiser l'analyse." />
                   </label>
-                  <select value={propertyKind} onChange={(e) => setPropertyKind(e.target.value as PropertyKind)} className={selectBase}>
-                    <option value="appartement">Appartement</option>
-                    <option value="maison">Maison</option>
-                    <option value="terrain">Terrain</option>
-                    <option value="autre">Autre</option>
-                  </select>
+                  <StyledSelect
+                    value={propertyKind}
+                    onChange={(v) => setPropertyKind(v)}
+                    options={[
+                      { value: "appartement", label: "Appartement" },
+                      { value: "maison", label: "Maison" },
+                      { value: "terrain", label: "Terrain" },
+                      { value: "autre", label: "Autre" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1033,22 +1039,30 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                     Nature du projet
                     <InfoBadge text="Les frais d'acquisition varient fortement entre ancien, neuf et terrain + construction." />
                   </label>
-                  <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)} className={selectBase}>
-                    <option value="ancien">Ancien</option>
-                    <option value="neuf">Neuf / VEFA</option>
-                    <option value="terrain">Terrain + construction</option>
-                  </select>
+                  <StyledSelect
+                    value={projectType}
+                    onChange={(v) => setProjectType(v)}
+                    options={[
+                      { value: "ancien", label: "Ancien" },
+                      { value: "neuf", label: "Neuf / VEFA" },
+                      { value: "terrain", label: "Terrain + construction" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className={labelBase}>Horizon d'achat</label>
-                  <select value={projectTimelineUI} onChange={(e) => setProjectTimelineUI(e.target.value as ProjectTimelineUI)} className={selectBase}>
-                    <option value="0_3m">0-3 mois</option>
-                    <option value="3_6m">3-6 mois</option>
-                    <option value="6_12m">6-12 mois</option>
-                    <option value="12m_plus">12+ mois</option>
-                    <option value="juste_info">Je me renseigne</option>
-                  </select>
+                  <StyledSelect
+                    value={projectTimelineUI}
+                    onChange={(v) => setProjectTimelineUI(v)}
+                    options={[
+                      { value: "0_3m", label: "0-3 mois" },
+                      { value: "3_6m", label: "3-6 mois" },
+                      { value: "6_12m", label: "6-12 mois" },
+                      { value: "12m_plus", label: "12+ mois" },
+                      { value: "juste_info", label: "Je me renseigne" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1073,13 +1087,17 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                     Statut professionnel
                     <InfoBadge text="CDI, fonctionnaire, indépendant ou retraité : la stabilité perçue change selon les banques." />
                   </label>
-                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className={selectBase}>
-                    <option value="cdi">CDI</option>
-                    <option value="fonctionnaire">Fonctionnaire</option>
-                    <option value="independant">Indépendant / société</option>
-                    <option value="retraite">Retraité</option>
-                    <option value="autre">Autre</option>
-                  </select>
+                  <StyledSelect
+                    value={proStatus}
+                    onChange={(v) => setProStatus(v)}
+                    options={[
+                      { value: "cdi", label: "CDI" },
+                      { value: "fonctionnaire", label: "Fonctionnaire" },
+                      { value: "independant", label: "Indépendant / société" },
+                      { value: "retraite", label: "Retraité" },
+                      { value: "autre", label: "Autre" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1111,7 +1129,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                     inputMode="numeric"
                     value={revenusNetMensuels}
                     onChange={(e) => { setRevenusNetMensuels(onlyDigits(e.target.value)); setRevenusError(null); }}
-                    className={"w-full min-w-0 rounded-xl border bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " + (revenusError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-cyan-400 focus:ring-cyan-100")}
+                    className={"w-full min-w-0 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " + (revenusError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-cyan-400 focus:ring-cyan-100")}
                     aria-invalid={!!revenusError}
                   />
                   {revenusError ? <p className="text-[0.7rem] text-red-600">{revenusError}</p> : null}
@@ -1149,13 +1167,11 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
 
                 <div className="space-y-1">
                   <label className={labelBase}>Nombre de crédits en cours</label>
-                  <select value={nbCredits} onChange={(e) => handleNbCreditsChange(Number(e.target.value))} className={selectBase}>
-                    {[0, 1, 2, 3, 4, 5].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  <StyledSelect
+                    value={String(nbCredits)}
+                    onChange={(v) => handleNbCreditsChange(Number(v))}
+                    options={[0, 1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: String(n) }))}
+                  />
                 </div>
               </div>
 
@@ -1167,12 +1183,17 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                       <div className="grid gap-3 sm:grid-cols-5">
                         <div className="space-y-1 sm:col-span-1">
                           <label className="text-xs text-slate-700">Type</label>
-                          <select value={typesCredits[index] || "immo"} onChange={(e) => handleTypeCreditChange(index, e.target.value as TypeCredit)} className={selectBase}>
-                            <option value="immo">Immobilier</option>
-                            <option value="perso">Personnel</option>
-                            <option value="auto">Auto</option>
-                            <option value="conso">Conso</option>
-                          </select>
+                          <StyledSelect
+                            size="small"
+                            value={typesCredits[index] || "immo"}
+                            onChange={(v) => handleTypeCreditChange(index, v)}
+                            options={[
+                              { value: "immo", label: "Immobilier" },
+                              { value: "perso", label: "Personnel" },
+                              { value: "auto", label: "Auto" },
+                              { value: "conso", label: "Conso" },
+                            ]}
+                          />
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs text-slate-700">Mensualité (€)</label>
