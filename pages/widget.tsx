@@ -85,6 +85,7 @@ function colorQueryParam(opt: WidgetOption, colorMode: ColorMode, customAccent: 
 
 function queryParamsFor(
   opt: WidgetOption,
+  size: WidgetSize,
   colorMode: ColorMode,
   customAccent: string,
   leadForwardEnabled: boolean,
@@ -92,6 +93,11 @@ function queryParamsFor(
   agencySiteLabel: string
 ) {
   const parts: string[] = [];
+  // "petit" répartit les mêmes questions sur une étape de plus dans le
+  // wizard (cf. compactSteps dans CapaciteWizard.tsx) plutôt que de les
+  // compresser dans une largeur réduite — moyen et grand gardent le
+  // découpage par défaut, inutile de le préciser dans l'URL.
+  if (opt.sizes && size === "small") parts.push("size=small");
   const colorParam = colorQueryParam(opt, colorMode, customAccent);
   if (colorParam) parts.push(colorParam);
   if (opt.leadForwarding && leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)) {
@@ -113,7 +119,7 @@ function iframeSnippetFor(
   const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
   const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
   const wrapClose = maxWidth ? `\n</div>` : "";
-  const query = queryParamsFor(opt, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel);
+  const query = queryParamsFor(opt, size, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel);
   const src = query ? `https://lokt.fr${opt.embedPath}?${query}` : `https://lokt.fr${opt.embedPath}`;
   return `${wrapOpen}<iframe
   data-lokt-widget
@@ -191,10 +197,10 @@ export default function WidgetPage() {
   const [demoHeight, setDemoHeight] = useState(700);
   const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
   // La démo n'envoie jamais réellement d'email (pas d'adresse agence saisie
-  // ici) — uniquement la couleur, pour que l'aperçu reste fidèle au code
-  // généré sans dépendre d'une adresse de test.
-  const demoColorParam = colorQueryParam(selected, colorMode, customAccent);
-  const demoSrc = demoColorParam ? `${selected.embedPath}?${demoColorParam}` : selected.embedPath;
+  // ici) — uniquement taille et couleur, pour que l'aperçu reste fidèle au
+  // code généré sans dépendre d'une adresse de test.
+  const demoQuery = queryParamsFor(selected, selectedSize, colorMode, customAccent, false, "", "");
+  const demoSrc = demoQuery ? `${selected.embedPath}?${demoQuery}` : selected.embedPath;
 
   // La démo ci-dessous est une iframe comme celle que l'agence intègre :
   // même mécanisme d'auto-redimensionnement que le script fourni dans le
@@ -536,7 +542,7 @@ export default function WidgetPage() {
                 },
                 {
                   q: "La taille « petite » retire-t-elle des questions au simulateur ?",
-                  a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie — seule la largeur d'intégration change, pour s'adapter à une sidebar, une colonne ou une page entière. En dessous de 640px de large, l'affichage bascule simplement sur une présentation verticale, comme sur mobile.",
+                  a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie. Seule la taille « petite » réorganise ces mêmes questions sur une étape de plus (5 écrans légers au lieu de 4), pour rester confortable dans un format étroit — rien n'est raccourci, juste réparti différemment.",
                 },
                 {
                   q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",

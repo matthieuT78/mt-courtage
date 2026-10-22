@@ -155,9 +155,15 @@ export type CapaciteWizardProps = {
   // explicitement que c'est l'agence, pas "un conseiller partenaire" lokt,
   // qui recevra ses coordonnées).
   agencyLead?: { notifyEmail: string; siteLabel?: string };
+
+  // Format "petit" du widget agence (cf. pages/embed/capacite.tsx) : répartit
+  // les mêmes questions sur une étape de plus pour rester léger dans un
+  // format étroit. false partout ailleurs (dont /capacite), comportement
+  // inchangé par défaut.
+  compactSteps?: boolean;
 };
 
-export default function CapaciteWizard({ showSaveButton = true, agencyLead }: CapaciteWizardProps) {
+export default function CapaciteWizard({ showSaveButton = true, agencyLead, compactSteps = false }: CapaciteWizardProps) {
   const router = useRouter();
 
   /* ======================== Session ======================== */
@@ -196,9 +202,42 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
 
   /* ======================== Wizard steps ======================== */
   const [step, setStep] = useState<number>(1);
-  const TOTAL_STEPS = 4;
   const [maxStepReached, setMaxStepReached] = useState<number>(1);
   useEffect(() => setMaxStepReached((m) => Math.max(m, step)), [step]);
+
+  // compactSteps (format "petit" du widget agence, cf. pages/embed/capacite.tsx)
+  // répartit exactement le même contenu — mêmes questions, même profondeur
+  // d'analyse — sur une étape de plus (Profil et Revenus séparés), pour que
+  // chaque écran reste léger dans un format étroit. Rien n'est retiré, juste
+  // repaginé différemment.
+  type StepSection = "projet" | "profil" | "revenus" | "charges" | "pret";
+  const wizardSteps = useMemo<
+    Array<{
+      label: string;
+      shortLabel: string;
+      description: string;
+      icon: ComponentType<SVGProps<SVGSVGElement>>;
+      sections: StepSection[];
+    }>
+  >(
+    () =>
+      compactSteps
+        ? [
+            { label: "Votre projet", shortLabel: "Projet", description: "Quel bien, où et dans quel délai ?", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil", shortLabel: "Profil", description: "Votre situation professionnelle et votre foyer.", icon: UserGroupIcon, sections: ["profil"] },
+            { label: "Revenus", shortLabel: "Revenus", description: "Vos revenus mensuels nets.", icon: BanknotesIcon, sections: ["revenus"] },
+            { label: "Charges & Crédits", shortLabel: "Charges", description: "Ce qui pèse déjà sur votre budget chaque mois.", icon: CreditCardIcon, sections: ["charges"] },
+            { label: "Paramètres du prêt", shortLabel: "Prêt", description: "Ajustez les hypothèses pour obtenir votre estimation.", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+          ]
+        : [
+            { label: "Votre projet", shortLabel: "Projet", description: "Quel bien, où et dans quel délai ?", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil & Revenus", shortLabel: "Profil", description: "Votre situation professionnelle et les revenus du foyer.", icon: UserGroupIcon, sections: ["profil", "revenus"] },
+            { label: "Charges & Crédits", shortLabel: "Charges", description: "Ce qui pèse déjà sur votre budget chaque mois.", icon: CreditCardIcon, sections: ["charges"] },
+            { label: "Paramètres du prêt", shortLabel: "Prêt", description: "Ajustez les hypothèses pour obtenir votre estimation.", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+          ],
+    [compactSteps]
+  );
+  const TOTAL_STEPS = wizardSteps.length;
 
   const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
@@ -207,44 +246,10 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
     if (t <= maxStepReached) setStep(t);
   };
 
-  const wizardSteps = useMemo<
-    Array<{
-      label: string;
-      shortLabel: string;
-      description: string;
-      icon: ComponentType<SVGProps<SVGSVGElement>>;
-    }>
-  >(
-    () => [
-          {
-            label: "Votre projet",
-            shortLabel: "Projet",
-            description: "Quel bien, où et dans quel délai ?",
-            icon: HomeModernIcon,
-          },
-          {
-            label: "Profil & Revenus",
-            shortLabel: "Profil",
-            description: "Votre situation professionnelle et les revenus du foyer.",
-            icon: UserGroupIcon,
-          },
-          {
-            label: "Charges & Crédits",
-            shortLabel: "Charges",
-            description: "Ce qui pèse déjà sur votre budget chaque mois.",
-            icon: CreditCardIcon,
-          },
-          {
-            label: "Paramètres du prêt",
-            shortLabel: "Prêt",
-            description: "Ajustez les hypothèses pour obtenir votre estimation.",
-            icon: AdjustmentsHorizontalIcon,
-          },
-        ],
-    []
-  );
   const activeStepMeta = wizardSteps[step - 1];
   const ActiveStepIcon = activeStepMeta.icon;
+  const activeSections = activeStepMeta.sections;
+  const revenusStepIndex = wizardSteps.findIndex((s) => s.sections.includes("revenus")) + 1;
 
   /* ======================== Common input styles ======================== */
   const inputBase =
@@ -513,7 +518,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
     const rn = toInt(revenusNetMensuels, 0);
     if (!revenusNetMensuels || rn <= 0) {
       setRevenusError("Revenus obligatoires (montant > 0).");
-      setStep(3);
+      setStep(revenusStepIndex);
       return;
     }
     setRevenusError(null);
@@ -983,7 +988,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
             {/* Contenu */}
             <div className="flex-1 space-y-5 py-6">
 
-          {step === 1 ? (
+          {activeSections.includes("projet") ? (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -1079,7 +1084,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
             </>
           ) : null}
 
-          {step === 2 ? (
+          {activeSections.includes("profil") ? (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -1111,7 +1116,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className={labelBase}>Adultes dans le foyer</label>
                   <input inputMode="numeric" value={nbAdultes} onChange={(e) => setNbAdultes(onlyDigits(e.target.value))} className={inputBase} />
@@ -1121,8 +1126,14 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                   <label className={labelBase}>Enfants à charge</label>
                   <input inputMode="numeric" value={nbEnfants} onChange={(e) => setNbEnfants(onlyDigits(e.target.value))} className={inputBase} />
                 </div>
+              </div>
+            </>
+          ) : null}
 
-                <div className="space-y-1 sm:col-span-2">
+          {activeSections.includes("revenus") ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
                   <label className={labelBase}>Revenus nets mensuels (€) *</label>
                   <input
                     required
@@ -1134,9 +1145,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
                   />
                   {revenusError ? <p className="text-[0.7rem] text-red-600">{revenusError}</p> : null}
                 </div>
-              </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Autres revenus mensuels (€)
@@ -1148,7 +1157,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
             </>
           ) : null}
 
-          {step === 3 ? (
+          {activeSections.includes("charges") ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
@@ -1230,7 +1239,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
             </>
           ) : null}
 
-          {step === 4 ? (
+          {activeSections.includes("pret") ? (
             <>
               <div className="grid items-end gap-3 sm:grid-cols-4">
                 <div className="space-y-1">
@@ -1288,7 +1297,7 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead }: Ca
             <button
               type="button"
               onClick={() => {
-                if (step === 2) {
+                if (activeSections.includes("revenus")) {
                   const rn = toInt(revenusNetMensuels, 0);
                   if (!revenusNetMensuels || rn <= 0) {
                     setRevenusError("Revenus obligatoires (montant > 0).");

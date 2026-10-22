@@ -6,12 +6,12 @@
 // noindex (le contenu canonique est /capacite, celui-ci n'existe que pour
 // être chargé dans une iframe).
 //
-// Un seul contenu (le wizard complet, 4 étapes, même questions et même
-// analyse que la page publique) — les "tailles" proposées sur /widget ne
-// retirent aucune information, elles changent uniquement la largeur
-// d'intégration recommandée (voir le code généré sur /widget), ce qui
-// fait naturellement basculer la mise en page sur un format compact/
-// vertical en dessous de 640px, comme sur mobile.
+// Un seul contenu (le wizard complet, mêmes questions et même analyse que
+// la page publique) — les "tailles" proposées sur /widget ne retirent
+// aucune information. ?size=small répartit ces mêmes questions sur une
+// étape de plus (Profil et Revenus séparés, cf. compactSteps dans
+// CapaciteWizard.tsx) pour rester léger dans un format étroit ; medium et
+// large gardent le découpage en 4 étapes de la page publique.
 //
 // Personnalisation de couleur : ?theme=neutral (palette grise, pour un
 // site au style sobre) ou ?accent=RRGGBB (une couleur d'accent au choix
@@ -67,6 +67,7 @@ export default function EmbedCapacitePage() {
   const router = useRouter();
   const style = accentStyle(router.query.accent, router.query.theme);
   const agencyLead = agencyLeadFromQuery(router.query);
+  const compactSteps = router.query.size === "small";
 
   return (
     <div className="bg-white px-3 py-4 sm:px-5 sm:py-6" style={style}>
@@ -115,7 +116,7 @@ export default function EmbedCapacitePage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} />
+        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} compactSteps={compactSteps} />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">
