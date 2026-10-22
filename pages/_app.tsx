@@ -37,6 +37,10 @@ function logClientError(message: string, stack?: string, extra?: object) {
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+  // Les pages /embed/* sont chargées dans l'iframe d'un site tiers (widget
+  // agence) : ni bandeau cookies ni scripts de mesure d'audience lokt.fr
+  // n'ont de sens dans ce contexte — la page hôte gère son propre consentement.
+  const isEmbedRoute = router.pathname.startsWith("/embed/");
 
   useEffect(() => {
     setAnalyticsAllowed(getStoredCookieConsent()?.analytics === true);
@@ -107,7 +111,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
       {/* Mesure d'audience (Google Analytics + Microsoft Clarity) — chargée
           uniquement après consentement (RGPD), même catégorie dans le bandeau. */}
-      {analyticsAllowed && (
+      {analyticsAllowed && !isEmbedRoute && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
@@ -151,7 +155,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <Component {...pageProps} />
       </PermissionProvider>
 
-      <CookieConsent />
+      {!isEmbedRoute && <CookieConsent />}
     </>
   );
 }
