@@ -19,12 +19,15 @@ import {
   CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 
+type WidgetSize = "small" | "medium" | "large";
+
 type WidgetOption = {
   id: string;
   embedPath: string;
   label: string;
   title: string;
   pitch: string;
+  sizes?: boolean;
 };
 
 const WIDGET_OPTIONS: WidgetOption[] = [
@@ -34,6 +37,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     label: "Capacité d'emprunt",
     title: "Simulateur de capacité d'emprunt",
     pitch: "La question que se pose tout acquéreur avant de contacter une agence : « est-ce que je peux me l'offrir ? ».",
+    sizes: true,
   },
   {
     id: "pret-relais",
@@ -51,10 +55,17 @@ const WIDGET_OPTIONS: WidgetOption[] = [
   },
 ];
 
-function iframeSnippetFor(opt: WidgetOption) {
+const SIZE_META: Record<WidgetSize, { label: string; desc: string }> = {
+  small: { label: "Petit", desc: "Teaser compact — 2 champs, 1 chiffre, idéal en sidebar." },
+  medium: { label: "Moyen", desc: "Formulaire condensé avec Score lokt.fr — pour une section dédiée." },
+  large: { label: "Grand", desc: "Analyse complète — pour une page financement à part entière." },
+};
+
+function iframeSnippetFor(opt: WidgetOption, size: WidgetSize) {
+  const sizeParam = opt.sizes && size !== "large" ? `?size=${size}` : "";
   return `<iframe
   data-lokt-widget
-  src="https://lokt.fr${opt.embedPath}"
+  src="https://lokt.fr${opt.embedPath}${sizeParam}"
   width="100%"
   height="700"
   style="border:0;border-radius:16px;"
@@ -118,8 +129,10 @@ export default function WidgetPage() {
     "Intégrez gratuitement un simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
   const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
   const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
+  const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
+  const demoSrc = selected.sizes && selectedSize !== "large" ? `${selected.embedPath}?size=${selectedSize}` : selected.embedPath;
 
   // La démo ci-dessous est une iframe comme celle que l'agence intègre :
   // même mécanisme d'auto-redimensionnement que le script fourni dans le
@@ -139,7 +152,12 @@ export default function WidgetPage() {
 
   useEffect(() => {
     setDemoHeight(700);
-  }, [selectedId]);
+    if (!selected.sizes) setSelectedSize("large");
+  }, [selectedId, selected.sizes]);
+
+  useEffect(() => {
+    setDemoHeight(700);
+  }, [selectedSize]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -244,11 +262,42 @@ export default function WidgetPage() {
             </div>
             <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-6 text-slate-600">{selected.pitch}</p>
 
+            {selected.sizes && (
+              <div className="mt-8">
+                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Choisissez une taille</p>
+                <div className="mt-4 flex flex-wrap items-end justify-center gap-4">
+                  {(["small", "medium", "large"] as WidgetSize[]).map((size) => {
+                    const previewHeight = size === "small" ? 72 : size === "medium" ? 108 : 144;
+                    const previewWidth = size === "small" ? 72 : size === "medium" ? 160 : 160;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setSelectedSize(size)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <span
+                          style={{ width: previewWidth, height: previewHeight }}
+                          className={
+                            "flex items-center justify-center rounded-2xl border-2 bg-white text-xs font-semibold shadow-sm transition " +
+                            (selectedSize === size ? "border-slate-950 text-slate-950" : "border-slate-200 text-slate-400 hover:border-slate-300")
+                          }
+                        >
+                          {SIZE_META[size].label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">{SIZE_META[selectedSize].desc}</p>
+              </div>
+            )}
+
             <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5">
               <iframe
-                key={selected.id}
+                key={`${selected.id}-${selectedSize}`}
                 ref={demoFrameRef}
-                src={selected.embedPath}
+                src={demoSrc}
                 width="100%"
                 height={demoHeight}
                 style={{ border: 0, display: "block", transition: "height 150ms ease" }}
@@ -266,6 +315,7 @@ export default function WidgetPage() {
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Intégration</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                 Un seul bloc de code à copier — {selected.label}
+                {selected.sizes ? ` (${SIZE_META[selectedSize].label.toLowerCase()})` : ""}
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 Collez ce code à l'endroit de votre page où le simulateur doit apparaître (CMS, page HTML, section dédiée au
@@ -273,7 +323,7 @@ export default function WidgetPage() {
               </p>
             </div>
             <div className="mt-8">
-              <CodeBlock code={iframeSnippetFor(selected)} />
+              <CodeBlock code={iframeSnippetFor(selected, selectedSize)} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
@@ -308,6 +358,10 @@ export default function WidgetPage() {
                 {
                   q: "Puis-je intégrer plusieurs simulateurs ?",
                   a: "Oui, les 3 simulateurs ci-dessus sont chacun disponibles en intégration indépendante — vous pouvez n'en mettre qu'un, ou les trois sur des pages différentes de votre site. Besoin d'un autre simulateur de notre catalogue ? Écrivez-nous à contact@lokt.fr.",
+                },
+                {
+                  q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
+                  a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs n'existent qu'en taille grande — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
                 },
                 {
                   q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
