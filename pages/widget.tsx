@@ -322,132 +322,126 @@ export default function WidgetPage() {
             </div>
             <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-6 text-slate-600">{selected.pitch}</p>
 
-            {selected.sizes && (
-              <div className="mt-8">
-                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Choisissez une taille</p>
-                <div className="mt-4 flex flex-wrap items-end justify-center gap-4">
-                  {(["small", "medium", "large"] as WidgetSize[]).map((size) => {
-                    // La hauteur de l'aperçu augmente quand la largeur diminue — reflète
-                    // ce qui se passe réellement (même contenu, qui se replie davantage
-                    // à la verticale dans un conteneur plus étroit).
-                    const previewWidth = size === "small" ? 64 : size === "medium" ? 104 : 168;
-                    const previewHeight = size === "small" ? 140 : size === "medium" ? 112 : 96;
-                    return (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setSelectedSize(size)}
-                        className="flex flex-col items-center gap-2"
-                      >
-                        <span
-                          style={{ width: previewWidth, height: previewHeight }}
-                          className={
-                            "flex items-center justify-center rounded-2xl border-2 bg-white text-xs font-semibold shadow-sm transition " +
-                            (selectedSize === size ? "border-slate-950 text-slate-950" : "border-slate-200 text-slate-400 hover:border-slate-300")
-                          }
-                        >
-                          {SIZE_META[size].label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">{SIZE_META[selectedSize].desc}</p>
-              </div>
-            )}
-
-            {selected.theming && (
-              <div className="mt-8">
-                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                  {(
-                    [
-                      ["brand", "Couleurs lokt.fr"],
-                      ["neutral", "Neutre (gris)"],
-                      ["custom", "Ma couleur"],
-                    ] as [ColorMode, string][]
-                  ).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setColorMode(mode)}
-                      className={
-                        "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
-                        (colorMode === mode
-                          ? "border-slate-950 bg-slate-950 text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  {colorMode === "custom" && (
-                    <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                      <input
-                        type="color"
-                        value={/^[0-9a-fA-F]{6}$/.test(customAccent) ? `#${customAccent}` : "#2563eb"}
-                        onChange={(e) => setCustomAccent(e.target.value.replace("#", ""))}
-                        className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0"
-                      />
-                      <span className="text-xs font-mono text-slate-500">#{customAccent}</span>
-                    </label>
+            {(selected.sizes || selected.theming || selected.leadForwarding) && (
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {selected.sizes && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Taille</p>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {(["small", "medium", "large"] as WidgetSize[]).map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setSelectedSize(size)}
+                            className={
+                              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
+                              (selectedSize === size
+                                ? "border-slate-950 bg-slate-950 text-white"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                            }
+                          >
+                            {SIZE_META[size].label}
+                            <span className={selectedSize === size ? "text-white/60" : "text-slate-400"}>
+                              {" "}· {SIZE_META[size].maxWidth ? `${SIZE_META[size].maxWidth}px` : "pleine largeur"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">{SIZE_META[selectedSize].desc}</p>
+                    </div>
                   )}
-                </div>
-                <p className="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">
-                  Sur un site au style sobre, « Neutre » ou une couleur d'accent personnalisée s'intègrent souvent mieux que nos couleurs de
-                  marque.
-                </p>
-              </div>
-            )}
 
-            {selected.leadForwarding && (
-              <div className="mt-8">
-                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Recevoir les demandes de vos visiteurs</p>
-                <div className="mx-auto mt-4 max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={leadForwardEnabled}
-                      onChange={(e) => setLeadForwardEnabled(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 accent-slate-950"
-                    />
-                    <span className="text-sm text-slate-800">
-                      <span className="font-semibold">M'envoyer par email les coordonnées</span> des visiteurs qui acceptent d'être
-                      recontactés après la simulation.
-                    </span>
-                  </label>
-                  {leadForwardEnabled && (
-                    <div className="mt-4 space-y-3">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600">Votre email agence</label>
-                        <input
-                          type="email"
-                          value={agencyEmail}
-                          onChange={(e) => setAgencyEmail(e.target.value)}
-                          placeholder="contact@votre-agence.fr"
-                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
-                        />
+                  {selected.theming && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        {(
+                          [
+                            ["brand", "Couleurs lokt.fr"],
+                            ["neutral", "Neutre (gris)"],
+                            ["custom", "Ma couleur"],
+                          ] as [ColorMode, string][]
+                        ).map(([mode, label]) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setColorMode(mode)}
+                            className={
+                              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
+                              (colorMode === mode
+                                ? "border-slate-950 bg-slate-950 text-white"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                        {colorMode === "custom" && (
+                          <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                            <input
+                              type="color"
+                              value={/^[0-9a-fA-F]{6}$/.test(customAccent) ? `#${customAccent}` : "#2563eb"}
+                              onChange={(e) => setCustomAccent(e.target.value.replace("#", ""))}
+                              className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <span className="text-xs font-mono text-slate-500">#{customAccent}</span>
+                          </label>
+                        )}
                       </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600">Nom de votre agence (optionnel)</label>
-                        <input
-                          type="text"
-                          value={agencySiteLabel}
-                          onChange={(e) => setAgencySiteLabel(e.target.value)}
-                          placeholder="ex: Agence Dupont Immobilier"
-                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
-                        />
-                      </div>
-                      {!AGENCY_EMAIL_RE.test(agencyEmail) && agencyEmail.length > 0 && (
-                        <p className="text-xs text-rose-600">Adresse email invalide.</p>
-                      )}
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        Utile sur un site au style sobre : « Neutre » ou votre propre couleur d'accent.
+                      </p>
                     </div>
                   )}
                 </div>
-                <p className="mx-auto mt-3 max-w-md text-center text-xs leading-5 text-slate-500">
-                  Un visiteur n'est transmis que s'il coche explicitement la case « j'accepte d'être recontacté(e) ». Ces
-                  coordonnées vous sont envoyées directement par email — elles ne sont jamais conservées par lokt.fr.
-                </p>
+
+                {selected.leadForwarding && (
+                  <div className="mt-5 border-t border-slate-200 pt-5">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={leadForwardEnabled}
+                        onChange={(e) => setLeadForwardEnabled(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 accent-slate-950"
+                      />
+                      <span className="text-sm text-slate-800">
+                        <span className="font-semibold">M'envoyer par email les coordonnées</span> des visiteurs qui acceptent d'être
+                        recontactés après la simulation.
+                      </span>
+                    </label>
+                    {leadForwardEnabled && (
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600">Votre email agence</label>
+                          <input
+                            type="email"
+                            value={agencyEmail}
+                            onChange={(e) => setAgencyEmail(e.target.value)}
+                            placeholder="contact@votre-agence.fr"
+                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                          />
+                          {!AGENCY_EMAIL_RE.test(agencyEmail) && agencyEmail.length > 0 && (
+                            <p className="mt-1 text-xs text-rose-600">Adresse email invalide.</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600">Nom de votre agence (optionnel)</label>
+                          <input
+                            type="text"
+                            value={agencySiteLabel}
+                            onChange={(e) => setAgencySiteLabel(e.target.value)}
+                            placeholder="ex: Agence Dupont Immobilier"
+                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Transmis uniquement si le visiteur coche « j'accepte d'être recontacté(e) » — jamais conservé par lokt.fr.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
