@@ -6,10 +6,12 @@
 import Head from "next/head";
 import Link from "next/link";
 import InvestissementWizard from "../../components/InvestissementWizard";
+import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
 
 export default function EmbedInvestissementPage() {
+  useWidgetAutoResize();
   return (
-    <div className="min-h-screen bg-white px-3 py-4 sm:px-5 sm:py-6">
+    <div className="bg-white px-3 py-4 sm:px-5 sm:py-6">
       <Head>
         <title>Simulateur de rentabilité locative — lokt.fr</title>
         <meta name="robots" content="noindex, nofollow" />

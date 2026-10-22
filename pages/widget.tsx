@@ -6,7 +6,7 @@
 // configurateur ni de compte partenaire — on valide la demande avant de
 // construire plus.
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import {
@@ -53,16 +53,29 @@ const WIDGET_OPTIONS: WidgetOption[] = [
 
 function iframeSnippetFor(opt: WidgetOption) {
   return `<iframe
+  data-lokt-widget
   src="https://lokt.fr${opt.embedPath}"
   width="100%"
-  height="900"
+  height="700"
   style="border:0;border-radius:16px;"
   loading="lazy"
   title="${opt.title} - lokt.fr">
 </iframe>
 <p style="margin-top:8px;font-size:12px;color:#64748b;text-align:center;">
   Simulateur propulsé par <a href="https://lokt.fr" target="_blank" rel="noopener">lokt.fr</a>
-</p>`;
+</p>
+<script>
+  // Ajuste automatiquement la hauteur de l'iframe au contenu réel
+  // (le simulateur grandit quand le résultat s'affiche) — à garder une
+  // seule fois sur la page même si vous intégrez plusieurs simulateurs.
+  window.addEventListener("message", function (e) {
+    if (e.origin !== "https://lokt.fr") return;
+    if (!e.data || e.data.source !== "lokt-widget") return;
+    document.querySelectorAll("iframe[data-lokt-widget]").forEach(function (frame) {
+      if (frame.contentWindow === e.source) frame.style.height = e.data.height + "px";
+    });
+  });
+</script>`;
 }
 
 function CodeBlock({ code }: { code: string }) {
@@ -105,6 +118,28 @@ export default function WidgetPage() {
     "Intégrez gratuitement un simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
   const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
   const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
+  const demoFrameRef = useRef<HTMLIFrameElement>(null);
+  const [demoHeight, setDemoHeight] = useState(700);
+
+  // La démo ci-dessous est une iframe comme celle que l'agence intègre :
+  // même mécanisme d'auto-redimensionnement que le script fourni dans le
+  // code à copier, pour que la démo ne souffre pas du même souci que celui
+  // signalé (hauteur fixe qui coupe le contenu une fois le résultat affiché).
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== "https://lokt.fr" && e.origin !== window.location.origin) return;
+      if (!e.data || e.data.source !== "lokt-widget") return;
+      if (demoFrameRef.current && demoFrameRef.current.contentWindow === e.source) {
+        setDemoHeight(e.data.height);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useEffect(() => {
+    setDemoHeight(700);
+  }, [selectedId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -212,10 +247,11 @@ export default function WidgetPage() {
             <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5">
               <iframe
                 key={selected.id}
+                ref={demoFrameRef}
                 src={selected.embedPath}
                 width="100%"
-                height={900}
-                style={{ border: 0, display: "block" }}
+                height={demoHeight}
+                style={{ border: 0, display: "block", transition: "height 150ms ease" }}
                 loading="lazy"
                 title={`Démo — ${selected.title} lokt.fr`}
               />
