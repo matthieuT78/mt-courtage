@@ -19,6 +19,13 @@
 // (--lokt-accent-1..4, cf. composants/CapaciteWizard.tsx) avec les
 // couleurs de marque lokt.fr comme valeur par défaut — la page publique
 // /capacite n'est pas concernée, ces variables ne sont définies qu'ici.
+//
+// Lead agence : ?agency_email=contact@agence.fr (et optionnellement
+// ?agency_name=...) active le mode "lead vers l'agence" dans
+// CapaciteWizard — le lead n'est alors JAMAIS écrit dans la base lokt.fr,
+// uniquement transmis par email à cette adresse si le visiteur coche le
+// consentement contact (cf. agencyLead dans CapaciteWizard.tsx et
+// /api/tools/capacite/notify-agency).
 import type { CSSProperties } from "react";
 import Head from "next/head";
 import Link from "next/link";
@@ -48,10 +55,18 @@ function accentStyle(accentParam: unknown, themeParam: unknown): CSSProperties {
   } as CSSProperties;
 }
 
+function agencyLeadFromQuery(query: Record<string, any>) {
+  const raw = typeof query.agency_email === "string" ? query.agency_email.trim() : "";
+  if (!raw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return undefined;
+  const siteLabel = typeof query.agency_name === "string" ? query.agency_name.trim().slice(0, 80) : undefined;
+  return { notifyEmail: raw, siteLabel };
+}
+
 export default function EmbedCapacitePage() {
   useWidgetAutoResize();
   const router = useRouter();
   const style = accentStyle(router.query.accent, router.query.theme);
+  const agencyLead = agencyLeadFromQuery(router.query);
 
   return (
     <div className="bg-white px-3 py-4 sm:px-5 sm:py-6" style={style}>
@@ -100,7 +115,7 @@ export default function EmbedCapacitePage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <CapaciteWizard showSaveButton={false} />
+        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">

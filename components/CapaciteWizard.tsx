@@ -146,9 +146,17 @@ const USAGE_UI_TO_DB: Record<ProjectUsageUI, ProjectUsageDB> = {
 
 export type CapaciteWizardProps = {
   showSaveButton?: boolean;
+  // Présent uniquement dans le contexte du widget embarqué sur le site d'une
+  // agence (voir pages/embed/capacite.tsx) : si renseigné, le lead ne part
+  // jamais dans la base de leads lokt.fr (pas d'appel à upsert_lead_v1) —
+  // il part uniquement vers l'agence par email, et seulement si le visiteur
+  // a coché la case de consentement (le texte de cette case reflète alors
+  // explicitement que c'est l'agence, pas "un conseiller partenaire" lokt,
+  // qui recevra ses coordonnées).
+  agencyLead?: { notifyEmail: string; siteLabel?: string };
 };
 
-export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizardProps) {
+export default function CapaciteWizard({ showSaveButton = true, agencyLead }: CapaciteWizardProps) {
   const router = useRouter();
 
   /* ======================== Session ======================== */
@@ -759,6 +767,29 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     }
   }
 
+  const notifyAgencyOfLead = async (params: { email: string; computed: ComputedAll }) => {
+    if (!agencyLead) return;
+    const referrerUrl = typeof document !== "undefined" ? document.referrer || null : null;
+    const r = await fetch("/api/tools/capacite/notify-agency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agencyEmail: agencyLead.notifyEmail,
+        visitorEmail: params.email,
+        visitorPhone: leadPhone.trim() || null,
+        referrerUrl,
+        budgetTotalMax: params.computed.resume.budgetTotalMax,
+        montantMax: params.computed.resume.montantMax,
+        scoreLabel: params.computed.assessment.label,
+        score: params.computed.assessment.score,
+      }),
+    });
+    if (!r.ok) {
+      const data = await r.json().catch(() => null);
+      throw new Error(data?.error || "notify_agency_failed");
+    }
+  };
+
   const handleUnlock = async () => {
     setUnlockMsg(null);
 
@@ -779,7 +810,16 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
     setUnlocking(true);
     try {
-      await captureLeadViaRpc({ email, computed });
+      // Widget embarqué sur le site d'une agence : jamais d'écriture dans la
+      // base de leads lokt.fr, le lead ne part que vers l'agence, et
+      // seulement si le visiteur a explicitement coché le consentement.
+      if (agencyLead) {
+        if (consentContact) {
+          await notifyAgencyOfLead({ email, computed });
+        }
+      } else {
+        await captureLeadViaRpc({ email, computed });
+      }
 
       persistLeadEmail("capacite", email);
       persistUnlock("capacite", email);
@@ -1297,6 +1337,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             setConsent={setConsentLokt}
             contactConsent={consentContact}
             setContactConsent={setConsentContact}
+            contactConsentLabel={
+              agencyLead
+                ? `j’accepte que mes coordonnées soient transmises à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet.`
+                : undefined
+            }
             unlocking={unlocking || sendingEmail}
             unlockMsg={unlockMsg}
             onUnlock={handleUnlock}

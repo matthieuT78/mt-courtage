@@ -4,7 +4,10 @@
 // agence immobilière. MVP volontairement minimal (cf. décision du
 // 2026-10-22) : 3 simulateurs prêts à l'emploi, iframes fixes, pas de
 // configurateur ni de compte partenaire — on valide la demande avant de
-// construire plus.
+// construire plus. Seule option avancée : transmission par email des
+// leads consentants vers l'agence (capacité d'emprunt uniquement, cf.
+// pages/api/tools/capacite/notify-agency), toujours sans compte ni
+// stockage côté lokt.fr.
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import AppHeader from "../components/AppHeader";
@@ -30,6 +33,7 @@ type WidgetOption = {
   pitch: string;
   sizes?: boolean;
   theming?: boolean;
+  leadForwarding?: boolean;
 };
 
 const WIDGET_OPTIONS: WidgetOption[] = [
@@ -41,6 +45,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     pitch: "La question que se pose tout acquéreur avant de contacter une agence : « est-ce que je peux me l'offrir ? ».",
     sizes: true,
     theming: true,
+    leadForwarding: true,
   },
   {
     id: "pret-relais",
@@ -69,6 +74,8 @@ const SIZE_META: Record<WidgetSize, { label: string; desc: string; maxWidth: num
   large: { label: "Grand", desc: "Pleine largeur — pour une page financement à part entière.", maxWidth: null },
 };
 
+const AGENCY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function colorQueryParam(opt: WidgetOption, colorMode: ColorMode, customAccent: string) {
   if (!opt.theming) return "";
   if (colorMode === "neutral") return "theme=neutral";
@@ -76,12 +83,38 @@ function colorQueryParam(opt: WidgetOption, colorMode: ColorMode, customAccent: 
   return "";
 }
 
-function iframeSnippetFor(opt: WidgetOption, size: WidgetSize, colorMode: ColorMode, customAccent: string) {
+function queryParamsFor(
+  opt: WidgetOption,
+  colorMode: ColorMode,
+  customAccent: string,
+  leadForwardEnabled: boolean,
+  agencyEmail: string,
+  agencySiteLabel: string
+) {
+  const parts: string[] = [];
+  const colorParam = colorQueryParam(opt, colorMode, customAccent);
+  if (colorParam) parts.push(colorParam);
+  if (opt.leadForwarding && leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)) {
+    parts.push(`agency_email=${encodeURIComponent(agencyEmail.trim())}`);
+    if (agencySiteLabel.trim()) parts.push(`agency_name=${encodeURIComponent(agencySiteLabel.trim().slice(0, 80))}`);
+  }
+  return parts.join("&");
+}
+
+function iframeSnippetFor(
+  opt: WidgetOption,
+  size: WidgetSize,
+  colorMode: ColorMode,
+  customAccent: string,
+  leadForwardEnabled: boolean,
+  agencyEmail: string,
+  agencySiteLabel: string
+) {
   const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
   const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
   const wrapClose = maxWidth ? `\n</div>` : "";
-  const colorParam = colorQueryParam(opt, colorMode, customAccent);
-  const src = colorParam ? `https://lokt.fr${opt.embedPath}?${colorParam}` : `https://lokt.fr${opt.embedPath}`;
+  const query = queryParamsFor(opt, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel);
+  const src = query ? `https://lokt.fr${opt.embedPath}?${query}` : `https://lokt.fr${opt.embedPath}`;
   return `${wrapOpen}<iframe
   data-lokt-widget
   src="${src}"
@@ -151,9 +184,15 @@ export default function WidgetPage() {
   const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
   const [colorMode, setColorMode] = useState<ColorMode>("brand");
   const [customAccent, setCustomAccent] = useState("2563eb");
+  const [leadForwardEnabled, setLeadForwardEnabled] = useState(false);
+  const [agencyEmail, setAgencyEmail] = useState("");
+  const [agencySiteLabel, setAgencySiteLabel] = useState("");
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
   const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
+  // La démo n'envoie jamais réellement d'email (pas d'adresse agence saisie
+  // ici) — uniquement la couleur, pour que l'aperçu reste fidèle au code
+  // généré sans dépendre d'une adresse de test.
   const demoColorParam = colorQueryParam(selected, colorMode, customAccent);
   const demoSrc = demoColorParam ? `${selected.embedPath}?${demoColorParam}` : selected.embedPath;
 
@@ -177,7 +216,8 @@ export default function WidgetPage() {
     setDemoHeight(700);
     if (!selected.sizes) setSelectedSize("large");
     if (!selected.theming) setColorMode("brand");
-  }, [selectedId, selected.sizes, selected.theming]);
+    if (!selected.leadForwarding) setLeadForwardEnabled(false);
+  }, [selectedId, selected.sizes, selected.theming, selected.leadForwarding]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -360,6 +400,57 @@ export default function WidgetPage() {
               </div>
             )}
 
+            {selected.leadForwarding && (
+              <div className="mt-8">
+                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Recevoir les demandes de vos visiteurs</p>
+                <div className="mx-auto mt-4 max-w-md rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={leadForwardEnabled}
+                      onChange={(e) => setLeadForwardEnabled(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-slate-950"
+                    />
+                    <span className="text-sm text-slate-800">
+                      <span className="font-semibold">M'envoyer par email les coordonnées</span> des visiteurs qui acceptent d'être
+                      recontactés après la simulation.
+                    </span>
+                  </label>
+                  {leadForwardEnabled && (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Votre email agence</label>
+                        <input
+                          type="email"
+                          value={agencyEmail}
+                          onChange={(e) => setAgencyEmail(e.target.value)}
+                          placeholder="contact@votre-agence.fr"
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">Nom de votre agence (optionnel)</label>
+                        <input
+                          type="text"
+                          value={agencySiteLabel}
+                          onChange={(e) => setAgencySiteLabel(e.target.value)}
+                          placeholder="ex: Agence Dupont Immobilier"
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                        />
+                      </div>
+                      {!AGENCY_EMAIL_RE.test(agencyEmail) && agencyEmail.length > 0 && (
+                        <p className="text-xs text-rose-600">Adresse email invalide.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="mx-auto mt-3 max-w-md text-center text-xs leading-5 text-slate-500">
+                  Un visiteur n'est transmis que s'il coche explicitement la case « j'accepte d'être recontacté(e) ». Ces
+                  coordonnées vous sont envoyées directement par email — elles ne sont jamais conservées par lokt.fr.
+                </p>
+              </div>
+            )}
+
             <div
               className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5 transition-all"
               style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
@@ -393,13 +484,17 @@ export default function WidgetPage() {
               </p>
             </div>
             <div className="mt-8">
-              <CodeBlock code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent)} />
+              <CodeBlock
+                code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel)}
+              />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 "Fonctionne sur tout site qui accepte du HTML — WordPress, Wix, site sur mesure, etc.",
                 "La mention « Propulsé par lokt.fr » reste visible sous le simulateur.",
-                "Aucune donnée de vos visiteurs ne vous est transmise automatiquement dans cette version.",
+                leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)
+                  ? "Les visiteurs qui acceptent d'être recontactés vous sont transmis par email à l'adresse renseignée ci-dessus."
+                  : "Aucune donnée de vos visiteurs ne vous est transmise, sauf si vous activez l'option ci-dessus.",
                 "Vous pouvez intégrer plusieurs simulateurs sur des pages différentes de votre site.",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
@@ -444,6 +539,14 @@ export default function WidgetPage() {
                 {
                   q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
                   a: "Pas sur cette offre gratuite — c'est elle qui nous permet de proposer le simulateur sans facturation.",
+                },
+                {
+                  q: "Comment récupérer les coordonnées des visiteurs intéressés ?",
+                  a: "Activez l'option « M'envoyer par email les coordonnées » (disponible pour la capacité d'emprunt) et renseignez votre adresse email : le code généré l'intègre automatiquement. Un visiteur ne vous est transmis que s'il coche explicitement la case lui proposant d'être recontacté — ces coordonnées vous sont envoyées directement par email, sans jamais être conservées dans une base lokt.fr.",
+                },
+                {
+                  q: "La page d'où vient le lead est-elle précisée ?",
+                  a: "Oui, l'email que vous recevez indique l'URL de la page de votre site sur laquelle le visiteur a utilisé le simulateur — utile si vous l'avez intégré sur plusieurs fiches de biens.",
                 },
               ].map(({ q, a }) => (
                 <details key={q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
