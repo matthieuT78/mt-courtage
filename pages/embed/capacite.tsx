@@ -43,6 +43,26 @@ export default function EmbedCapacitePage() {
             font-size: 15px;
           }
         }
+
+        /*
+         * CapaciteWizard bascule ses grilles de champs sur 1 seule colonne
+         * en dessous de 640px (breakpoint sm: de Tailwind) — pensé pour un
+         * vrai mobile. Les tailles "petite" et "moyenne" du widget sont
+         * toutes les deux sous ce seuil : sans correctif, elles s'empilent
+         * quasiment pareil, en beaucoup de lignes, d'où une hauteur bien
+         * plus grande que la taille "grande" alors que l'intention est
+         * l'inverse (plus compact). On force 2 colonnes au lieu de 1 pour
+         * ces largeurs, uniquement sur cette page embarquée — la vraie
+         * page /capacite et son rendu mobile normal ne sont pas concernés.
+         */
+        @media (max-width: 639px) {
+          .sm\\:grid-cols-2,
+          .sm\\:grid-cols-3,
+          .sm\\:grid-cols-4,
+          .sm\\:grid-cols-5 {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
       `}</style>
 
       <div className="mx-auto max-w-3xl">
