@@ -26,6 +26,25 @@ export default function EmbedCapacitePage() {
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 
+      {/* Les classes Tailwind (texte, marges, paddings) utilisent des rem,
+          relatifs à la taille de police racine — la réduire en dessous
+          réduit tout proportionnellement (texte ET espacements), plutôt
+          que de juste empiler le même contenu en grand dans un espace
+          étroit. Paliers calés sur les largeurs recommandées des tailles
+          petite (~360px) et moyenne (~520px) proposées sur /widget. */}
+      <style jsx global>{`
+        @media (max-width: 420px) {
+          html {
+            font-size: 13.5px;
+          }
+        }
+        @media (min-width: 421px) and (max-width: 560px) {
+          html {
+            font-size: 15px;
+          }
+        }
+      `}</style>
+
       <div className="mx-auto max-w-3xl">
         <CapaciteWizard showSaveButton={false} />
       </div>
