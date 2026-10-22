@@ -12,15 +12,49 @@
 // d'intégration recommandée (voir le code généré sur /widget), ce qui
 // fait naturellement basculer la mise en page sur un format compact/
 // vertical en dessous de 640px, comme sur mobile.
+//
+// Personnalisation de couleur : ?theme=neutral (palette grise, pour un
+// site au style sobre) ou ?accent=RRGGBB (une couleur d'accent au choix
+// de l'agence). CapaciteWizard lit ces teintes via des variables CSS
+// (--lokt-accent-1..4, cf. composants/CapaciteWizard.tsx) avec les
+// couleurs de marque lokt.fr comme valeur par défaut — la page publique
+// /capacite n'est pas concernée, ces variables ne sont définies qu'ici.
+import type { CSSProperties } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import CapaciteWizard from "../../components/CapaciteWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
 
+const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
+
+function accentStyle(accentParam: unknown, themeParam: unknown): CSSProperties {
+  if (themeParam === "neutral") {
+    return {
+      ["--lokt-accent-1" as string]: "#475569",
+      ["--lokt-accent-2" as string]: "#334155",
+      ["--lokt-accent-3" as string]: "#1e293b",
+      ["--lokt-accent-4" as string]: "#0f172a",
+    } as CSSProperties;
+  }
+  const raw = typeof accentParam === "string" ? accentParam : "";
+  if (!HEX_RE.test(raw)) return {};
+  const hex = raw.startsWith("#") ? raw : `#${raw}`;
+  return {
+    ["--lokt-accent-1" as string]: hex,
+    ["--lokt-accent-2" as string]: hex,
+    ["--lokt-accent-3" as string]: hex,
+    ["--lokt-accent-4" as string]: hex,
+  } as CSSProperties;
+}
+
 export default function EmbedCapacitePage() {
   useWidgetAutoResize();
+  const router = useRouter();
+  const style = accentStyle(router.query.accent, router.query.theme);
+
   return (
-    <div className="bg-white px-3 py-4 sm:px-5 sm:py-6">
+    <div className="bg-white px-3 py-4 sm:px-5 sm:py-6" style={style}>
       <Head>
         <title>Simulateur de capacité d'emprunt — lokt.fr</title>
         <meta name="robots" content="noindex, nofollow" />

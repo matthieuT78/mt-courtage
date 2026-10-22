@@ -20,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 type WidgetSize = "small" | "medium" | "large";
+type ColorMode = "brand" | "neutral" | "custom";
 
 type WidgetOption = {
   id: string;
@@ -28,6 +29,7 @@ type WidgetOption = {
   title: string;
   pitch: string;
   sizes?: boolean;
+  theming?: boolean;
 };
 
 const WIDGET_OPTIONS: WidgetOption[] = [
@@ -38,6 +40,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     title: "Simulateur de capacité d'emprunt",
     pitch: "La question que se pose tout acquéreur avant de contacter une agence : « est-ce que je peux me l'offrir ? ».",
     sizes: true,
+    theming: true,
   },
   {
     id: "pret-relais",
@@ -66,13 +69,22 @@ const SIZE_META: Record<WidgetSize, { label: string; desc: string; maxWidth: num
   large: { label: "Grand", desc: "Pleine largeur — pour une page financement à part entière.", maxWidth: null },
 };
 
-function iframeSnippetFor(opt: WidgetOption, size: WidgetSize) {
+function colorQueryParam(opt: WidgetOption, colorMode: ColorMode, customAccent: string) {
+  if (!opt.theming) return "";
+  if (colorMode === "neutral") return "theme=neutral";
+  if (colorMode === "custom" && /^[0-9a-fA-F]{6}$/.test(customAccent)) return `accent=${customAccent}`;
+  return "";
+}
+
+function iframeSnippetFor(opt: WidgetOption, size: WidgetSize, colorMode: ColorMode, customAccent: string) {
   const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
   const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
   const wrapClose = maxWidth ? `\n</div>` : "";
+  const colorParam = colorQueryParam(opt, colorMode, customAccent);
+  const src = colorParam ? `https://lokt.fr${opt.embedPath}?${colorParam}` : `https://lokt.fr${opt.embedPath}`;
   return `${wrapOpen}<iframe
   data-lokt-widget
-  src="https://lokt.fr${opt.embedPath}"
+  src="${src}"
   width="100%"
   height="700"
   style="border:0;border-radius:16px;"
@@ -137,9 +149,13 @@ export default function WidgetPage() {
   const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
   const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
   const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
+  const [colorMode, setColorMode] = useState<ColorMode>("brand");
+  const [customAccent, setCustomAccent] = useState("2563eb");
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
   const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
+  const demoColorParam = colorQueryParam(selected, colorMode, customAccent);
+  const demoSrc = demoColorParam ? `${selected.embedPath}?${demoColorParam}` : selected.embedPath;
 
   // La démo ci-dessous est une iframe comme celle que l'agence intègre :
   // même mécanisme d'auto-redimensionnement que le script fourni dans le
@@ -160,7 +176,8 @@ export default function WidgetPage() {
   useEffect(() => {
     setDemoHeight(700);
     if (!selected.sizes) setSelectedSize("large");
-  }, [selectedId, selected.sizes]);
+    if (!selected.theming) setColorMode("brand");
+  }, [selectedId, selected.sizes, selected.theming]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -299,6 +316,50 @@ export default function WidgetPage() {
               </div>
             )}
 
+            {selected.theming && (
+              <div className="mt-8">
+                <p className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  {(
+                    [
+                      ["brand", "Couleurs lokt.fr"],
+                      ["neutral", "Neutre (gris)"],
+                      ["custom", "Ma couleur"],
+                    ] as [ColorMode, string][]
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setColorMode(mode)}
+                      className={
+                        "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
+                        (colorMode === mode
+                          ? "border-slate-950 bg-slate-950 text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  {colorMode === "custom" && (
+                    <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                      <input
+                        type="color"
+                        value={/^[0-9a-fA-F]{6}$/.test(customAccent) ? `#${customAccent}` : "#2563eb"}
+                        onChange={(e) => setCustomAccent(e.target.value.replace("#", ""))}
+                        className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0"
+                      />
+                      <span className="text-xs font-mono text-slate-500">#{customAccent}</span>
+                    </label>
+                  )}
+                </div>
+                <p className="mx-auto mt-3 max-w-sm text-center text-xs leading-5 text-slate-500">
+                  Sur un site au style sobre, « Neutre » ou une couleur d'accent personnalisée s'intègrent souvent mieux que nos couleurs de
+                  marque.
+                </p>
+              </div>
+            )}
+
             <div
               className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5 transition-all"
               style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
@@ -306,7 +367,7 @@ export default function WidgetPage() {
               <iframe
                 key={selected.id}
                 ref={demoFrameRef}
-                src={selected.embedPath}
+                src={demoSrc}
                 width="100%"
                 height={demoHeight}
                 style={{ border: 0, display: "block", transition: "height 150ms ease" }}
@@ -332,7 +393,7 @@ export default function WidgetPage() {
               </p>
             </div>
             <div className="mt-8">
-              <CodeBlock code={iframeSnippetFor(selected, selectedSize)} />
+              <CodeBlock code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent)} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
@@ -375,6 +436,10 @@ export default function WidgetPage() {
                 {
                   q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
                   a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs s'intègrent en pleine largeur — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
+                },
+                {
+                  q: "Puis-je changer les couleurs du simulateur ?",
+                  a: "Oui, pour la capacité d'emprunt : « Neutre » applique une palette grise discrète, ou vous choisissez votre propre couleur d'accent. Le code généré ci-dessus intègre automatiquement votre choix — rien à faire d'autre.",
                 },
                 {
                   q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",

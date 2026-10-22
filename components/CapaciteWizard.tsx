@@ -834,7 +834,13 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         <div className="grid lg:grid-cols-[19rem_minmax(0,1fr)]">
           {/* Progression */}
           <aside className="relative overflow-hidden bg-slate-950 px-5 py-5 text-white sm:px-6 lg:min-h-[39rem] lg:py-7">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] via-[#007ba7] to-[#00a97b] opacity-95" />
+            <div
+              className="absolute inset-0 opacity-95"
+              style={{
+                background:
+                  "linear-gradient(to bottom right, var(--lokt-accent-1, #635bff), var(--lokt-accent-2, #007ba7), var(--lokt-accent-3, #00a97b))",
+              }}
+            />
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,.2),transparent_38%,rgba(255,184,0,.22))]" />
             <div className="relative">
               <div className="flex items-center justify-between gap-4 lg:block">
@@ -1244,7 +1250,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 setMaxStepReached(TOTAL_STEPS);
                 await handleCalculCapacite();
               }}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#00a97b] to-[#008db8] px-6 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-xl active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(to right, var(--lokt-accent-3, #00a97b), var(--lokt-accent-4, #008db8))",
+              }}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-xl active:scale-[0.99]"
             >
               Calculer ma capacité d&apos;emprunt
               <ArrowRightIcon className="h-4 w-4" />
