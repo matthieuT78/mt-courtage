@@ -94,10 +94,11 @@ function queryParamsFor(
 ) {
   const parts: string[] = [];
   // "petit" répartit les mêmes questions sur une étape de plus dans le
-  // wizard (cf. compactSteps dans CapaciteWizard.tsx) plutôt que de les
-  // compresser dans une largeur réduite — moyen et grand gardent le
-  // découpage par défaut, inutile de le préciser dans l'URL.
-  if (opt.sizes && size === "small") parts.push("size=small");
+  // wizard, et "petit"/"moyen" affichent un bandeau de progression fin
+  // plutôt que le bandeau décoratif complet (cf. compactSteps/compactHeader
+  // dans CapaciteWizard.tsx) — "grand" garde le comportement par défaut,
+  // inutile de le préciser dans l'URL.
+  if (opt.sizes && size !== "large") parts.push(`size=${size}`);
   const colorParam = colorQueryParam(opt, colorMode, customAccent);
   if (colorParam) parts.push(colorParam);
   if (opt.leadForwarding && leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)) {

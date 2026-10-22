@@ -161,9 +161,20 @@ export type CapaciteWizardProps = {
   // format étroit. false partout ailleurs (dont /capacite), comportement
   // inchangé par défaut.
   compactSteps?: boolean;
+
+  // Formats "petit" et "moyen" du widget agence : remplace le bandeau de
+  // progression (titre, icône décorative, pastilles d'étape avec icône)
+  // par une barre fine — même navigation, juste moins de place prise par
+  // la décoration. false partout ailleurs (dont /capacite et "grand").
+  compactHeader?: boolean;
 };
 
-export default function CapaciteWizard({ showSaveButton = true, agencyLead, compactSteps = false }: CapaciteWizardProps) {
+export default function CapaciteWizard({
+  showSaveButton = true,
+  agencyLead,
+  compactSteps = false,
+  compactHeader = false,
+}: CapaciteWizardProps) {
   const router = useRouter();
 
   /* ======================== Session ======================== */
@@ -876,7 +887,12 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead, comp
       <section className="relative z-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
         <div className="grid lg:grid-cols-[19rem_minmax(0,1fr)]">
           {/* Progression */}
-          <aside className="relative overflow-hidden bg-slate-950 px-5 py-5 text-white sm:px-6 lg:min-h-[39rem] lg:py-7">
+          <aside
+            className={
+              "relative overflow-hidden bg-slate-950 text-white " +
+              (compactHeader ? "px-4 py-3" : "px-5 py-5 sm:px-6 lg:min-h-[39rem] lg:py-7")
+            }
+          >
             <div
               className="absolute inset-0 opacity-95"
               style={{
@@ -886,86 +902,131 @@ export default function CapaciteWizard({ showSaveButton = true, agencyLead, comp
             />
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,.2),transparent_38%,rgba(255,184,0,.22))]" />
             <div className="relative">
-              <div className="flex items-center justify-between gap-4 lg:block">
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">
-                    Simulation guidée
-                  </p>
-                  <p className="mt-2 text-xl font-semibold leading-tight text-white">
-                    Votre capacité en quelques étapes.
-                  </p>
-                </div>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/15 backdrop-blur lg:mt-5">
-                  <SparklesIcon className="h-6 w-6" />
-                </span>
-              </div>
-
-              <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-white transition-all duration-500"
-                  style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs font-medium text-white/75">
-                Étape {step} sur {TOTAL_STEPS}
-              </p>
-
-              <div className="-mx-1 mt-5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0">
-                <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
-                  {wizardSteps.map(({ label, shortLabel, icon: StepIcon }, index) => {
-                const num = index + 1;
-                const active = step === num;
-                const done = step > num;
-                const clickable = num <= maxStepReached;
-
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => goToStep(num)}
-                    disabled={!clickable}
-                    className={
-                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition lg:w-full " +
-                      (active
-                        ? "border-white/70 bg-white text-slate-950 shadow-lg"
-                        : done
-                        ? "border-white/25 bg-white/15 text-white hover:bg-white/20"
-                        : "border-white/10 bg-white/5 text-white/60") +
-                      (clickable ? "" : " cursor-not-allowed opacity-70")
-                    }
-                    aria-label={`Aller à l'étape ${num} : ${label}`}
-                    title={label}
-                  >
-                    <span
-                      className={
-                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
-                        (active
-                          ? "bg-slate-950 text-white"
-                          : done
-                          ? "bg-white/20 text-white"
-                          : "bg-white/10 text-white/70")
-                      }
-                    >
-                      {done ? <CheckIcon className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+              {compactHeader ? (
+                <>
+                  {/* Bandeau fin : même navigation (pastilles cliquables pour
+                      revenir à une étape déjà vue) mais sans titre ni icône
+                      décorative, pour un format petit/moyen peu gourmand en
+                      hauteur. */}
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-white">
+                      Étape {step}/{TOTAL_STEPS} · {activeStepMeta.shortLabel}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {wizardSteps.map(({ label }, index) => {
+                        const num = index + 1;
+                        const active = step === num;
+                        const done = step > num;
+                        const clickable = num <= maxStepReached;
+                        return (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => goToStep(num)}
+                            disabled={!clickable}
+                            aria-label={`Aller à l'étape ${num} : ${label}`}
+                            title={label}
+                            className={
+                              "h-2 rounded-full transition " +
+                              (active ? "w-5 bg-white" : done ? "w-2 bg-white/70" : "w-2 bg-white/30") +
+                              (clickable ? "" : " cursor-not-allowed")
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/20">
+                    <div
+                      className="h-full rounded-full bg-white transition-all duration-500"
+                      style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-4 lg:block">
+                    <div>
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">
+                        Simulation guidée
+                      </p>
+                      <p className="mt-2 text-xl font-semibold leading-tight text-white">
+                        Votre capacité en quelques étapes.
+                      </p>
+                    </div>
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/15 backdrop-blur lg:mt-5">
+                      <SparklesIcon className="h-6 w-6" />
                     </span>
-                    <span className="min-w-0">
-                      <span className="block text-[0.66rem] font-semibold uppercase tracking-[0.14em] opacity-70">
-                        0{num}
-                      </span>
-                      <span className={"block text-sm " + (active ? "font-semibold" : "font-medium")}>
-                        <span className="lg:hidden">{shortLabel}</span>
-                        <span className="hidden lg:inline">{label}</span>
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-                </div>
-              </div>
+                  </div>
 
-              <p className="mt-6 hidden text-xs leading-5 text-white/70 lg:block">
-                Les hypothèses restent ajustables jusqu&apos;au calcul final.
-              </p>
+                  <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/20">
+                    <div
+                      className="h-full rounded-full bg-white transition-all duration-500"
+                      style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-white/75">
+                    Étape {step} sur {TOTAL_STEPS}
+                  </p>
+
+                  <div className="-mx-1 mt-5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0">
+                    <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
+                      {wizardSteps.map(({ label, shortLabel, icon: StepIcon }, index) => {
+                    const num = index + 1;
+                    const active = step === num;
+                    const done = step > num;
+                    const clickable = num <= maxStepReached;
+
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => goToStep(num)}
+                        disabled={!clickable}
+                        className={
+                          "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition lg:w-full " +
+                          (active
+                            ? "border-white/70 bg-white text-slate-950 shadow-lg"
+                            : done
+                            ? "border-white/25 bg-white/15 text-white hover:bg-white/20"
+                            : "border-white/10 bg-white/5 text-white/60") +
+                          (clickable ? "" : " cursor-not-allowed opacity-70")
+                        }
+                        aria-label={`Aller à l'étape ${num} : ${label}`}
+                        title={label}
+                      >
+                        <span
+                          className={
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
+                            (active
+                              ? "bg-slate-950 text-white"
+                              : done
+                              ? "bg-white/20 text-white"
+                              : "bg-white/10 text-white/70")
+                          }
+                        >
+                          {done ? <CheckIcon className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[0.66rem] font-semibold uppercase tracking-[0.14em] opacity-70">
+                            0{num}
+                          </span>
+                          <span className={"block text-sm " + (active ? "font-semibold" : "font-medium")}>
+                            <span className="lg:hidden">{shortLabel}</span>
+                            <span className="hidden lg:inline">{label}</span>
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                    </div>
+                  </div>
+
+                  <p className="mt-6 hidden text-xs leading-5 text-white/70 lg:block">
+                    Les hypothèses restent ajustables jusqu&apos;au calcul final.
+                  </p>
+                </>
+              )}
             </div>
           </aside>
 

@@ -11,7 +11,10 @@
 // aucune information. ?size=small répartit ces mêmes questions sur une
 // étape de plus (Profil et Revenus séparés, cf. compactSteps dans
 // CapaciteWizard.tsx) pour rester léger dans un format étroit ; medium et
-// large gardent le découpage en 4 étapes de la page publique.
+// large gardent le découpage en 4 étapes de la page publique. ?size=small
+// et ?size=medium affichent aussi un bandeau de progression fin (sans
+// titre ni icône décorative, cf. compactHeader) pour laisser plus de place
+// au formulaire dans un format étroit.
 //
 // Personnalisation de couleur : ?theme=neutral (palette grise, pour un
 // site au style sobre) ou ?accent=RRGGBB (une couleur d'accent au choix
@@ -67,7 +70,9 @@ export default function EmbedCapacitePage() {
   const router = useRouter();
   const style = accentStyle(router.query.accent, router.query.theme);
   const agencyLead = agencyLeadFromQuery(router.query);
-  const compactSteps = router.query.size === "small";
+  const size = router.query.size;
+  const compactSteps = size === "small";
+  const compactHeader = size === "small" || size === "medium";
 
   return (
     <div className="bg-white px-3 py-4 sm:px-5 sm:py-6" style={style}>
@@ -116,7 +121,7 @@ export default function EmbedCapacitePage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} compactSteps={compactSteps} />
+        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} compactSteps={compactSteps} compactHeader={compactHeader} />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">
