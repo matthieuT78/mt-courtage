@@ -293,172 +293,188 @@ export default function WidgetPage() {
           </div>
         </section>
 
-        {/* Choix du simulateur + démo + intégration */}
+        {/* Choix du simulateur + démo + intégration — en configurateur :
+            réglages à gauche, rendu en direct à droite (sticky), pour ne
+            jamais avoir à scroller pour voir l'effet d'un changement. */}
         <section id="demo" className="border-b border-slate-200 bg-white px-4 py-14 sm:py-20">
-          <div className="mx-auto max-w-4xl">
+          <div className="mx-auto max-w-6xl">
             <div className="text-center">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisissez votre simulateur</p>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Configurez votre intégration</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                 3 simulateurs, un seul à intégrer (ou les trois)
               </h2>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              {WIDGET_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSelectedId(opt.id)}
-                  className={
-                    "rounded-full border px-4 py-2 text-sm font-semibold transition " +
-                    (opt.id === selectedId
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
-                  }
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-6 text-slate-600">{selected.pitch}</p>
-
-            {(selected.sizes || selected.theming || selected.leadForwarding) && (
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-                <div className="grid gap-5 sm:grid-cols-2">
-                  {selected.sizes && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Taille</p>
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        {(["small", "medium", "large"] as WidgetSize[]).map((size) => (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => setSelectedSize(size)}
-                            className={
-                              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
-                              (selectedSize === size
-                                ? "border-slate-950 bg-slate-950 text-white"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
-                            }
-                          >
-                            {SIZE_META[size].label}
-                            <span className={selectedSize === size ? "text-white/60" : "text-slate-400"}>
-                              {" "}· {SIZE_META[size].maxWidth ? `${SIZE_META[size].maxWidth}px` : "pleine largeur"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-2 text-xs leading-5 text-slate-500">{SIZE_META[selectedSize].desc}</p>
-                    </div>
-                  )}
-
-                  {selected.theming && (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
-                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                        {(
-                          [
-                            ["brand", "Couleurs lokt.fr"],
-                            ["neutral", "Neutre (gris)"],
-                            ["custom", "Ma couleur"],
-                          ] as [ColorMode, string][]
-                        ).map(([mode, label]) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => setColorMode(mode)}
-                            className={
-                              "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
-                              (colorMode === mode
-                                ? "border-slate-950 bg-slate-950 text-white"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
-                            }
-                          >
-                            {label}
-                          </button>
-                        ))}
-                        {colorMode === "custom" && (
-                          <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
-                            <input
-                              type="color"
-                              value={/^[0-9a-fA-F]{6}$/.test(customAccent) ? `#${customAccent}` : "#2563eb"}
-                              onChange={(e) => setCustomAccent(e.target.value.replace("#", ""))}
-                              className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <span className="text-xs font-mono text-slate-500">#{customAccent}</span>
-                          </label>
+            <div className="mt-10 grid gap-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+              {/* Réglages (gauche) */}
+              <div className="space-y-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simulateur</p>
+                  <div className="mt-2.5 space-y-2">
+                    {WIDGET_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setSelectedId(opt.id)}
+                        className={
+                          "block w-full rounded-xl border px-4 py-3 text-left transition " +
+                          (opt.id === selectedId
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                        }
+                      >
+                        <span className="text-sm font-semibold">{opt.label}</span>
+                        {opt.id === selectedId && (
+                          <span className="mt-1 block text-xs leading-5 text-white/70">{opt.pitch}</span>
                         )}
-                      </div>
-                      <p className="mt-2 text-xs leading-5 text-slate-500">
-                        Utile sur un site au style sobre : « Neutre » ou votre propre couleur d'accent.
-                      </p>
-                    </div>
-                  )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {selected.leadForwarding && (
-                  <div className="mt-5 border-t border-slate-200 pt-5">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={leadForwardEnabled}
-                        onChange={(e) => setLeadForwardEnabled(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 accent-slate-950"
-                      />
-                      <span className="text-sm text-slate-800">
-                        <span className="font-semibold">M'envoyer par email les coordonnées</span> des visiteurs qui acceptent d'être
-                        recontactés après la simulation.
-                      </span>
-                    </label>
-                    {leadForwardEnabled && (
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {(selected.sizes || selected.theming || selected.leadForwarding) && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="space-y-5">
+                      {selected.sizes && (
                         <div>
-                          <label className="text-xs font-semibold text-slate-600">Votre email agence</label>
-                          <input
-                            type="email"
-                            value={agencyEmail}
-                            onChange={(e) => setAgencyEmail(e.target.value)}
-                            placeholder="contact@votre-agence.fr"
-                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
-                          />
-                          {!AGENCY_EMAIL_RE.test(agencyEmail) && agencyEmail.length > 0 && (
-                            <p className="mt-1 text-xs text-rose-600">Adresse email invalide.</p>
-                          )}
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Taille</p>
+                          <div className="mt-2.5 flex flex-wrap gap-2">
+                            {(["small", "medium", "large"] as WidgetSize[]).map((size) => (
+                              <button
+                                key={size}
+                                type="button"
+                                onClick={() => setSelectedSize(size)}
+                                className={
+                                  "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
+                                  (selectedSize === size
+                                    ? "border-slate-950 bg-slate-950 text-white"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                                }
+                              >
+                                {SIZE_META[size].label}
+                                <span className={selectedSize === size ? "text-white/60" : "text-slate-400"}>
+                                  {" "}· {SIZE_META[size].maxWidth ? `${SIZE_META[size].maxWidth}px` : "pleine largeur"}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">{SIZE_META[selectedSize].desc}</p>
                         </div>
+                      )}
+
+                      {selected.theming && (
                         <div>
-                          <label className="text-xs font-semibold text-slate-600">Nom de votre agence (optionnel)</label>
-                          <input
-                            type="text"
-                            value={agencySiteLabel}
-                            onChange={(e) => setAgencySiteLabel(e.target.value)}
-                            placeholder="ex: Agence Dupont Immobilier"
-                            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
-                          />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
+                          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                            {(
+                              [
+                                ["brand", "Couleurs lokt.fr"],
+                                ["neutral", "Neutre (gris)"],
+                                ["custom", "Ma couleur"],
+                              ] as [ColorMode, string][]
+                            ).map(([mode, label]) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setColorMode(mode)}
+                                className={
+                                  "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
+                                  (colorMode === mode
+                                    ? "border-slate-950 bg-slate-950 text-white"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                                }
+                              >
+                                {label}
+                              </button>
+                            ))}
+                            {colorMode === "custom" && (
+                              <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                                <input
+                                  type="color"
+                                  value={/^[0-9a-fA-F]{6}$/.test(customAccent) ? `#${customAccent}` : "#2563eb"}
+                                  onChange={(e) => setCustomAccent(e.target.value.replace("#", ""))}
+                                  className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0"
+                                />
+                                <span className="text-xs font-mono text-slate-500">#{customAccent}</span>
+                              </label>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            Utile sur un site au style sobre : « Neutre » ou votre propre couleur d'accent.
+                          </p>
                         </div>
+                      )}
+                    </div>
+
+                    {selected.leadForwarding && (
+                      <div className="mt-5 border-t border-slate-200 pt-5">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={leadForwardEnabled}
+                            onChange={(e) => setLeadForwardEnabled(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 accent-slate-950"
+                          />
+                          <span className="text-sm text-slate-800">
+                            <span className="font-semibold">M'envoyer par email les coordonnées</span> des visiteurs qui acceptent
+                            d'être recontactés après la simulation.
+                          </span>
+                        </label>
+                        {leadForwardEnabled && (
+                          <div className="mt-3 space-y-3">
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Votre email agence</label>
+                              <input
+                                type="email"
+                                value={agencyEmail}
+                                onChange={(e) => setAgencyEmail(e.target.value)}
+                                placeholder="contact@votre-agence.fr"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                              />
+                              {!AGENCY_EMAIL_RE.test(agencyEmail) && agencyEmail.length > 0 && (
+                                <p className="mt-1 text-xs text-rose-600">Adresse email invalide.</p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-xs font-semibold text-slate-600">Nom de votre agence (optionnel)</label>
+                              <input
+                                type="text"
+                                value={agencySiteLabel}
+                                onChange={(e) => setAgencySiteLabel(e.target.value)}
+                                placeholder="ex: Agence Dupont Immobilier"
+                                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Transmis uniquement si le visiteur coche « j'accepte d'être recontacté(e) » — jamais conservé par lokt.fr.
+                        </p>
                       </div>
                     )}
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Transmis uniquement si le visiteur coche « j'accepte d'être recontacté(e) » — jamais conservé par lokt.fr.
-                    </p>
                   </div>
                 )}
               </div>
-            )}
 
-            <div
-              className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5 transition-all"
-              style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
-            >
-              <iframe
-                key={selected.id}
-                ref={demoFrameRef}
-                src={demoSrc}
-                width="100%"
-                height={demoHeight}
-                style={{ border: 0, display: "block", transition: "height 150ms ease" }}
-                loading="lazy"
-                title={`Démo — ${selected.title} lokt.fr`}
-              />
+              {/* Rendu en direct (droite) — reste visible pendant qu'on règle à gauche */}
+              <div className="lg:sticky lg:top-24">
+                <div
+                  className="overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5 transition-all"
+                  style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
+                >
+                  <iframe
+                    key={selected.id}
+                    ref={demoFrameRef}
+                    src={demoSrc}
+                    width="100%"
+                    height={demoHeight}
+                    style={{ border: 0, display: "block", transition: "height 150ms ease" }}
+                    loading="lazy"
+                    title={`Démo — ${selected.title} lokt.fr`}
+                  />
+                </div>
+                <p className="mt-3 text-center text-xs text-slate-400">Aperçu en direct — se met à jour à chaque réglage.</p>
+              </div>
             </div>
           </div>
         </section>
