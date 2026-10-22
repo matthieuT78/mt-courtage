@@ -7,7 +7,7 @@ updatedAt: "2026-10-22"
 category: "Investissement locatif"
 tags: ["outils de bricolage pour débutant", "petites réparations logement locatif", "entretien investissement locatif", "améliorer un appartement en location", "outils pour propriétaire bailleur", "rénovation légère appartement"]
 relatedCalculators: ["investissement"]
-coverImage: null
+coverImage: "/blog/outils-bricolage-debutant-petites-reparations.jpg"
 ---
 
 # Investissement locatif : quels outils de bricolage choisir pour améliorer un logement sans gros travaux ?
@@ -17,6 +17,8 @@ Dans un investissement locatif, l'état général du logement influence l'expér
 Il n'est pas toujours nécessaire d'engager une rénovation complète pour rendre un appartement plus agréable. Certaines interventions simples permettent de corriger de petits problèmes, d'entretenir les équipements et de mieux présenter le logement avant l'arrivée d'un nouveau locataire.
 
 Pour un propriétaire qui débute en bricolage, le plus important est de disposer de quelques outils adaptés, de connaître leurs limites et de savoir quand faire appel à un professionnel.
+
+![Maquette de maison, graphique et boussole symbolisant un investissement locatif](/blog/outils-bricolage-debutant-petites-reparations.jpg)
 
 ## 1. Faire le tour du logement avant d'acheter des outils
 
