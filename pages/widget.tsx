@@ -2,11 +2,10 @@
 //
 // Page vitrine B2B : simulateurs lokt.fr intégrables sur le site d'une
 // agence immobilière. MVP volontairement minimal (cf. décision du
-// 2026-10-22) : un seul simulateur (capacité d'emprunt), une iframe fixe,
-// pas de configurateur ni de compte partenaire — on valide la demande
-// avant de construire plus.
+// 2026-10-22) : 3 simulateurs prêts à l'emploi, iframes fixes, pas de
+// configurateur ni de compte partenaire — on valide la demande avant de
+// construire plus.
 import Head from "next/head";
-import Link from "next/link";
 import { useState } from "react";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -20,17 +19,51 @@ import {
   CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 
-const IFRAME_SNIPPET = `<iframe
-  src="https://lokt.fr/embed/capacite"
+type WidgetOption = {
+  id: string;
+  embedPath: string;
+  label: string;
+  title: string;
+  pitch: string;
+};
+
+const WIDGET_OPTIONS: WidgetOption[] = [
+  {
+    id: "capacite",
+    embedPath: "/embed/capacite",
+    label: "Capacité d'emprunt",
+    title: "Simulateur de capacité d'emprunt",
+    pitch: "La question que se pose tout acquéreur avant de contacter une agence : « est-ce que je peux me l'offrir ? ».",
+  },
+  {
+    id: "pret-relais",
+    embedPath: "/embed/pret-relais",
+    label: "Prêt relais",
+    title: "Simulateur de prêt relais",
+    pitch: "Utile pour vos clients vendeurs qui veulent acheter avant d'avoir vendu leur bien actuel.",
+  },
+  {
+    id: "investissement",
+    embedPath: "/embed/investissement",
+    label: "Rentabilité locative",
+    title: "Simulateur de rentabilité locative",
+    pitch: "Pour les agences qui traitent aussi de l'investissement locatif : cash-flow, rendement brut et net.",
+  },
+];
+
+function iframeSnippetFor(opt: WidgetOption) {
+  return `<iframe
+  src="https://lokt.fr${opt.embedPath}"
   width="100%"
   height="900"
   style="border:0;border-radius:16px;"
   loading="lazy"
-  title="Simulateur de capacité d'emprunt - lokt.fr">
+  title="${opt.title} - lokt.fr">
 </iframe>
 <p style="margin-top:8px;font-size:12px;color:#64748b;text-align:center;">
   Simulateur propulsé par <a href="https://lokt.fr" target="_blank" rel="noopener">lokt.fr</a>
 </p>`;
+}
 
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -67,9 +100,11 @@ function CodeBlock({ code }: { code: string }) {
 export default function WidgetPage() {
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/widget`;
-  const title = "Widget simulateur de capacité d'emprunt pour agences immobilières | lokt.fr";
+  const title = "Simulateurs immobiliers à intégrer sur votre site d'agence | lokt.fr";
   const description =
-    "Intégrez gratuitement le simulateur de capacité d'emprunt lokt.fr sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
+    "Intégrez gratuitement un simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
+  const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
+  const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -95,12 +130,11 @@ export default function WidgetPage() {
               Gratuit pour les agences immobilières
             </div>
             <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-tight text-slate-950 sm:text-5xl">
-              Offrez à vos visiteurs un simulateur de capacité d'emprunt — sur votre site, en 2 minutes.
+              Offrez à vos visiteurs un simulateur immobilier — sur votre site, en 2 minutes.
             </h1>
             <p className="mt-5 text-base leading-7 text-slate-600 sm:text-lg">
-              Un acquéreur qui visite une annonce se demande d'abord « est-ce que je peux me l'offrir ? ». lokt.fr vous propose
-              un simulateur prêt à l'emploi, propulsé par notre moteur de calcul, à intégrer sur votre site en copiant un seul
-              bloc de code — aucune compétence technique requise.
+              Capacité d'emprunt, prêt relais, rentabilité locative : choisissez le simulateur le plus pertinent pour vos
+              clients et intégrez-le à votre site en copiant un seul bloc de code — aucune compétence technique requise.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <a href="#integration" className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-7 text-sm font-semibold text-white hover:bg-slate-800">
@@ -146,26 +180,44 @@ export default function WidgetPage() {
           </div>
         </section>
 
-        {/* Démo */}
+        {/* Choix du simulateur + démo + intégration */}
         <section id="demo" className="border-b border-slate-200 bg-white px-4 py-14 sm:py-20">
           <div className="mx-auto max-w-4xl">
             <div className="text-center">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Aperçu</p>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisissez votre simulateur</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                Exactement ce que verront vos visiteurs
+                3 simulateurs, un seul à intégrer (ou les trois)
               </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Le même simulateur qui s'affichera dans votre iframe, sans aucune mise en forme supplémentaire de notre part.
-              </p>
             </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              {WIDGET_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSelectedId(opt.id)}
+                  className={
+                    "rounded-full border px-4 py-2 text-sm font-semibold transition " +
+                    (opt.id === selectedId
+                      ? "border-slate-950 bg-slate-950 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-6 text-slate-600">{selected.pitch}</p>
+
             <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 shadow-xl shadow-slate-900/5">
               <iframe
-                src="/embed/capacite"
+                key={selected.id}
+                src={selected.embedPath}
                 width="100%"
                 height={900}
                 style={{ border: 0, display: "block" }}
                 loading="lazy"
-                title="Démo — simulateur de capacité d'emprunt lokt.fr"
+                title={`Démo — ${selected.title} lokt.fr`}
               />
             </div>
           </div>
@@ -177,7 +229,7 @@ export default function WidgetPage() {
             <div className="text-center">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Intégration</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                Un seul bloc de code à copier
+                Un seul bloc de code à copier — {selected.label}
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 Collez ce code à l'endroit de votre page où le simulateur doit apparaître (CMS, page HTML, section dédiée au
@@ -185,14 +237,14 @@ export default function WidgetPage() {
               </p>
             </div>
             <div className="mt-8">
-              <CodeBlock code={IFRAME_SNIPPET} />
+              <CodeBlock code={iframeSnippetFor(selected)} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 "Fonctionne sur tout site qui accepte du HTML — WordPress, Wix, site sur mesure, etc.",
                 "La mention « Propulsé par lokt.fr » reste visible sous le simulateur.",
                 "Aucune donnée de vos visiteurs ne vous est transmise automatiquement dans cette version.",
-                "Besoin d'une intégration spécifique (couleurs, autre simulateur) ? Écrivez-nous.",
+                "Vous pouvez intégrer plusieurs simulateurs sur des pages différentes de votre site.",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
                   <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
@@ -218,8 +270,8 @@ export default function WidgetPage() {
                   a: "Non. Le résultat est une estimation indicative basée sur les informations saisies par le visiteur. Il ne constitue ni une offre de prêt, ni un accord de financement, ni un conseil personnalisé.",
                 },
                 {
-                  q: "Puis-je intégrer un autre simulateur (rentabilité, prêt relais) ?",
-                  a: "Pas encore en libre-service — écrivez-nous à contact@lokt.fr en précisant le simulateur souhaité, nous étudions les demandes au cas par cas pendant cette phase de test.",
+                  q: "Puis-je intégrer plusieurs simulateurs ?",
+                  a: "Oui, les 3 simulateurs ci-dessus sont chacun disponibles en intégration indépendante — vous pouvez n'en mettre qu'un, ou les trois sur des pages différentes de votre site. Besoin d'un autre simulateur de notre catalogue ? Écrivez-nous à contact@lokt.fr.",
                 },
                 {
                   q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
