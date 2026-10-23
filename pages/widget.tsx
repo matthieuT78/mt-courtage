@@ -180,12 +180,96 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
+const FAQ_ITEMS: { q: string; a: string }[] = [
+  {
+    q: "C'est vraiment gratuit ?",
+    a: "Oui, cette version du simulateur est gratuite et sans engagement. Elle est encore en phase de test : nous l'enrichirons selon les retours des agences qui l'utilisent.",
+  },
+  {
+    q: "Le résultat du simulateur engage-t-il lokt.fr ou l'agence ?",
+    a: "Non. Le résultat est une estimation indicative basée sur les informations saisies par le visiteur. Il ne constitue ni une offre de prêt, ni un accord de financement, ni un conseil personnalisé.",
+  },
+  {
+    q: "Puis-je intégrer plusieurs simulateurs ?",
+    a: "Oui, les 3 simulateurs ci-dessus sont chacun disponibles en intégration indépendante — vous pouvez n'en mettre qu'un, ou les trois sur des pages différentes de votre site. Besoin d'un autre simulateur de notre catalogue ? Écrivez-nous à contact@lokt.fr.",
+  },
+  {
+    q: "La taille « petite » retire-t-elle des questions au simulateur ?",
+    a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie. Seule la taille « petite » réorganise ces mêmes questions sur une étape de plus (5 écrans légers au lieu de 4), pour rester confortable dans un format étroit — rien n'est raccourci, juste réparti différemment.",
+  },
+  {
+    q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
+    a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs s'intègrent en pleine largeur — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
+  },
+  {
+    q: "Puis-je changer les couleurs du simulateur ?",
+    a: "Oui, pour la capacité d'emprunt : « Neutre » applique une palette grise discrète, ou vous choisissez votre propre couleur d'accent. Le code généré ci-dessus intègre automatiquement votre choix — rien à faire d'autre.",
+  },
+  {
+    q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
+    a: "Pas sur cette offre gratuite — c'est elle qui nous permet de proposer le simulateur sans facturation.",
+  },
+  {
+    q: "Comment récupérer les coordonnées des visiteurs intéressés ?",
+    a: "Activez l'option « M'envoyer par email les coordonnées » (disponible pour la capacité d'emprunt) et renseignez votre adresse email : le code généré l'intègre automatiquement. Un visiteur ne vous est transmis que s'il coche explicitement la case lui proposant d'être recontacté — ces coordonnées vous sont envoyées directement par email, sans jamais être conservées dans une base lokt.fr.",
+  },
+  {
+    q: "La page d'où vient le lead est-elle précisée ?",
+    a: "Oui, l'email que vous recevez indique l'URL de la page de votre site sur laquelle le visiteur a utilisé le simulateur — utile si vous l'avez intégré sur plusieurs fiches de biens.",
+  },
+];
+
 export default function WidgetPage() {
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/widget`;
   const title = "Simulateurs immobiliers à intégrer sur votre site d'agence | lokt.fr";
   const description =
     "Intégrez gratuitement un simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
+  const ogImage = `${siteUrl}/simulateurs-immobiliers-lokt.png`;
+  const jsonLdItems = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "lokt.fr - Widgets simulateurs pour agences immobilières",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      image: ogImage,
+      description,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+        description: "Offre gratuite pour les agences immobilières.",
+      },
+      featureList: [
+        "Simulateur de capacité d'emprunt intégrable",
+        "Simulateur de prêt relais intégrable",
+        "Simulateur de rentabilité locative intégrable",
+        "Intégration par copier-coller HTML, sans compétence technique",
+        "Personnalisation de la taille et de la couleur",
+        "Transmission des leads consentants par email",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Widgets simulateurs", item: pageUrl },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      inLanguage: "fr-FR",
+      mainEntity: FAQ_ITEMS.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: { "@type": "Answer", text: item.a },
+      })),
+    },
+  ];
   const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
   const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
   const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
@@ -234,9 +318,21 @@ export default function WidgetPage() {
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:alt" content="Simulateurs immobiliers lokt.fr" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+        {jsonLdItems.map((schema, index) => (
+          <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <AppHeader staticMode />
@@ -323,6 +419,7 @@ export default function WidgetPage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setSelectedId(opt.id)}
+                        aria-pressed={opt.id === selectedId}
                         className={
                           "block w-full rounded-xl border px-4 py-3 text-left transition " +
                           (opt.id === selectedId
@@ -351,6 +448,7 @@ export default function WidgetPage() {
                                 key={size}
                                 type="button"
                                 onClick={() => setSelectedSize(size)}
+                                aria-pressed={selectedSize === size}
                                 className={
                                   "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
                                   (selectedSize === size
@@ -384,6 +482,7 @@ export default function WidgetPage() {
                                 key={mode}
                                 type="button"
                                 onClick={() => setColorMode(mode)}
+                                aria-pressed={colorMode === mode}
                                 className={
                                   "rounded-full border px-3.5 py-1.5 text-xs font-semibold transition " +
                                   (colorMode === mode
@@ -528,44 +627,7 @@ export default function WidgetPage() {
           <div className="mx-auto max-w-3xl">
             <h2 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Questions fréquentes</h2>
             <div className="mt-6 space-y-3">
-              {[
-                {
-                  q: "C'est vraiment gratuit ?",
-                  a: "Oui, cette version du simulateur est gratuite et sans engagement. Elle est encore en phase de test : nous l'enrichirons selon les retours des agences qui l'utilisent.",
-                },
-                {
-                  q: "Le résultat du simulateur engage-t-il lokt.fr ou l'agence ?",
-                  a: "Non. Le résultat est une estimation indicative basée sur les informations saisies par le visiteur. Il ne constitue ni une offre de prêt, ni un accord de financement, ni un conseil personnalisé.",
-                },
-                {
-                  q: "Puis-je intégrer plusieurs simulateurs ?",
-                  a: "Oui, les 3 simulateurs ci-dessus sont chacun disponibles en intégration indépendante — vous pouvez n'en mettre qu'un, ou les trois sur des pages différentes de votre site. Besoin d'un autre simulateur de notre catalogue ? Écrivez-nous à contact@lokt.fr.",
-                },
-                {
-                  q: "La taille « petite » retire-t-elle des questions au simulateur ?",
-                  a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie. Seule la taille « petite » réorganise ces mêmes questions sur une étape de plus (5 écrans légers au lieu de 4), pour rester confortable dans un format étroit — rien n'est raccourci, juste réparti différemment.",
-                },
-                {
-                  q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
-                  a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs s'intègrent en pleine largeur — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
-                },
-                {
-                  q: "Puis-je changer les couleurs du simulateur ?",
-                  a: "Oui, pour la capacité d'emprunt : « Neutre » applique une palette grise discrète, ou vous choisissez votre propre couleur d'accent. Le code généré ci-dessus intègre automatiquement votre choix — rien à faire d'autre.",
-                },
-                {
-                  q: "Puis-je retirer la mention « Propulsé par lokt.fr » ?",
-                  a: "Pas sur cette offre gratuite — c'est elle qui nous permet de proposer le simulateur sans facturation.",
-                },
-                {
-                  q: "Comment récupérer les coordonnées des visiteurs intéressés ?",
-                  a: "Activez l'option « M'envoyer par email les coordonnées » (disponible pour la capacité d'emprunt) et renseignez votre adresse email : le code généré l'intègre automatiquement. Un visiteur ne vous est transmis que s'il coche explicitement la case lui proposant d'être recontacté — ces coordonnées vous sont envoyées directement par email, sans jamais être conservées dans une base lokt.fr.",
-                },
-                {
-                  q: "La page d'où vient le lead est-elle précisée ?",
-                  a: "Oui, l'email que vous recevez indique l'URL de la page de votre site sur laquelle le visiteur a utilisé le simulateur — utile si vous l'avez intégré sur plusieurs fiches de biens.",
-                },
-              ].map(({ q, a }) => (
+              {FAQ_ITEMS.map(({ q, a }) => (
                 <details key={q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
                     {q}
