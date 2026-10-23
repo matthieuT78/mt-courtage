@@ -23,12 +23,14 @@
 // couleurs de marque lokt.fr comme valeur par défaut — la page publique
 // /capacite n'est pas concernée, ces variables ne sont définies qu'ici.
 //
-// Lead agence : ?agency_email=contact@agence.fr (et optionnellement
-// ?agency_name=...) active le mode "lead vers l'agence" dans
-// CapaciteWizard — le lead n'est alors JAMAIS écrit dans la base lokt.fr,
-// uniquement transmis par email à cette adresse si le visiteur coche le
-// consentement contact (cf. agencyLead dans CapaciteWizard.tsx et
-// /api/tools/capacite/notify-agency).
+// Lead agence : ?agency_token=... (et optionnellement ?agency_name=...)
+// active le mode "lead vers l'agence" dans CapaciteWizard — le lead n'est
+// alors JAMAIS écrit dans la base lokt.fr, uniquement transmis par email
+// si le visiteur coche le consentement contact (cf. agencyLead dans
+// CapaciteWizard.tsx et /api/tools/capacite/notify-agency). Le token est
+// opaque (généré par /api/tools/capacite/widget-token depuis /widget) :
+// l'email de l'agence n'apparaît jamais dans cette URL, contrairement à
+// agency_name qui reste un simple libellé d'affichage, non sensible.
 import type { CSSProperties } from "react";
 import Head from "next/head";
 import Link from "next/link";
@@ -59,10 +61,10 @@ function accentStyle(accentParam: unknown, themeParam: unknown): CSSProperties {
 }
 
 function agencyLeadFromQuery(query: Record<string, any>) {
-  const raw = typeof query.agency_email === "string" ? query.agency_email.trim() : "";
-  if (!raw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) return undefined;
+  const token = typeof query.agency_token === "string" ? query.agency_token.trim() : "";
+  if (!token) return undefined;
   const siteLabel = typeof query.agency_name === "string" ? query.agency_name.trim().slice(0, 80) : undefined;
-  return { notifyEmail: raw, siteLabel };
+  return { token, siteLabel };
 }
 
 export default function EmbedCapacitePage() {

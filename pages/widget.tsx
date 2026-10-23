@@ -89,7 +89,7 @@ function queryParamsFor(
   colorMode: ColorMode,
   customAccent: string,
   leadForwardEnabled: boolean,
-  agencyEmail: string,
+  agencyToken: string | null,
   agencySiteLabel: string
 ) {
   const parts: string[] = [];
@@ -101,8 +101,11 @@ function queryParamsFor(
   if (opt.sizes && size !== "large") parts.push(`size=${size}`);
   const colorParam = colorQueryParam(opt, colorMode, customAccent);
   if (colorParam) parts.push(colorParam);
-  if (opt.leadForwarding && leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)) {
-    parts.push(`agency_email=${encodeURIComponent(agencyEmail.trim())}`);
+  // agency_token est un identifiant opaque (cf. /api/tools/capacite/
+  // widget-token) — jamais l'email de l'agence en clair, qui serait sinon
+  // visible dans le code source de la page qui héberge l'iframe.
+  if (opt.leadForwarding && leadForwardEnabled && agencyToken) {
+    parts.push(`agency_token=${encodeURIComponent(agencyToken)}`);
     if (agencySiteLabel.trim()) parts.push(`agency_name=${encodeURIComponent(agencySiteLabel.trim().slice(0, 80))}`);
   }
   return parts.join("&");
@@ -114,13 +117,13 @@ function iframeSnippetFor(
   colorMode: ColorMode,
   customAccent: string,
   leadForwardEnabled: boolean,
-  agencyEmail: string,
+  agencyToken: string | null,
   agencySiteLabel: string
 ) {
   const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
   const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
   const wrapClose = maxWidth ? `\n</div>` : "";
-  const query = queryParamsFor(opt, size, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel);
+  const query = queryParamsFor(opt, size, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel);
   const src = query ? `https://lokt.fr${opt.embedPath}?${query}` : `https://lokt.fr${opt.embedPath}`;
   return `${wrapOpen}<iframe
   data-lokt-widget
@@ -211,7 +214,15 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Comment récupérer les coordonnées des visiteurs intéressés ?",
-    a: "Activez l'option « M'envoyer par email les coordonnées » (disponible pour la capacité d'emprunt) et renseignez votre adresse email : le code généré l'intègre automatiquement. Un visiteur ne vous est transmis que s'il coche explicitement la case lui proposant d'être recontacté — ces coordonnées vous sont envoyées directement par email, sans jamais être conservées dans une base lokt.fr.",
+    a: "Activez l'option « M'envoyer par email les coordonnées » (disponible pour la capacité d'emprunt) et renseignez votre adresse email : le code généré l'intègre automatiquement, sous la forme d'un identifiant propre à votre adresse (jamais votre email en clair dans le code). Un visiteur ne vous est transmis que s'il coche explicitement la case lui proposant d'être recontacté — ces coordonnées vous sont envoyées directement par email, sans jamais être conservées dans une base lokt.fr.",
+  },
+  {
+    q: "Comment savoir si c'est bien configuré avant la mise en ligne ?",
+    a: "Une fois votre email renseigné, un bouton « Envoyer un lead de test » apparaît : il vous envoie un email de démonstration identique à un vrai lead, pour vérifier que tout fonctionne avant de publier le code sur votre site.",
+  },
+  {
+    q: "Qui est responsable des coordonnées transmises par le visiteur ?",
+    a: "Vous. Dès qu'un visiteur accepte d'être recontacté, ses coordonnées vous sont transmises directement par email et deviennent votre responsabilité en tant qu'agence — ce n'est pas couvert par la politique de confidentialité de lokt.fr, qui ne conserve ni ne traite ces données. Le texte du consentement affiché au visiteur le précise explicitement.",
   },
   {
     q: "La page d'où vient le lead est-elle précisée ?",
@@ -278,14 +289,89 @@ export default function WidgetPage() {
   const [leadForwardEnabled, setLeadForwardEnabled] = useState(false);
   const [agencyEmail, setAgencyEmail] = useState("");
   const [agencySiteLabel, setAgencySiteLabel] = useState("");
+  const [agencyToken, setAgencyToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [testSending, setTestSending] = useState(false);
+  const [testSentMsg, setTestSentMsg] = useState<string | null>(null);
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
   const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
   // La démo n'envoie jamais réellement d'email (pas d'adresse agence saisie
   // ici) — uniquement taille et couleur, pour que l'aperçu reste fidèle au
   // code généré sans dépendre d'une adresse de test.
-  const demoQuery = queryParamsFor(selected, selectedSize, colorMode, customAccent, false, "", "");
+  const demoQuery = queryParamsFor(selected, selectedSize, colorMode, customAccent, false, null, "");
   const demoSrc = demoQuery ? `${selected.embedPath}?${demoQuery}` : selected.embedPath;
+
+  // Convertit l'email agence en jeton opaque dès qu'il devient valide —
+  // le code généré ne doit jamais transporter l'email en clair (visible
+  // dans le code source de la page de l'agence). Un même email réutilisé
+  // renvoie toujours le même token (upsert côté serveur), donc redemander
+  // ce token à chaque frappe est sans risque — juste débounced pour éviter
+  // une requête par caractère tapé.
+  useEffect(() => {
+    setAgencyToken(null);
+    setTokenError(null);
+    setTestSentMsg(null);
+    if (!leadForwardEnabled || !selected.leadForwarding || !AGENCY_EMAIL_RE.test(agencyEmail)) return;
+
+    let cancelled = false;
+    setTokenLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch("/api/tools/capacite/widget-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agencyEmail, siteLabel: agencySiteLabel }),
+        });
+        const data = await r.json().catch(() => null);
+        if (cancelled) return;
+        if (!r.ok || !data?.token) {
+          setTokenError(data?.error || "Impossible de générer le code pour cette adresse.");
+          return;
+        }
+        setAgencyToken(data.token);
+      } catch {
+        if (!cancelled) setTokenError("Impossible de générer le code pour cette adresse.");
+      } finally {
+        if (!cancelled) setTokenLoading(false);
+      }
+    }, 600);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadForwardEnabled, selected.leadForwarding, agencyEmail, agencySiteLabel]);
+
+  const sendTestLead = async () => {
+    if (!agencyToken) return;
+    setTestSending(true);
+    setTestSentMsg(null);
+    try {
+      const r = await fetch("/api/tools/capacite/notify-agency", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agencyToken,
+          visitorEmail: "test@lokt.fr",
+          referrerUrl: pageUrl,
+          budgetTotalMax: 250000,
+          montantMax: 220000,
+          scoreLabel: "Solide",
+          score: 78,
+          isTest: true,
+        }),
+      });
+      const data = await r.json().catch(() => null);
+      setTestSentMsg(r.ok ? "Email de test envoyé — vérifiez votre boîte de réception." : data?.error || "Échec de l'envoi du test.");
+    } catch {
+      setTestSentMsg("Échec de l'envoi du test.");
+    } finally {
+      setTestSending(false);
+    }
+  };
 
   // La démo ci-dessous est une iframe comme celle que l'agence intègre :
   // même mécanisme d'auto-redimensionnement que le script fourni dans le
@@ -551,10 +637,26 @@ export default function WidgetPage() {
                                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-950"
                               />
                             </div>
+                            {tokenLoading && <p className="text-xs text-slate-500">Génération du code d'intégration…</p>}
+                            {tokenError && <p className="text-xs text-rose-600">{tokenError}</p>}
+                            {agencyToken && !tokenLoading && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={sendTestLead}
+                                  disabled={testSending}
+                                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 disabled:opacity-60"
+                                >
+                                  {testSending ? "Envoi…" : "Envoyer un lead de test"}
+                                </button>
+                                {testSentMsg && <span className="text-xs text-slate-500">{testSentMsg}</span>}
+                              </div>
+                            )}
                           </div>
                         )}
                         <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Transmis uniquement si le visiteur coche « j'accepte d'être recontacté(e) » — jamais conservé par lokt.fr.
+                          Transmis uniquement si le visiteur coche « j'accepte d'être recontacté(e) » — jamais conservé par lokt.fr. Votre
+                          adresse n'apparaît jamais en clair dans le code généré ci-dessous.
                         </p>
                       </div>
                     )}
@@ -601,14 +703,14 @@ export default function WidgetPage() {
             </div>
             <div className="mt-8">
               <CodeBlock
-                code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent, leadForwardEnabled, agencyEmail, agencySiteLabel)}
+                code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel)}
               />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
-                "Fonctionne sur tout site qui accepte du HTML — WordPress, Wix, site sur mesure, etc.",
+                "Fonctionne sur WordPress, un site sur mesure ou tout CMS acceptant du code HTML — sur Wix, un forfait Business/VIP est nécessaire pour ajouter du code personnalisé (indisponible sur l'offre gratuite de Wix).",
                 "La mention « Propulsé par lokt.fr » reste visible sous le simulateur.",
-                leadForwardEnabled && AGENCY_EMAIL_RE.test(agencyEmail)
+                leadForwardEnabled && agencyToken
                   ? "Les visiteurs qui acceptent d'être recontactés vous sont transmis par email à l'adresse renseignée ci-dessus."
                   : "Aucune donnée de vos visiteurs ne vous est transmise, sauf si vous activez l'option ci-dessus.",
                 "Vous pouvez intégrer plusieurs simulateurs sur des pages différentes de votre site.",

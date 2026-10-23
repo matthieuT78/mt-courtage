@@ -4,13 +4,17 @@
 // (pages/embed/capacite.tsx) : notifie l'agence par email quand un
 // visiteur termine la simulation ET a explicitement coché le
 // consentement à être recontacté (jamais sans ce consentement). Aucune
-// écriture dans la base de leads lokt.fr dans ce contexte — l'email de
-// l'agence est passé par l'intégration (?agency_email=...), pas lié à un
-// compte, cohérent avec le MVP volontairement sans configurateur ni
-// compte partenaire.
+// écriture dans la base de leads lokt.fr dans ce contexte.
+//
+// Le client ne connaît jamais l'email de l'agence : il transporte un
+// token opaque (voir widget-token.ts et supabase/migrations/
+// 20261023120000_widget_agencies.sql), résolu ici côté serveur — l'email
+// de l'agence n'apparaît donc jamais dans l'URL de l'iframe ni dans le
+// code source de la page qui l'intègre.
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendEmailViaResend } from "../../../../lib/mailer/resend";
 import { emailLayout } from "../../../../lib/emails/layout";
+import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 function safeEmail(v: any) {
   return String(v || "").trim().toLowerCase();
@@ -58,11 +62,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
+  if (!supabaseAdmin) return res.status(500).json({ ok: false, error: "Supabase admin non configuré." });
 
   try {
     rateLimitOrThrow(getClientIp(req));
 
-    const agencyEmail = safeEmail(req.body?.agencyEmail);
+    const agencyToken = String(req.body?.agencyToken || "").trim();
     const visitorEmail = safeEmail(req.body?.visitorEmail);
     const visitorPhone = req.body?.visitorPhone ? String(req.body.visitorPhone).trim() : null;
     const referrerUrl = req.body?.referrerUrl ? String(req.body.referrerUrl).slice(0, 500) : null;
@@ -70,13 +75,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const montantMax = Number(req.body?.montantMax || 0);
     const scoreLabel = String(req.body?.scoreLabel || "").slice(0, 60);
     const score = Number(req.body?.score || 0);
+    const isTest = req.body?.isTest === true;
 
-    if (!isValidEmail(agencyEmail)) return res.status(400).json({ ok: false, error: "agencyEmail invalide" });
+    if (!agencyToken) return res.status(400).json({ ok: false, error: "agencyToken manquant" });
     if (!isValidEmail(visitorEmail)) return res.status(400).json({ ok: false, error: "visitorEmail invalide" });
+
+    const { data: agency, error: agencyError } = await supabaseAdmin
+      .from("widget_agencies")
+      .select("agency_email, lead_count")
+      .eq("token", agencyToken)
+      .maybeSingle();
+
+    if (agencyError) return res.status(500).json({ ok: false, error: agencyError.message });
+    if (!agency) return res.status(404).json({ ok: false, error: "Token agence inconnu" });
+
+    const nextLeadCount = isTest ? agency.lead_count : agency.lead_count + 1;
 
     const contentHtml = `
       <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#334155;">
-        Un visiteur a utilisé le simulateur de capacité d'emprunt intégré sur votre site et a accepté d'être recontacté.
+        ${
+          isTest
+            ? "Ceci est un email de test — aucun visiteur réel n'a utilisé le simulateur. Si vous recevez bien cet email, l'intégration est correctement configurée."
+            : "Un visiteur a utilisé le simulateur de capacité d'emprunt intégré sur votre site et a accepté d'être recontacté."
+        }
       </p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:13.5px;margin:4px 0 16px;">
         <tr><td style="padding:4px 0;color:#64748b;">Email</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${escapeHtml(visitorEmail)}</td></tr>
@@ -85,6 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <tr><td style="padding:4px 0;color:#64748b;">Capital empruntable</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${euro(montantMax)}</td></tr>
         ${scoreLabel ? `<tr><td style="padding:4px 0;color:#64748b;">Score lokt.fr</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${score}/100 — ${escapeHtml(scoreLabel)}</td></tr>` : ""}
         ${referrerUrl ? `<tr><td style="padding:4px 0;color:#64748b;">Page d'origine</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;word-break:break-all;">${escapeHtml(referrerUrl)}</td></tr>` : ""}
+        ${!isTest ? `<tr><td style="padding:4px 0;color:#64748b;">Lead reçu via ce widget</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">n°${nextLeadCount}</td></tr>` : ""}
       </table>
       <p style="margin:0 0 14px;font-size:13.5px;line-height:1.6;color:#475569;">
         Ce montant est une estimation indicative, pas une offre de prêt. Nous vous recommandons de recontacter directement ce visiteur pour qualifier son projet.
@@ -92,22 +114,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `;
 
     const html = emailLayout({
-      title: "Nouveau lead — simulateur de capacité d'emprunt",
-      preheader: `${visitorEmail} — budget estimé ${euro(budgetTotalMax)}`,
+      title: isTest ? "Email de test — widget capacité d'emprunt" : "Nouveau lead — simulateur de capacité d'emprunt",
+      preheader: isTest ? "Test de configuration du widget lokt.fr" : `${visitorEmail} — budget estimé ${euro(budgetTotalMax)}`,
       contentHtml,
       footerText: "Lead transmis par le widget lokt.fr intégré sur votre site — lokt.fr ne conserve pas ces coordonnées.",
     });
 
     const mail = await sendEmailViaResend({
-      to: agencyEmail,
-      subject: `Nouveau lead — ${euro(budgetTotalMax)} de budget estimé`,
+      to: agency.agency_email,
+      subject: isTest ? "[Test] Votre widget lokt.fr est bien configuré" : `Nouveau lead — ${euro(budgetTotalMax)} de budget estimé`,
       html,
-      replyTo: visitorEmail,
+      replyTo: isTest ? undefined : visitorEmail,
     });
 
     if (!mail.ok) {
       console.error("[capacite/notify-agency] resend error:", mail.error);
       return res.status(500).json({ ok: false, error: mail.error });
+    }
+
+    if (!isTest) {
+      await supabaseAdmin
+        .from("widget_agencies")
+        .update({ lead_count: nextLeadCount, last_lead_at: new Date().toISOString() })
+        .eq("token", agencyToken);
     }
 
     return res.status(200).json({ ok: true });

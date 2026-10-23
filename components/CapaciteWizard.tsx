@@ -153,8 +153,10 @@ export type CapaciteWizardProps = {
   // il part uniquement vers l'agence par email, et seulement si le visiteur
   // a coché la case de consentement (le texte de cette case reflète alors
   // explicitement que c'est l'agence, pas "un conseiller partenaire" lokt,
-  // qui recevra ses coordonnées).
-  agencyLead?: { notifyEmail: string; siteLabel?: string };
+  // qui recevra ses coordonnées). `token` est un identifiant opaque (jamais
+  // l'email de l'agence en clair, résolu côté serveur dans l'API
+  // notify-agency) — voir pages/api/tools/capacite/widget-token.ts.
+  agencyLead?: { token: string; siteLabel?: string };
 
   // Format "petit" du widget agence (cf. pages/embed/capacite.tsx) : répartit
   // les mêmes questions sur une étape de plus pour rester léger dans un
@@ -788,7 +790,7 @@ export default function CapaciteWizard({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        agencyEmail: agencyLead.notifyEmail,
+        agencyToken: agencyLead.token,
         visitorEmail: params.email,
         visitorPhone: leadPhone.trim() || null,
         referrerUrl,
@@ -1430,7 +1432,7 @@ export default function CapaciteWizard({
             setContactConsent={setConsentContact}
             contactConsentLabel={
               agencyLead
-                ? `j’accepte que mes coordonnées soient transmises à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet.`
+                ? `j’accepte que mes coordonnées soient transmises par email à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet — cette transmission relève de la responsabilité de ${agencyLead.siteLabel || "ce site"}, et non de la politique de confidentialité de lokt.fr.`
                 : undefined
             }
             unlocking={unlocking || sendingEmail}
