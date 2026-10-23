@@ -190,7 +190,14 @@ function getSourceLabel(): string {
 }
 
 /* ======================== Component ======================== */
-export default function InvestissementWizard() {
+export type InvestissementWizardProps = {
+  // Formats "petit"/"moyen" du widget agence embarqué (cf. pages/embed/
+  // investissement.tsx) : passe-plat vers CalculatorWizardShell. false
+  // partout ailleurs, comportement inchangé par défaut.
+  compactHeader?: boolean;
+};
+
+export default function InvestissementWizard({ compactHeader = false }: InvestissementWizardProps = {}) {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
   const router = useRouter();
 
@@ -1295,13 +1302,14 @@ const canClickUnlock =
         currentIndex={stepIndex}
         onStepClick={(index) => setStep(steps[index])}
         title="Analysez votre investissement sans angle mort."
+        compactHeader={compactHeader}
       >
 
       {/* STEP: Coûts */}
       {step === "couts" && (
         <section className="calculator-premium-form space-y-5">
           <div>
-            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
+            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>)}
             <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
             <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
           </div>
@@ -1463,7 +1471,7 @@ const canClickUnlock =
       {step === "revenus" && (
         <section className="calculator-premium-form space-y-5">
           <div>
-            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
+            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>)}
             <h2 className="text-lg font-semibold text-slate-900">Revenus locatifs : longue durée & saisonnière</h2>
             <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
           </div>
@@ -1575,7 +1583,7 @@ const canClickUnlock =
       {step === "charges" && (
         <section className="calculator-premium-form space-y-5">
           <div>
-            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
+            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>)}
             <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
             <p className="text-xs text-slate-500">Copro, taxe foncière, assurance, gestion / conciergerie.</p>
           </div>
@@ -1639,7 +1647,7 @@ const canClickUnlock =
       {step === "credit" && (
         <section className="calculator-premium-form space-y-5">
           <div>
-            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
+            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>)}
             <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
             <p className="text-xs text-slate-500">Apport, taux, durée du crédit et assurance.</p>
           </div>

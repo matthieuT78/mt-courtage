@@ -300,13 +300,21 @@ function computeBankabilityScore(
 
 export type PretRelaisWizardProps = {
   showSaveButton?: boolean;
+  // Format "petit" du widget agence (cf. pages/embed/pret-relais.tsx) :
+  // répartit les mêmes questions sur une étape de plus pour rester léger
+  // dans un format étroit. false partout ailleurs, comportement inchangé
+  // par défaut.
+  compactSteps?: boolean;
+  // Formats "petit"/"moyen" du widget agence : passe-plat vers
+  // CalculatorWizardShell (bandeau de progression fin).
+  compactHeader?: boolean;
 };
 
 function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();
 }
 
-export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
+export default function PretRelaisWizard({ compactSteps = false, compactHeader = false }: PretRelaisWizardProps) {
   // ---------------------------
   // Session
   // ---------------------------
@@ -348,18 +356,37 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // Étapes (cliquables)
   // ---------------------------
   const [step, setStep] = useState<number>(1);
-  const TOTAL_STEPS = 4;
+
+  // compactSteps (format "petit" du widget agence, cf. pages/embed/
+  // pret-relais.tsx) : répartit les mêmes questions sur une étape de
+  // plus (Profil et Revenus séparés, comme CapaciteWizard.tsx) pour
+  // rester léger dans un format étroit. Rien n'est retiré, juste
+  // repaginé différemment.
+  type StepSection = "projet" | "profil" | "revenus" | "bien" | "pret";
+  const progressSteps = useMemo<Array<{ label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; sections: StepSection[] }>>(
+    () =>
+      compactSteps
+        ? [
+            { label: "Votre projet", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil", icon: UserGroupIcon, sections: ["profil"] },
+            { label: "Revenus", icon: BanknotesIcon, sections: ["revenus"] },
+            { label: "Bien actuel & Apport", icon: CreditCardIcon, sections: ["bien"] },
+            { label: "Nouveau prêt", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+          ]
+        : [
+            { label: "Votre projet", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil & Revenus", icon: UserGroupIcon, sections: ["profil", "revenus"] },
+            { label: "Bien actuel & Apport", icon: CreditCardIcon, sections: ["bien"] },
+            { label: "Nouveau prêt", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+          ],
+    [compactSteps]
+  );
+  const TOTAL_STEPS = progressSteps.length;
+  const activeSections = progressSteps[step - 1].sections;
 
   const goToStep = (n: number) => setStep(Math.min(Math.max(n, 1), TOTAL_STEPS));
   const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
-
-  const progressSteps = [
-    { label: "Votre projet",        icon: HomeModernIcon },
-    { label: "Profil & Revenus",    icon: UserGroupIcon },
-    { label: "Bien actuel & Apport", icon: CreditCardIcon },
-    { label: "Nouveau pret",        icon: AdjustmentsHorizontalIcon },
-  ];
 
   // ---------------------------
   // Inputs — Projet
@@ -1144,6 +1171,7 @@ const renderAnalysisBlocks = (text: string) => {
         currentIndex={step - 1}
         onStepClick={(index) => goToStep(index + 1)}
         title="Préparez votre achat avant la vente."
+        compactHeader={compactHeader}
       >
         <div className="calculator-premium-form space-y-5">
         {/* Contenu */}
@@ -1152,7 +1180,7 @@ const renderAnalysisBlocks = (text: string) => {
           {/* ✅ IMPORTANT : je n'ai pas modifié le contenu des steps pour éviter les régressions */}
           {/* Tu peux garder ton JSX tel quel ici (copie/colle depuis ton fichier actuel) */}
           {/* START: steps */}
-          {step === 1 && (
+          {activeSections.includes("projet") && (
             <>
               <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
               <p className="text-[0.75rem] text-slate-600">
@@ -1237,7 +1265,7 @@ const renderAnalysisBlocks = (text: string) => {
             </>
           )}
 
-          {step === 2 && (
+          {activeSections.includes("profil") && (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -1263,6 +1291,21 @@ const renderAnalysisBlocks = (text: string) => {
                 </div>
               </div>
 
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700">Adultes dans le foyer</label>
+                  <input inputMode="decimal" min={1} max={10} value={editableNumberValue(nbAdultes)} onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700">Enfants à charge</label>
+                  <input inputMode="decimal" min={0} max={10} value={editableNumberValue(nbEnfants)} onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeSections.includes("revenus") && (
+            <>
               <div className="grid items-end gap-3 sm:grid-cols-3">
                 <div className="space-y-1 sm:col-span-2">
                   <label className={labelBase}>Revenus nets mensuels (€) *</label>
@@ -1277,21 +1320,10 @@ const renderAnalysisBlocks = (text: string) => {
                   <input inputMode="decimal" value={tauxEndettement} onChange={(e) => setTauxEndettement(onlyNumberLike(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Adultes dans le foyer</label>
-                  <input inputMode="decimal" min={1} max={10} value={editableNumberValue(nbAdultes)} onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Enfants à charge</label>
-                  <input inputMode="decimal" min={0} max={10} value={editableNumberValue(nbEnfants)} onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
-                </div>
-              </div>
             </>
           )}
 
-          {step === 3 && (
+          {activeSections.includes("bien") && (
             <>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1418,7 +1450,7 @@ const renderAnalysisBlocks = (text: string) => {
             </>
           )}
 
-          {step === 4 && (
+          {activeSections.includes("pret") && (
             <>
 
               <div className="grid gap-3 sm:grid-cols-3">
@@ -1475,7 +1507,7 @@ const renderAnalysisBlocks = (text: string) => {
             <button
               type="button"
                 onClick={() => {
-                  if (step === 2) {
+                  if (activeSections.includes("revenus")) {
                     const rn = toInt(revMensuels, 0);
                     if (!revMensuels || rn <= 0) {
                       setRevError("Revenus obligatoires (montant > 0).");

@@ -53,6 +53,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     label: "Prêt relais",
     title: "Simulateur de prêt relais",
     pitch: "Utile pour vos clients vendeurs qui veulent acheter avant d'avoir vendu leur bien actuel.",
+    sizes: true,
   },
   {
     id: "investissement",
@@ -60,6 +61,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     label: "Rentabilité locative",
     title: "Simulateur de rentabilité locative",
     pitch: "Pour les agences qui traitent aussi de l'investissement locatif : cash-flow, rendement brut et net.",
+    sizes: true,
   },
 ];
 
@@ -198,11 +200,11 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "La taille « petite » retire-t-elle des questions au simulateur ?",
-    a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie. Seule la taille « petite » réorganise ces mêmes questions sur une étape de plus (5 écrans légers au lieu de 4), pour rester confortable dans un format étroit — rien n'est raccourci, juste réparti différemment.",
+    a: "Non. C'est le même simulateur, les mêmes questions et la même analyse quelle que soit la taille choisie. Pour la capacité d'emprunt et le prêt relais, la taille « petite » réorganise ces mêmes questions sur une étape de plus (écrans plus légers), pour rester confortable dans un format étroit — rien n'est raccourci, juste réparti différemment. Pour la rentabilité locative, le découpage en étapes reste identique quelle que soit la taille.",
   },
   {
     q: "Les 3 tailles sont-elles disponibles pour tous les simulateurs ?",
-    a: "Pour l'instant, le choix de taille (petit / moyen / grand) n'est disponible que pour la capacité d'emprunt. Les autres simulateurs s'intègrent en pleine largeur — on l'étendra si cette fonctionnalité est utile aux agences qui l'utilisent.",
+    a: "Oui, le choix de taille (petit / moyen / grand) est disponible sur les 3 simulateurs.",
   },
   {
     q: "Puis-je changer les couleurs du simulateur ?",
