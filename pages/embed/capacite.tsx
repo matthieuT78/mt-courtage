@@ -111,12 +111,18 @@ export default function EmbedCapacitePage() {
          * l'inverse (plus compact). On force 2 colonnes au lieu de 1 pour
          * ces largeurs, uniquement sur cette page embarquée — la vraie
          * page /capacite et son rendu mobile normal ne sont pas concernés.
+         *
+         * Sélecteurs d'attribut (pas de classe avec ":" échappé) : le
+         * parseur CSS de styled-jsx avale silencieusement les sélecteurs
+         * du type .sm\:grid-cols-3 (vérifié — la règle s'enregistre mais
+         * son bloc reste vide), alors que [class~="sm:grid-cols-3"] est un
+         * CSS strictement équivalent qui passe correctement.
          */
         @media (max-width: 639px) {
-          .sm\\:grid-cols-2,
-          .sm\\:grid-cols-3,
-          .sm\\:grid-cols-4,
-          .sm\\:grid-cols-5 {
+          [class~="sm:grid-cols-2"],
+          [class~="sm:grid-cols-3"],
+          [class~="sm:grid-cols-4"],
+          [class~="sm:grid-cols-5"] {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
         }
