@@ -78,15 +78,24 @@ const SIZE_META: Record<WidgetSize, { label: string; desc: string; maxWidth: num
 
 const AGENCY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function colorQueryParam(opt: WidgetOption, colorMode: ColorMode, customAccent: string) {
-  if (!opt.theming) return "";
+// 2 ou 3 simulateurs sélectionnés : un seul embed à onglets (/embed/multi)
+// plutôt que plusieurs blocs iframe séparés, bien plus simple à intégrer
+// pour une agence qui veut proposer plusieurs simulateurs (cf. retour du
+// 2026-10-24). Un seul sélectionné : chemin dédié inchangé.
+function embedPathFor(opts: WidgetOption[]) {
+  if (opts.length === 1) return opts[0].embedPath;
+  return "/embed/multi";
+}
+
+function colorQueryParam(showTheming: boolean, colorMode: ColorMode, customAccent: string) {
+  if (!showTheming) return "";
   if (colorMode === "neutral") return "theme=neutral";
   if (colorMode === "custom" && /^[0-9a-fA-F]{6}$/.test(customAccent)) return `accent=${customAccent}`;
   return "";
 }
 
 function queryParamsFor(
-  opt: WidgetOption,
+  opts: WidgetOption[],
   size: WidgetSize,
   colorMode: ColorMode,
   customAccent: string,
@@ -94,19 +103,23 @@ function queryParamsFor(
   agencyToken: string | null,
   agencySiteLabel: string
 ) {
+  const showSizes = opts.some((o) => o.sizes);
+  const showTheming = opts.some((o) => o.theming);
+  const showLeadForwarding = opts.some((o) => o.leadForwarding);
   const parts: string[] = [];
+  if (opts.length > 1) parts.push(`sims=${opts.map((o) => o.id).join(",")}`);
   // "petit" répartit les mêmes questions sur une étape de plus dans le
   // wizard, et "petit"/"moyen" affichent un bandeau de progression fin
   // plutôt que le bandeau décoratif complet (cf. compactSteps/compactHeader
   // dans CapaciteWizard.tsx) — "grand" garde le comportement par défaut,
   // inutile de le préciser dans l'URL.
-  if (opt.sizes && size !== "large") parts.push(`size=${size}`);
-  const colorParam = colorQueryParam(opt, colorMode, customAccent);
+  if (showSizes && size !== "large") parts.push(`size=${size}`);
+  const colorParam = colorQueryParam(showTheming, colorMode, customAccent);
   if (colorParam) parts.push(colorParam);
   // agency_token est un identifiant opaque (cf. /api/tools/capacite/
   // widget-token) — jamais l'email de l'agence en clair, qui serait sinon
   // visible dans le code source de la page qui héberge l'iframe.
-  if (opt.leadForwarding && leadForwardEnabled && agencyToken) {
+  if (showLeadForwarding && leadForwardEnabled && agencyToken) {
     parts.push(`agency_token=${encodeURIComponent(agencyToken)}`);
     if (agencySiteLabel.trim()) parts.push(`agency_name=${encodeURIComponent(agencySiteLabel.trim().slice(0, 80))}`);
   }
@@ -114,7 +127,7 @@ function queryParamsFor(
 }
 
 function iframeSnippetFor(
-  opt: WidgetOption,
+  opts: WidgetOption[],
   size: WidgetSize,
   colorMode: ColorMode,
   customAccent: string,
@@ -122,11 +135,14 @@ function iframeSnippetFor(
   agencyToken: string | null,
   agencySiteLabel: string
 ) {
-  const maxWidth = opt.sizes ? SIZE_META[size].maxWidth : null;
+  const showSizes = opts.some((o) => o.sizes);
+  const maxWidth = showSizes ? SIZE_META[size].maxWidth : null;
   const wrapOpen = maxWidth ? `<div style="max-width:${maxWidth}px;margin:0 auto;">\n` : "";
   const wrapClose = maxWidth ? `\n</div>` : "";
-  const query = queryParamsFor(opt, size, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel);
-  const src = query ? `https://lokt.fr${opt.embedPath}?${query}` : `https://lokt.fr${opt.embedPath}`;
+  const query = queryParamsFor(opts, size, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel);
+  const embedPath = embedPathFor(opts);
+  const src = query ? `https://lokt.fr${embedPath}?${query}` : `https://lokt.fr${embedPath}`;
+  const title = opts.length === 1 ? opts[0].title : `${opts.map((o) => o.label).join(", ")}`;
   return `${wrapOpen}<iframe
   data-lokt-widget
   src="${src}"
@@ -134,7 +150,7 @@ function iframeSnippetFor(
   height="700"
   style="border:0;border-radius:16px;"
   loading="lazy"
-  title="${opt.title} - lokt.fr">
+  title="${title} - lokt.fr">
 </iframe>
 <p style="margin-top:8px;font-size:12px;color:#64748b;text-align:center;">
   Simulateur propulsé par <a href="https://lokt.fr" target="_blank" rel="noopener">lokt.fr</a>
@@ -283,8 +299,23 @@ export default function WidgetPage() {
       })),
     },
   ];
-  const [selectedId, setSelectedId] = useState(WIDGET_OPTIONS[0].id);
-  const selected = WIDGET_OPTIONS.find((o) => o.id === selectedId) ?? WIDGET_OPTIONS[0];
+  const [selectedIds, setSelectedIds] = useState<string[]>([WIDGET_OPTIONS[0].id]);
+  // Ordre d'affichage (onglets, panneau de réglages) = ordre de
+  // WIDGET_OPTIONS, pas l'ordre de clic — plus prévisible pour l'agence.
+  const selectedOptions = WIDGET_OPTIONS.filter((o) => selectedIds.includes(o.id));
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) {
+        // Toujours garder au moins un simulateur sélectionné.
+        if (prev.length === 1) return prev;
+        return prev.filter((x) => x !== id);
+      }
+      return [...prev, id];
+    });
+  };
+  const showSizes = selectedOptions.some((o) => o.sizes);
+  const showTheming = selectedOptions.some((o) => o.theming);
+  const showLeadForwarding = selectedOptions.some((o) => o.leadForwarding);
   const [selectedSize, setSelectedSize] = useState<WidgetSize>("large");
   const [colorMode, setColorMode] = useState<ColorMode>("brand");
   const [customAccent, setCustomAccent] = useState("2563eb");
@@ -298,12 +329,13 @@ export default function WidgetPage() {
   const [testSentMsg, setTestSentMsg] = useState<string | null>(null);
   const demoFrameRef = useRef<HTMLIFrameElement>(null);
   const [demoHeight, setDemoHeight] = useState(700);
-  const demoMaxWidth = selected.sizes ? SIZE_META[selectedSize].maxWidth : null;
+  const demoMaxWidth = showSizes ? SIZE_META[selectedSize].maxWidth : null;
   // La démo n'envoie jamais réellement d'email (pas d'adresse agence saisie
   // ici) — uniquement taille et couleur, pour que l'aperçu reste fidèle au
   // code généré sans dépendre d'une adresse de test.
-  const demoQuery = queryParamsFor(selected, selectedSize, colorMode, customAccent, false, null, "");
-  const demoSrc = demoQuery ? `${selected.embedPath}?${demoQuery}` : selected.embedPath;
+  const demoQuery = queryParamsFor(selectedOptions, selectedSize, colorMode, customAccent, false, null, "");
+  const demoEmbedPath = embedPathFor(selectedOptions);
+  const demoSrc = demoQuery ? `${demoEmbedPath}?${demoQuery}` : demoEmbedPath;
 
   // Convertit l'email agence en jeton opaque dès qu'il devient valide —
   // le code généré ne doit jamais transporter l'email en clair (visible
@@ -315,7 +347,7 @@ export default function WidgetPage() {
     setAgencyToken(null);
     setTokenError(null);
     setTestSentMsg(null);
-    if (!leadForwardEnabled || !selected.leadForwarding || !AGENCY_EMAIL_RE.test(agencyEmail)) return;
+    if (!leadForwardEnabled || !showLeadForwarding || !AGENCY_EMAIL_RE.test(agencyEmail)) return;
 
     let cancelled = false;
     setTokenLoading(true);
@@ -345,7 +377,7 @@ export default function WidgetPage() {
       clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadForwardEnabled, selected.leadForwarding, agencyEmail, agencySiteLabel]);
+  }, [leadForwardEnabled, showLeadForwarding, agencyEmail, agencySiteLabel]);
 
   const sendTestLead = async () => {
     if (!agencyToken) return;
@@ -393,10 +425,10 @@ export default function WidgetPage() {
 
   useEffect(() => {
     setDemoHeight(700);
-    if (!selected.sizes) setSelectedSize("large");
-    if (!selected.theming) setColorMode("brand");
-    if (!selected.leadForwarding) setLeadForwardEnabled(false);
-  }, [selectedId, selected.sizes, selected.theming, selected.leadForwarding]);
+    if (!showSizes) setSelectedSize("large");
+    if (!showTheming) setColorMode("brand");
+    if (!showLeadForwarding) setLeadForwardEnabled(false);
+  }, [selectedIds, showSizes, showTheming, showLeadForwarding]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -500,34 +532,44 @@ export default function WidgetPage() {
               {/* Réglages (gauche) */}
               <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simulateur</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simulateur(s)</p>
+                  <p className="mt-1 text-[0.7rem] leading-5 text-slate-500">
+                    Choisissez-en un, ou plusieurs pour un seul widget à onglets — plus simple à intégrer que plusieurs
+                    blocs séparés.
+                  </p>
                   <div className="mt-2.5 space-y-2">
-                    {WIDGET_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setSelectedId(opt.id)}
-                        aria-pressed={opt.id === selectedId}
-                        className={
-                          "block w-full rounded-xl border px-4 py-3 text-left transition " +
-                          (opt.id === selectedId
-                            ? "border-slate-950 bg-slate-950 text-white"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
-                        }
-                      >
-                        <span className="text-sm font-semibold">{opt.label}</span>
-                        {opt.id === selectedId && (
-                          <span className="mt-1 block text-xs leading-5 text-white/70">{opt.pitch}</span>
-                        )}
-                      </button>
-                    ))}
+                    {WIDGET_OPTIONS.map((opt) => {
+                      const checked = selectedIds.includes(opt.id);
+                      return (
+                        <label
+                          key={opt.id}
+                          className={
+                            "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left transition " +
+                            (checked
+                              ? "border-slate-950 bg-slate-950 text-white"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300")
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleSelected(opt.id)}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-white"
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold">{opt.label}</span>
+                            {checked && <span className="mt-1 block text-xs leading-5 text-white/70">{opt.pitch}</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {(selected.sizes || selected.theming || selected.leadForwarding) && (
+                {(showSizes || showTheming || showLeadForwarding) && (
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div className="space-y-5">
-                      {selected.sizes && (
+                      {showSizes && (
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Taille</p>
                           <div className="mt-2.5 flex flex-wrap gap-2">
@@ -555,7 +597,7 @@ export default function WidgetPage() {
                         </div>
                       )}
 
-                      {selected.theming && (
+                      {showTheming && (
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Couleur</p>
                           <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -600,7 +642,7 @@ export default function WidgetPage() {
                       )}
                     </div>
 
-                    {selected.leadForwarding && (
+                    {showLeadForwarding && (
                       <div className="mt-5 border-t border-slate-200 pt-5">
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input
@@ -673,14 +715,14 @@ export default function WidgetPage() {
                   style={{ maxWidth: demoMaxWidth ?? undefined, marginLeft: "auto", marginRight: "auto" }}
                 >
                   <iframe
-                    key={selected.id}
+                    key={selectedIds.join(",")}
                     ref={demoFrameRef}
                     src={demoSrc}
                     width="100%"
                     height={demoHeight}
                     style={{ border: 0, display: "block", transition: "height 150ms ease" }}
                     loading="lazy"
-                    title={`Démo — ${selected.title} lokt.fr`}
+                    title={`Démo — ${selectedOptions.map((o) => o.title).join(", ")} lokt.fr`}
                   />
                 </div>
                 <p className="mt-3 text-center text-xs text-slate-400">Aperçu en direct — se met à jour à chaque réglage.</p>
@@ -695,17 +737,19 @@ export default function WidgetPage() {
             <div className="text-center">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Intégration</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                Un seul bloc de code à copier — {selected.label}
-                {selected.sizes ? ` (${SIZE_META[selectedSize].label.toLowerCase()})` : ""}
+                Un seul bloc de code à copier — {selectedOptions.map((o) => o.label).join(", ")}
+                {showSizes ? ` (${SIZE_META[selectedSize].label.toLowerCase()})` : ""}
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Collez ce code à l'endroit de votre page où le simulateur doit apparaître (CMS, page HTML, section dédiée au
-                financement). Il s'adapte automatiquement à la largeur disponible.
+                Collez ce code à l'endroit de votre page où le{selectedOptions.length > 1 ? " widget" : " simulateur"} doit
+                apparaître (CMS, page HTML, section dédiée au financement). Il s'adapte automatiquement à la largeur
+                disponible
+                {selectedOptions.length > 1 ? ", et affiche un onglet par simulateur sélectionné." : "."}
               </p>
             </div>
             <div className="mt-8">
               <CodeBlock
-                code={iframeSnippetFor(selected, selectedSize, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel)}
+                code={iframeSnippetFor(selectedOptions, selectedSize, colorMode, customAccent, leadForwardEnabled, agencyToken, agencySiteLabel)}
               />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
