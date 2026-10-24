@@ -10,6 +10,7 @@ import {
   HomeModernIcon,
   LightBulbIcon,
   UserGroupIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import type { ComponentType, SVGProps } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -308,13 +309,17 @@ export type PretRelaisWizardProps = {
   // Formats "petit"/"moyen" du widget agence : passe-plat vers
   // CalculatorWizardShell (bandeau de progression fin).
   compactHeader?: boolean;
+  // Widget agence (toutes tailles) : affiche le résultat dans une fenêtre
+  // superposée plutôt qu'en ligne — cf. resultPopup dans CapaciteWizard.tsx
+  // pour le détail. false sur /pret-relais, comportement inchangé.
+  resultPopup?: boolean;
 };
 
 function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();
 }
 
-export default function PretRelaisWizard({ compactSteps = false, compactHeader = false }: PretRelaisWizardProps) {
+export default function PretRelaisWizard({ compactSteps = false, compactHeader = false, resultPopup = false }: PretRelaisWizardProps) {
   // ---------------------------
   // Session
   // ---------------------------
@@ -441,6 +446,7 @@ export default function PretRelaisWizard({ compactSteps = false, compactHeader =
   // Résultats
   // ---------------------------
   const [resume, setResume] = useState<ResumeRelais | null>(null);
+  const [resultPopupClosed, setResultPopupClosed] = useState(false);
   const [texteDetail, setTexteDetail] = useState<string>("");
   const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
@@ -821,6 +827,7 @@ export default function PretRelaisWizard({ compactSteps = false, compactHeader =
 
     const computed = computeAll();
     setResume(computed.resume);
+    setResultPopupClosed(false);
     setTexteDetail(computed.texte);
 
     setBankabilityScore(computed.assessment?.score ?? null);
@@ -1535,7 +1542,43 @@ const renderAnalysisBlocks = (text: string) => {
       </CalculatorWizardShell>
 
       {/* Résultats */}
-      {hasResult && <section id="resultats-pret-relais" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+      {hasResult && resultPopup && resultPopupClosed ? (
+        <button
+          type="button"
+          onClick={() => setResultPopupClosed(false)}
+          className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 hover:bg-amber-100"
+        >
+          Voir mon résultat →
+        </button>
+      ) : null}
+
+      {hasResult && (resultPopup ? !resultPopupClosed : true) ? (
+      <div
+        className={
+          resultPopup
+            ? "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 sm:items-center sm:p-6"
+            : undefined
+        }
+        onClick={resultPopup ? () => setResultPopupClosed(true) : undefined}
+      >
+      <section
+        id="resultats-pret-relais"
+        onClick={resultPopup ? (e) => e.stopPropagation() : undefined}
+        className={
+          "rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4" +
+          (resultPopup ? " relative w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" : "")
+        }
+      >
+        {resultPopup ? (
+          <button
+            type="button"
+            onClick={() => setResultPopupClosed(true)}
+            aria-label="Fermer"
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        ) : null}
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700 mb-1">Résultats</p>
@@ -1657,7 +1700,9 @@ const renderAnalysisBlocks = (text: string) => {
         )}
 
         <p className="mt-3 text-[0.7rem] text-slate-500">Simulation indicative. Chaque banque applique ses propres règles.</p>
-      </section>}
+      </section>
+      </div>
+      ) : null}
     </div>
   );
 }

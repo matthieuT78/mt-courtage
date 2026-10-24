@@ -15,6 +15,7 @@ import {
   LightBulbIcon,
   SparklesIcon,
   UserGroupIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
@@ -169,6 +170,16 @@ export type CapaciteWizardProps = {
   // par une barre fine — même navigation, juste moins de place prise par
   // la décoration. false partout ailleurs (dont /capacite et "grand").
   compactHeader?: boolean;
+
+  // Widget agence (toutes tailles) : affiche le résultat (gate email puis
+  // analyse complète) dans une fenêtre superposée plutôt qu'en ligne dans
+  // la page — un rapport détaillé qui s'empile indéfiniment dans un encart
+  // de 360-520px sur le site d'un tiers s'intègre mal (cf. retour du
+  // 2026-10-23). La fenêtre reste confinée au widget (position fixed
+  // relative au viewport de l'iframe, pas un vrai plein écran du site
+  // hôte) : aucun changement du script d'intégration déjà copié-collé
+  // chez une agence. false sur /capacite, comportement inchangé.
+  resultPopup?: boolean;
 };
 
 export default function CapaciteWizard({
@@ -176,6 +187,7 @@ export default function CapaciteWizard({
   agencyLead,
   compactSteps = false,
   compactHeader = false,
+  resultPopup = false,
 }: CapaciteWizardProps) {
   const router = useRouter();
 
@@ -318,6 +330,11 @@ export default function CapaciteWizard({
   const [computedAll, setComputedAll] = useState<ComputedAll | null>(null);
 
   const hasResult = !!resumeCapacite;
+
+  // resultPopup uniquement : la fenêtre se réaffiche à chaque nouveau
+  // calcul (re-clic sur "Calculer" après avoir modifié une réponse), mais
+  // reste fermée si le visiteur l'a explicitement fermée entre-temps.
+  const [resultPopupClosed, setResultPopupClosed] = useState(false);
 
   /* ======================== Gate (par calculette) ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
@@ -540,6 +557,7 @@ export default function CapaciteWizard({
 
     // ✅ FIX: stocker computedAll (sinon la synthèse ne s'affiche jamais)
     setComputedAll(computed);
+    setResultPopupClosed(false);
 
     setResumeCapacite(computed.resume);
     setBankability(computed.assessment);
@@ -1414,10 +1432,43 @@ export default function CapaciteWizard({
       </section>
 
       {/* Résultats */}
-      {hasResult && <section
-        id="resultats-capacite"
-        className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5"
+      {hasResult && resultPopup && resultPopupClosed ? (
+        <button
+          type="button"
+          onClick={() => setResultPopupClosed(false)}
+          className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+        >
+          Voir mon résultat →
+        </button>
+      ) : null}
+
+      {hasResult && (resultPopup ? !resultPopupClosed : true) ? (
+      <div
+        className={
+          resultPopup
+            ? "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 sm:items-center sm:p-6"
+            : undefined
+        }
+        onClick={resultPopup ? () => setResultPopupClosed(true) : undefined}
       >
+      <section
+        id="resultats-capacite"
+        onClick={resultPopup ? (e) => e.stopPropagation() : undefined}
+        className={
+          "space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5" +
+          (resultPopup ? " relative w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" : "")
+        }
+      >
+        {resultPopup ? (
+          <button
+            type="button"
+            onClick={() => setResultPopupClosed(true)}
+            aria-label="Fermer"
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        ) : null}
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">
@@ -1688,7 +1739,9 @@ export default function CapaciteWizard({
             </p>
           </>
         ) : null}
-      </section>}
+      </section>
+      </div>
+      ) : null}
     </div>
   );
 }

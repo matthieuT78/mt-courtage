@@ -129,7 +129,13 @@ export default function EmbedCapacitePage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <CapaciteWizard showSaveButton={false} agencyLead={agencyLead} compactSteps={compactSteps} compactHeader={compactHeader} />
+        <CapaciteWizard
+          showSaveButton={false}
+          agencyLead={agencyLead}
+          compactSteps={compactSteps}
+          compactHeader={compactHeader}
+          resultPopup
+        />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">

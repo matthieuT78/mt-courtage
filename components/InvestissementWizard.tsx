@@ -13,6 +13,7 @@ import {
   ExclamationTriangleIcon,
   LightBulbIcon,
   ReceiptPercentIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
@@ -195,9 +196,13 @@ export type InvestissementWizardProps = {
   // investissement.tsx) : passe-plat vers CalculatorWizardShell. false
   // partout ailleurs, comportement inchangé par défaut.
   compactHeader?: boolean;
+  // Widget agence (toutes tailles) : affiche le résultat dans une fenêtre
+  // superposée plutôt qu'en ligne — cf. resultPopup dans CapaciteWizard.tsx
+  // pour le détail. false sur /investissement, comportement inchangé.
+  resultPopup?: boolean;
 };
 
-export default function InvestissementWizard({ compactHeader = false }: InvestissementWizardProps = {}) {
+export default function InvestissementWizard({ compactHeader = false, resultPopup = false }: InvestissementWizardProps = {}) {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
   const router = useRouter();
 
@@ -379,6 +384,7 @@ export default function InvestissementWizard({ compactHeader = false }: Investis
   const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked || isAgence;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
+  const [resultPopupClosed, setResultPopupClosed] = useState(false);
 
   useEffect(() => {
     if (!graphData) return;
@@ -1022,6 +1028,7 @@ export default function InvestissementWizard({ compactHeader = false }: Investis
 
     setResultRendementTexte(texte);
     setResumeRendement({ cashflowMensuel, resultatNetAnnuel, rendementNetAvantCredit });
+    setResultPopupClosed(false);
     setGraphData({
       loyersAnnuels,
       chargesTotales,
@@ -1720,11 +1727,44 @@ const canClickUnlock =
       )}
 
       {/* Résultats */}
-      {hasSimulation && (
-        <section
-          ref={resultSectionRef}
-          className="calculator-premium-form space-y-4"
+      {hasSimulation && resultPopup && resultPopupClosed ? (
+        <button
+          type="button"
+          onClick={() => setResultPopupClosed(false)}
+          className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
         >
+          Voir mon résultat →
+        </button>
+      ) : null}
+
+      {hasSimulation && (resultPopup ? !resultPopupClosed : true) ? (
+      <div
+        ref={resultPopup ? undefined : resultSectionRef}
+        className={
+          resultPopup
+            ? "fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 sm:items-center sm:p-6"
+            : undefined
+        }
+        onClick={resultPopup ? () => setResultPopupClosed(true) : undefined}
+      >
+        <section
+          ref={resultPopup ? resultSectionRef : undefined}
+          onClick={resultPopup ? (e) => e.stopPropagation() : undefined}
+          className={
+            "calculator-premium-form space-y-4" +
+            (resultPopup ? " relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-[1.35rem] border border-slate-200 bg-white p-5 shadow-2xl" : "")
+          }
+        >
+          {resultPopup ? (
+            <button
+              type="button"
+              onClick={() => setResultPopupClosed(true)}
+              aria-label="Fermer"
+              className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          ) : null}
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Synthèse</p>
@@ -2000,7 +2040,8 @@ const canClickUnlock =
             </p>
           )}
         </section>
-      )}
+      </div>
+      ) : null}
       </CalculatorWizardShell>
     </div>
   );

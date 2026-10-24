@@ -57,7 +57,7 @@ export default function EmbedInvestissementPage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <InvestissementWizard compactHeader={compactHeader} />
+        <InvestissementWizard compactHeader={compactHeader} resultPopup />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">
