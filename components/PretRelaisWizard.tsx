@@ -18,6 +18,7 @@ import InfoBadge from "./calculators/InfoBadge";
 import LeadGate from "./LeadGate";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
+import StyledSelect from "./calculators/StyledSelect";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
 
@@ -1127,7 +1128,7 @@ if (sendByEmail) {
   const isAgence = useAgenceMode();
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
-  const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
+  const labelBase = "flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700";
 
 const renderAnalysisBlocks = (text: string) => {
   if (!text) return null;
@@ -1196,41 +1197,41 @@ const renderAnalysisBlocks = (text: string) => {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Usage du futur bien
                     <InfoBadge text="Cela aide à adapter l'analyse et les conseils (résidence principale, secondaire ou investissement)." />
                   </label>
-                  <select
+                  <StyledSelect
                     value={projectUsageDb}
-                    onChange={(e) => setProjectUsageDb(e.target.value as ProjectUsageDB)}
-                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
-                    <option value="residence_principale">Résidence principale</option>
-                    <option value="residence_secondaire">Résidence secondaire</option>
-                    <option value="investissement">Investissement locatif</option>
-                  </select>
+                    onChange={(v) => setProjectUsageDb(v)}
+                    options={[
+                      { value: "residence_principale", label: "Résidence principale" },
+                      { value: "residence_secondaire", label: "Résidence secondaire" },
+                      { value: "investissement", label: "Investissement locatif" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Horizon d'achat
                     <InfoBadge text="Pour savoir si votre projet est imminent ou plutôt à moyen terme (cela change parfois l'approche)." />
                   </label>
-                  <select
+                  <StyledSelect
                     value={timelineDb}
-                    onChange={(e) => setTimelineDb(e.target.value as ProjectTimelineDB)}
-                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
-                    <option value="0_3_mois">0–3 mois</option>
-                    <option value="3_6_mois">3–6 mois</option>
-                    <option value="6_12_mois">6–12 mois</option>
-                    <option value="12_plus">12+ mois</option>
-                    <option value="juste_info">Juste pour info</option>
-                  </select>
+                    onChange={(v) => setTimelineDb(v)}
+                    options={[
+                      { value: "0_3_mois", label: "0–3 mois" },
+                      { value: "3_6_mois", label: "3–6 mois" },
+                      { value: "6_12_mois", label: "6–12 mois" },
+                      { value: "12_plus", label: "12+ mois" },
+                      { value: "juste_info", label: "Juste pour info" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Département (zone)
                     <InfoBadge text="Juste pour situer la zone de recherche (ex : 75, 78, 13). Pas besoin d'une adresse précise." />
                   </label>
@@ -1239,26 +1240,26 @@ const renderAnalysisBlocks = (text: string) => {
                     value={department}
                     onChange={(e) => setDepartment(e.target.value.replace(/\s+/g, ""))}
                     placeholder="ex: 78"
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Nature du projet (frais)
                     <InfoBadge text="Les frais et le financement peuvent varier selon ancien / neuf / terrain + construction." />
                   </label>
-                  <select
+                  <StyledSelect
                     value={projectType}
-                    onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
-                    <option value="ancien">Ancien</option>
-                    <option value="neuf">Neuf</option>
-                    <option value="terrain">Terrain + construction</option>
-                  </select>
+                    onChange={(v) => setProjectType(v)}
+                    options={[
+                      { value: "ancien", label: "Ancien" },
+                      { value: "neuf", label: "Neuf" },
+                      { value: "terrain", label: "Terrain + construction" },
+                    ]}
+                  />
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
@@ -1280,32 +1281,36 @@ const renderAnalysisBlocks = (text: string) => {
                     Statut professionnel
                     <InfoBadge text="Le statut aide à interpréter la stabilité des revenus (ex : CDI, fonctionnaire, indépendant…)." />
                   </label>
-                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
-                    <option value="cdi">CDI</option>
-                    <option value="fonctionnaire">Fonctionnaire</option>
-                    <option value="independant">Indépendant / société</option>
-                    <option value="retraite">Retraité</option>
-                    <option value="autre">Autre</option>
-                  </select>
+                  <StyledSelect
+                    value={proStatus}
+                    onChange={(v) => setProStatus(v)}
+                    options={[
+                      { value: "cdi", label: "CDI" },
+                      { value: "fonctionnaire", label: "Fonctionnaire" },
+                      { value: "independant", label: "Indépendant / société" },
+                      { value: "retraite", label: "Retraité" },
+                      { value: "autre", label: "Autre" },
+                    ]}
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className={labelBase}>Âge emprunteur</label>
-                  <input inputMode="decimal" min={18} max={95} value={editableNumberValue(ageEmprunteur)} onChange={(e) => setAgeEmprunteur(parseEditableNumber(e.target.value))} placeholder="ex: 38" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" min={18} max={95} value={editableNumberValue(ageEmprunteur)} onChange={(e) => setAgeEmprunteur(parseEditableNumber(e.target.value))} placeholder="ex: 38" className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
                 </div>
                 <div className="space-y-1">
                   <label className={labelBase}>Âge co-emprunteur <span className="text-slate-400 font-normal">optionnel</span></label>
-                  <input inputMode="decimal" min={0} max={95} value={editableNumberValue(ageCoEmprunteur)} onChange={(e) => setAgeCoEmprunteur(parseEditableNumber(e.target.value))} placeholder="si concerné" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" min={0} max={95} value={editableNumberValue(ageCoEmprunteur)} onChange={(e) => setAgeCoEmprunteur(parseEditableNumber(e.target.value))} placeholder="si concerné" className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Adultes dans le foyer</label>
-                  <input inputMode="decimal" min={1} max={10} value={editableNumberValue(nbAdultes)} onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" min={1} max={10} value={editableNumberValue(nbAdultes)} onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Enfants à charge</label>
-                  <input inputMode="decimal" min={0} max={10} value={editableNumberValue(nbEnfants)} onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" min={0} max={10} value={editableNumberValue(nbEnfants)} onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
                 </div>
               </div>
             </>
@@ -1316,15 +1321,15 @@ const renderAnalysisBlocks = (text: string) => {
               <div className="grid items-end gap-3 sm:grid-cols-3">
                 <div className="space-y-1 sm:col-span-2">
                   <label className={labelBase}>Revenus nets mensuels (€) *</label>
-                  <input required inputMode="numeric" value={revMensuels} onChange={(e) => { setRevMensuels(onlyDigits(e.target.value)); setRevError(null); }} className={"w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " + (revError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-amber-500")} aria-invalid={!!revError} />
+                  <input required inputMode="numeric" value={revMensuels} onChange={(e) => { setRevMensuels(onlyDigits(e.target.value)); setRevError(null); }} className={"w-full min-w-0 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " + (revError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-amber-400 focus:ring-amber-100")} aria-invalid={!!revError} />
                   {revError && <p className="text-[0.7rem] text-red-600">{revError}</p>}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Endettement cible (%)
                     <InfoBadge text="La part maximale de vos revenus que la banque accepte en mensualités (souvent 35%)." />
                   </label>
-                  <input inputMode="decimal" value={tauxEndettement} onChange={(e) => setTauxEndettement(onlyNumberLike(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" value={tauxEndettement} onChange={(e) => setTauxEndettement(onlyNumberLike(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
                 </div>
               </div>
             </>
@@ -1335,7 +1340,7 @@ const renderAnalysisBlocks = (text: string) => {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Crédits à la consommation (€ / mois)
                     <InfoBadge text="Crédits conso, auto, etc. — hors crédit immobilier locatif (renseigné séparément ci-dessous). Cela réduit la mensualité disponible pour le nouveau projet." />
                   </label>
@@ -1343,7 +1348,7 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={editableNumberValue(autresMensualites)}
                     onChange={(e) => setAutresMensualites(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
 
@@ -1357,7 +1362,7 @@ const renderAnalysisBlocks = (text: string) => {
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Crédit(s) immobilier(s) locatif(s) en cours (€ / mois)
                     <InfoBadge text="Mensualité d'un crédit immobilier déjà en cours sur un bien loué (autre que celui mis en vente ci-dessous, le cas échéant). Si vous en avez plusieurs, additionnez toutes les mensualités dans ce champ — le résultat est identique à une saisie ligne par ligne." />
                   </label>
@@ -1365,11 +1370,11 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={editableNumberValue(mensualiteCreditLocatif)}
                     onChange={(e) => setMensualiteCreditLocatif(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Loyer(s) perçu(s) sur ce(s) bien(s) (€ / mois)
                     <InfoBadge text="70 % de ce loyer sera intégré à vos revenus pour le calcul, comme le font la plupart des banques. Plusieurs biens loués ? Additionnez aussi les loyers ici — 70 % du total équivaut à 70 % de chaque loyer pris séparément." />
                   </label>
@@ -1377,7 +1382,7 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={editableNumberValue(loyerPercuLocatif)}
                     onChange={(e) => setLoyerPercuLocatif(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
               </div>
@@ -1395,7 +1400,7 @@ const renderAnalysisBlocks = (text: string) => {
                       inputMode="decimal"
                       value={editableNumberValue(valeurBienActuel)}
                       onChange={(e) => setValeurBienActuel(parseEditableNumber(e.target.value))}
-                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                     />
                   </div>
 
@@ -1408,7 +1413,7 @@ const renderAnalysisBlocks = (text: string) => {
                       inputMode="decimal"
                       value={editableNumberValue(crdActuel)}
                       onChange={(e) => setCrdActuel(parseEditableNumber(e.target.value))}
-                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                     />
                   </div>
 
@@ -1421,7 +1426,7 @@ const renderAnalysisBlocks = (text: string) => {
                       inputMode="decimal"
                       value={pctRetenu}
                       onChange={(e) => setPctRetenu(onlyNumberLike(e.target.value))}
-                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                     />
                   </div>
                 </div>
@@ -1436,7 +1441,7 @@ const renderAnalysisBlocks = (text: string) => {
                       inputMode="decimal"
                       value={tauxRelais}
                       onChange={(e) => setTauxRelais(onlyNumberLike(e.target.value))}
-                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                     />
                   </div>
 
@@ -1449,7 +1454,7 @@ const renderAnalysisBlocks = (text: string) => {
                       inputMode="decimal"
                       value={editableNumberValue(apportPerso)}
                       onChange={(e) => setApportPerso(parseEditableNumber(e.target.value))}
-                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                     />
                   </div>
                 </div>
@@ -1467,7 +1472,7 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={tauxNouveau}
                     onChange={(e) => setTauxNouveau(onlyNumberLike(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
 
@@ -1477,7 +1482,7 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={editableNumberValue(dureeNouveau)}
                     onChange={(e) => setDureeNouveau(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
 
@@ -1490,7 +1495,7 @@ const renderAnalysisBlocks = (text: string) => {
                     inputMode="decimal"
                     value={editableNumberValue(prixCible)}
                     onChange={(e) => setPrixCible(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
                   />
                 </div>
               </div>

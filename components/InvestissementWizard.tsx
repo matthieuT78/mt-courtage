@@ -17,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
+import StyledSelect from "./calculators/StyledSelect";
 import { usePermissions } from "./PermissionProvider";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
@@ -1331,8 +1332,8 @@ const canClickUnlock =
                 value={prixBien}
                 onChange={(e) => handlePrixBienChange(e.target.value)}
                 className={
-                  "w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " +
-                  (prixBienError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-emerald-500")
+                  "w-full min-w-0 rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " +
+                  (prixBienError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-100")
                 }
                 aria-invalid={!!prixBienError}
               />
@@ -1354,7 +1355,7 @@ const canClickUnlock =
                     if (citySuggestions.length > 0) setShowCitySuggestions(true);
                   }}
                   placeholder="Ex. 75011 Paris, Lyon 3e, Cargèse…"
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
                 {cityLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Recherche des communes…</p>}
                 {cityError && <p className="mt-1 text-[0.7rem] text-red-600">{cityError}</p>}
@@ -1389,7 +1390,7 @@ const canClickUnlock =
                   value={surfaceM2}
                   onChange={(e) => setSurfaceM2(onlyNumberInput(e.target.value))}
                   placeholder="Ex. 55"
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
             </div>
@@ -1405,7 +1406,7 @@ const canClickUnlock =
                 value={listingUrl}
                 onChange={(e) => setListingUrl(e.target.value)}
                 placeholder="https://www.leboncoin.fr/... ou https://www.seloger.com/..."
-                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
               />
               <p className="text-[0.7rem] text-slate-500">Optionnel, mais pratique pour rattacher la simulation à une annonce.</p>
             </div>
@@ -1421,7 +1422,7 @@ const canClickUnlock =
                     setNotaireCustom(true);
                     setFraisNotaire(onlyNumberInput(e.target.value));
                   }}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
                 <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~7,5 %, modifiable.</p>
               </div>
@@ -1436,7 +1437,7 @@ const canClickUnlock =
                     setAgenceCustom(true);
                     setFraisAgence(onlyNumberInput(e.target.value));
                   }}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
                 <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~4 %, modifiable.</p>
               </div>
@@ -1448,7 +1449,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={travaux}
                   onChange={(e) => setTravaux(onlyNumberInput(e.target.value))}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
             </div>
@@ -1492,7 +1493,7 @@ const canClickUnlock =
                 min={1}
                 max={10}
                 onChange={(e) => handleNbAppartsChange(e.target.value)}
-                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
               />
             </div>
 
@@ -1511,14 +1512,15 @@ const canClickUnlock =
                   >
                     <div className="grid gap-2 sm:grid-cols-2 items-center">
                       <p className="text-[0.7rem] text-slate-700 font-medium">Appartement #{idx + 1}</p>
-                      <select
+                      <StyledSelect
+                        size="small"
                         value={type}
-                        onChange={(e) => handleLocationTypeChange(idx, e.target.value as LocationType)}
-                        className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      >
-                        <option value="longue">Location longue durée (loyer mensuel)</option>
-                        <option value="airbnb">Location saisonnière (type Airbnb)</option>
-                      </select>
+                        onChange={(v) => handleLocationTypeChange(idx, v)}
+                        options={[
+                          { value: "longue", label: "Location longue durée (loyer mensuel)" },
+                          { value: "airbnb", label: "Location saisonnière (type Airbnb)" },
+                        ]}
+                      />
                     </div>
 
                     {type === "longue" ? (
@@ -1529,7 +1531,7 @@ const canClickUnlock =
                           value={loyersApparts[idx] ?? ""}
                           onChange={(e) => handleLoyerAppartChange(idx, onlyNumberInput(e.target.value))}
                           required
-                          className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                           placeholder="Loyer mensuel (€)"
                         />
                         {marketRentM2 !== null && surfaceNum > 0 && (
@@ -1556,7 +1558,7 @@ const canClickUnlock =
                               value={airbnbNuitees[idx] ?? ""}
                               onChange={(e) => handleAirbnbNuiteeChange(idx, onlyNumberInput(e.target.value))}
                               required
-                              className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                               placeholder="Ex. 90 €"
                             />
                           </div>
@@ -1566,7 +1568,7 @@ const canClickUnlock =
                               inputMode="decimal"
                               value={airbnbOccupation[idx] ?? ""}
                               onChange={(e) => handleAirbnbOccupationChange(idx, onlyNumberInput(e.target.value))}
-                              className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                               placeholder={`Ex. ${DEFAULT_AIRBNB_OCCUPATION} %`}
                             />
                           </div>
@@ -1604,7 +1606,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={chargesCopro}
                   onChange={(e) => setChargesCopro(onlyNumberInput(e.target.value))}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
               <div className="space-y-1">
@@ -1614,7 +1616,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={taxeFonc}
                   onChange={(e) => setTaxeFonc(onlyNumberInput(e.target.value))}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
               <div className="space-y-1">
@@ -1624,7 +1626,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={assurance}
                   onChange={(e) => setAssurance(onlyNumberInput(e.target.value))}
-                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                 />
               </div>
             </div>
@@ -1639,7 +1641,7 @@ const canClickUnlock =
                 inputMode="numeric"
                 value={tauxGestion}
                 onChange={(e) => setTauxGestion(onlyNumberInput(e.target.value))}
-                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
               />
             </div>
           </div>
@@ -1661,7 +1663,7 @@ const canClickUnlock =
 
           <div className="grid gap-3 sm:grid-cols-4 mt-2">
   <div className="space-y-1">
-    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+    <label className="flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700">
       Apport personnel (€)
     </label>
     <input
@@ -1669,12 +1671,12 @@ const canClickUnlock =
       inputMode="numeric"
       value={apport}
       onChange={(e) => setApport(onlyNumberInput(e.target.value))}
-      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
     />
   </div>
 
   <div className="space-y-1">
-    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+    <label className="flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700">
       Taux crédit (annuel, en %)
     </label>
     <input
@@ -1682,13 +1684,13 @@ const canClickUnlock =
       inputMode="decimal"
       value={tauxCredLoc}
       onChange={(e) => setTauxCredLoc(onlyNumberInput(e.target.value))}
-      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
       placeholder="Ex. 3,5"
     />
   </div>
 
   <div className="space-y-1">
-    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+    <label className="flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700">
       Durée du crédit (années)
     </label>
     <input
@@ -1696,13 +1698,13 @@ const canClickUnlock =
       inputMode="numeric"
       value={dureeCredLoc}
       onChange={(e) => setDureeCredLoc(onlyNumberInput(e.target.value))}
-      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
       placeholder="Ex. 25"
     />
   </div>
 
   <div className="space-y-1">
-    <label className="min-h-[2.25rem] flex items-start gap-1 text-xs text-slate-700">
+    <label className="flex min-h-[1.25rem] items-center gap-1 text-xs font-semibold leading-tight text-slate-700">
       <span>Taux assurance emprunteur (annuel, en %)</span>
       <InfoBadge text="La mensualité est calculée sur la base d'un taux annuel appliqué au montant total emprunté, hors assurance." />
     </label>
@@ -1711,7 +1713,7 @@ const canClickUnlock =
       inputMode="decimal"
       value={tauxAssuranceEmp}
       onChange={(e) => setTauxAssuranceEmp(onlyNumberInput(e.target.value))}
-      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
       placeholder="Ex. 0,25"
     />
   </div>

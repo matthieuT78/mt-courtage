@@ -101,8 +101,15 @@ export default function CalculatorWizardShell({
                   />
                 </div>
                 <p className="mt-2 text-xs font-medium text-white/75">Étape {currentIndex + 1} sur {steps.length}</p>
-                <div className="-mx-1 mt-5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0">
-                  <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
+                <div className="mt-5">
+                  {/* flex-wrap plutôt qu'un scroll horizontal : entre 640px
+                      et le breakpoint lg (pastilles encore sur une ligne,
+                      pas encore empilées), 4 pastilles avec libellés longs
+                      ("Bien actuel & Apport") ne tiennent pas toujours sur
+                      une seule ligne — ça coupait la dernière pastille avec
+                      une barre de défilement peu visible plutôt que de
+                      passer à la ligne. */}
+                  <div className="flex flex-wrap gap-2 lg:flex-col">
                     {steps.map(({ label, icon: Icon }, index) => {
                       const active = currentIndex === index;
                       const done = index < currentIndex;

@@ -989,8 +989,10 @@ export default function CapaciteWizard({
                     Étape {step} sur {TOTAL_STEPS}
                   </p>
 
-                  <div className="-mx-1 mt-5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0">
-                    <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
+                  <div className="mt-5">
+                    {/* flex-wrap plutôt qu'un scroll horizontal — voir le
+                        même correctif dans CalculatorWizardShell.tsx. */}
+                    <div className="flex flex-wrap gap-2 lg:flex-col">
                       {wizardSteps.map(({ label, shortLabel, icon: StepIcon }, index) => {
                     const num = index + 1;
                     const active = step === num;
