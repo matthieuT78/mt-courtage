@@ -68,7 +68,7 @@ lokt.fr est édité par une société française. Les simulateurs sont gratuits 
 ## Contact et mentions légales
 
 - /confidentialite : politique de confidentialité
-- /mentions-legales : mentions légales
+- /cgu : conditions générales d'utilisation et mentions légales
 `;
 
   res.status(200).send(content);

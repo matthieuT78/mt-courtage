@@ -147,10 +147,15 @@ if (supabaseUrl && supabaseKey) {
     .limit(1)
     .maybeSingle();
   if (yearRow?.year) {
+    // property_type = "tous" : la table a 3 lignes par ville/année (tous /
+    // maison / appartement) — sans ce filtre, chaque ville est poussée
+    // jusqu'à 3 fois dans le sitemap avec la même URL (bug constaté en
+    // prod : 123 villes dupliquées, ex. Toulouse x3).
     const { data: topCities } = await supabase
       .from("city_market_benchmarks_history")
       .select("insee_code, city_name")
       .eq("year", yearRow.year)
+      .eq("property_type", "tous")
       .order("n_transactions", { ascending: false })
       .limit(300);
     for (const c of topCities || []) {

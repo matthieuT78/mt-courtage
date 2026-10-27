@@ -1,5 +1,6 @@
 // pages/index.tsx
 import Head from "next/head";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
@@ -943,13 +944,14 @@ export default function Home() {
                       cf. public/index2.png) : pas de carte blanche autour, le
                       drop-shadow suit le contour réel des appareils plutôt que le
                       rectangle de l'image. */}
-                  <img
+                  <Image
                     src="/cockpit-bailleur-lokt-v3.webp"
                     alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
                     width={1536}
                     height={1024}
+                    sizes="(min-width: 1024px) 640px, 100vw"
                     className="w-full h-auto block drop-shadow-[0_30px_60px_rgba(0,0,0,0.45)]"
-                    loading="eager"
+                    priority
                   />
                 </div>
               </div>
