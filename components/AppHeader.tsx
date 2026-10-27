@@ -19,7 +19,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { useTenantAuthUser } from "../hooks/useTenantAuthUser";
-import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
+import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guidesNav";
 
 /**
  * ✅ LOKT V1 (landing-first)
