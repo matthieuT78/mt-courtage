@@ -4,6 +4,8 @@ import type { ComponentType, SVGProps } from "react";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
   BanknotesIcon,
   BuildingOffice2Icon,
   ChartBarIcon,
@@ -18,6 +20,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
 import StyledSelect from "./calculators/StyledSelect";
+import LeadGate from "./LeadGate";
 import { usePermissions } from "./PermissionProvider";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
@@ -358,10 +361,6 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
     if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionEmail]);
-
-  const normalizedLeadEmail = (leadEmail || "").trim().toLowerCase();
-  const leadEmailValid =
-    normalizedLeadEmail.length > 3 && normalizedLeadEmail.includes("@");
 
   /* ======================== Derived ======================== */
   const selectedCityLabel =
@@ -1182,14 +1181,11 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
     }
   }
 
-const canClickUnlock =
-  hasSimulation && leadEmailValid && !unlocking && !sendingEmail;
-  
   /* ======================== UI helpers ======================== */
   const primaryNavButtonClass =
-    "min-h-11 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition-transform hover:shadow-2xl hover:shadow-sky-400/60 active:scale-[0.99] sm:text-sm";
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-6 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:shadow-2xl hover:shadow-sky-400/60 active:scale-[0.99]";
   const secondaryNavButtonClass =
-    "min-h-11 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:text-sm";
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50";
 
   
 
@@ -1470,7 +1466,10 @@ const canClickUnlock =
               if (!prixBien.trim() || prix <= 0) { setPrixBienError("Prix du bien obligatoire (montant > 0)."); return; }
               setPrixBienError(null);
               goNext();
-            }} className={primaryNavButtonClass}>Suivant →</button>
+            }} className={primaryNavButtonClass}>
+              Suivant
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
           </div>
         </section>
       )}
@@ -1582,8 +1581,14 @@ const canClickUnlock =
             </div>
           </div>
           <div className="flex justify-between pt-2">
-            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
-            <button type="button" onClick={goNext} className={primaryNavButtonClass}>Suivant →</button>
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
+              <ArrowLeftIcon className="h-4 w-4" />
+              Précédent
+            </button>
+            <button type="button" onClick={goNext} className={primaryNavButtonClass}>
+              Suivant
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
           </div>
         </section>
       )}
@@ -1646,8 +1651,14 @@ const canClickUnlock =
             </div>
           </div>
           <div className="flex justify-between pt-2">
-            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
-            <button type="button" onClick={goNext} className={primaryNavButtonClass}>Suivant →</button>
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
+              <ArrowLeftIcon className="h-4 w-4" />
+              Précédent
+            </button>
+            <button type="button" onClick={goNext} className={primaryNavButtonClass}>
+              Suivant
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
           </div>
         </section>
       )}
@@ -1720,9 +1731,13 @@ const canClickUnlock =
 </div>
           {calculError && <p className="text-[0.75rem] text-red-600">{calculError}</p>}
           <div className="flex justify-between pt-2">
-            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
+              <ArrowLeftIcon className="h-4 w-4" />
+              Précédent
+            </button>
             <button type="button" onClick={handleGoToResults} className={primaryNavButtonClass}>
-              Calculer ma rentabilité →
+              Calculer ma rentabilité
+              <ArrowRightIcon className="h-4 w-4" />
             </button>
           </div>
         </section>
@@ -1787,41 +1802,27 @@ const canClickUnlock =
 
           {hasSimulation ? (
             <>
-              {/* Gate — affiché avant tout résultat */}
+              {/* Gate — affiché avant tout résultat (composant partagé avec
+                  CapaciteWizard/PretRelaisWizard, remplace l'ancienne
+                  carte codée à la main ici — même rendu, un seul endroit
+                  à maintenir). */}
               {!canShowFullDetails ? (
-                <div className="w-full rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                  <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                  <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-                  <div className="relative space-y-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L'ANALYSE</p>
-                    <h3 className="text-lg font-semibold">Débloquer votre analyse de rentabilité</h3>
-                    <p className="text-sm text-slate-200">Coût total projet, rendements, cash-flow, analyse marché et plan d'action personnalisé — envoyés par email.</p>
-                    <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                        <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
-                        <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-100 font-semibold">Téléphone <span className="font-normal text-slate-400">(optionnel)</span></label>
-                        <input type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} placeholder="ex: 06 12 34 56 78" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
-                        <p className="text-[0.7rem] text-slate-300">Pour être rappelé(e) rapidement par un conseiller partenaire.</p>
-                      </div>
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
-                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j'accepte d'être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n'est pas obligatoire pour recevoir le rapport.</span></span>
-                        </label>
-                      </div>
-                      <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
-                        {unlocking ? "Préparation..." : "Recevoir mon rapport"}
-                      </button>
-                      {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-                      {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l'email…</p> : null}
-                      {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-                    </div>
-                  </div>
-                </div>
+                <LeadGate
+                  theme="cyan-emerald"
+                  title="Débloquer votre analyse de rentabilité"
+                  subtitle="Coût total projet, rendements, cash-flow, analyse marché et plan d'action personnalisé — envoyés par email."
+                  email={leadEmail}
+                  setEmail={setLeadEmail}
+                  phone={leadPhone}
+                  setPhone={setLeadPhone}
+                  contactConsent={consentContact}
+                  setContactConsent={setConsentContact}
+                  unlocking={unlocking || sendingEmail}
+                  unlockMsg={unlockMsg}
+                  onUnlock={handleUnlock}
+                  sendingEmail={sendingEmail}
+                  sendEmailMsg={sendEmailMsg}
+                />
               ) : null}
 
               {/* Résultats débloqués */}

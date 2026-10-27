@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AdjustmentsHorizontalIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
   BanknotesIcon,
   CheckCircleIcon,
   CreditCardIcon,
@@ -1510,9 +1512,10 @@ const renderAnalysisBlocks = (text: string) => {
             type="button"
             onClick={goPrev}
             disabled={step === 1}
-            className="min-h-11 rounded-full border border-slate-200 bg-white px-4 text-[0.8rem] font-semibold text-slate-600 hover:text-slate-900 disabled:cursor-default disabled:opacity-40 sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:text-[0.75rem]"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-default disabled:opacity-0"
           >
-            ← Précédent
+            <ArrowLeftIcon className="h-4 w-4" />
+            Précédent
           </button>
 
           {step < TOTAL_STEPS ? (
@@ -1529,17 +1532,19 @@ const renderAnalysisBlocks = (text: string) => {
                   setRevError(null);
                   goNext();
                 }}
-              className="min-h-11 rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-slate-900 px-6 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              Suivant →
+              Suivant
+              <ArrowRightIcon className="h-4 w-4" />
             </button>
           ) : (
             <button
               type="button"
               onClick={handleCalculRelais}
-              className="min-h-11 rounded-full bg-gradient-to-r from-amber-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg shadow-amber-300/40 hover:shadow-2xl hover:shadow-amber-300/60 active:scale-[0.99]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-sky-500 px-6 text-sm font-semibold text-white shadow-lg shadow-amber-300/40 transition hover:shadow-2xl hover:shadow-amber-300/60 active:scale-[0.99]"
             >
               Calculer mon budget avec prêt relais
+              <ArrowRightIcon className="h-4 w-4" />
             </button>
           )}
         </div>
