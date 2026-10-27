@@ -1,4 +1,5 @@
 // components/AppHeader.tsx
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -100,9 +101,13 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
           <div className="flex items-center justify-between gap-3">
             {/* Brand */}
             <Link href="/" className="flex items-center gap-3">
-              <img
+              <Image
                 src="/lokt-logo-transparent.png"
                 alt="lokt.fr"
+                width={780}
+                height={230}
+                sizes="150px"
+                priority
                 className="h-7 w-auto object-contain sm:h-10 md:h-11"
               />
               <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">
@@ -337,9 +342,13 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
       <div className="mx-auto max-w-5xl px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3">
-            <img
+            <Image
               src="/lokt-logo-transparent.png"
               alt="lokt.fr"
+              width={780}
+              height={230}
+              sizes="150px"
+              priority
               className="h-10 md:h-11 w-auto object-contain"
             />
             <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">

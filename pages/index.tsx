@@ -1011,14 +1011,16 @@ export default function Home() {
 
           <div className="relative mx-auto max-w-5xl text-center">
             <div data-scroll-reveal className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[0.72rem] font-semibold text-indigo-200 ring-1 ring-white/15">
-              <img src="/loky-avatar.png" alt="Loky" className="h-5 w-5 rounded-full object-cover" />
+              <Image src="/loky-avatar.png" alt="Loky" width={40} height={40} className="h-5 w-5 rounded-full object-cover" />
               Nouveau · Assistant IA lokt.fr
             </div>
 
             <div className="relative">
-              <img
+              <Image
                 src="/loky-avatar.png"
                 alt="Loky"
+                width={144}
+                height={144}
                 className="pointer-events-none absolute -left-6 top-1/2 z-0 hidden h-28 w-28 -translate-y-1/2 -rotate-6 object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.45)] lg:-left-16 lg:block lg:h-36 lg:w-36"
               />
               <h2 data-scroll-reveal data-reveal-delay="100" className="relative z-10 mt-6 text-4xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl">
@@ -1125,7 +1127,7 @@ export default function Home() {
                         <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
                       </div>
                       <div className="ml-1.5 flex items-center gap-1.5 text-xs font-medium text-white/50">
-                        <img src="/loky-avatar.png" alt="" className="h-4 w-4 rounded object-cover" />
+                        <Image src="/loky-avatar.png" alt="" width={32} height={32} className="h-4 w-4 rounded object-cover" />
                         Loky · Assistant IA lokt.fr
                       </div>
                     </div>
@@ -1138,7 +1140,7 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-start gap-2.5">
-                        <img src="/loky-avatar.png" alt="Loky" className="mt-0.5 h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
+                        <Image src="/loky-avatar.png" alt="Loky" width={72} height={72} className="mt-0.5 h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
                         <div className="max-w-[85%] space-y-2.5 rounded-2xl rounded-tl-md bg-gradient-to-br from-indigo-600 to-cyan-500 px-4 py-3.5 text-sm text-white shadow-sm">
                           <p>{demo.lokyIntro}</p>
                           <div className="space-y-1.5 rounded-xl bg-white/15 p-3 text-xs">
