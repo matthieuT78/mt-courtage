@@ -54,10 +54,14 @@ function redirectToBailleur(req: NextApiRequest, params: Record<string, string |
 async function loadToken(token: string) {
   if (!supabaseAdmin) throw new Error("Supabase admin manquant.");
   const tok = await supabaseAdmin.from("receipt_confirm_tokens").select("*").eq("token", token).maybeSingle();
-  if (tok.error || !tok.data) return { error: "Lien invalide.", row: null as any };
-  if (tok.data.used_at) return { error: "Lien déjà utilisé.", row: null as any };
-  if (new Date(tok.data.expires_at).getTime() < Date.now()) return { error: "Lien expiré.", row: null as any };
-  return { error: null, row: tok.data as any };
+  if (tok.error || !tok.data) return { error: "Lien invalide.", row: null as any, alreadyUsed: false };
+  // On garde `row` même si déjà utilisé (contrairement aux autres cas d'erreur) : le
+  // propriétaire a pu cliquer deux fois (ex. réseau faible masquant le succès du 1er
+  // clic) et on veut pouvoir retrouver le paiement déjà enregistré pour le lui montrer,
+  // plutôt que de lui afficher un message d'erreur qui laisse croire que rien n'a été pris en compte.
+  if (tok.data.used_at) return { error: "Lien déjà utilisé.", row: tok.data as any, alreadyUsed: true };
+  if (new Date(tok.data.expires_at).getTime() < Date.now()) return { error: "Lien expiré.", row: null as any, alreadyUsed: false };
+  return { error: null, row: tok.data as any, alreadyUsed: false };
 }
 
 async function loadLease(row: any) {
@@ -330,6 +334,44 @@ function spinnerPage(params: {
 </html>`;
 }
 
+function alreadyConfirmedPage(params: { amount: number; paidAt: string; baseUrl: string }) {
+  const { amount, paidAt, baseUrl } = params;
+  const dateLabel = new Date(paidAt).toLocaleString("fr-FR", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Europe/Paris",
+  });
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Paiement déjà confirmé · lokt.fr</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 22px; padding: 36px 28px; max-width: 400px; width: 100%; text-align: center; }
+    .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; color: #4f46e5; text-transform: uppercase; margin-bottom: 28px; }
+    .icon { font-size: 44px; margin-bottom: 18px; }
+    .title { font-size: 19px; font-weight: 800; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #64748b; line-height: 1.55; }
+    .badge { display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; margin-top: 18px; font-size: 13px; font-weight: 600; color: #334155; }
+    .btn { display: inline-block; margin-top: 22px; padding: 11px 22px; background: #0f172a; color: white; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">lokt.fr</div>
+    <div class="icon">✅</div>
+    <div class="title">Paiement déjà confirmé</div>
+    <div class="sub">Ce lien a déjà été utilisé et le paiement a bien été enregistré — vous pouvez cliquer sans risque, rien ne sera traité deux fois.</div>
+    <div class="badge">${euro(amount)} · confirmé le ${escapeHtml(dateLabel)}</div>
+    <a href="${escapeHtml(baseUrl)}/espace-bailleur?tab=quittances" class="btn">Voir le détail sur lokt.fr</a>
+  </div>
+</body>
+</html>`;
+}
+
 function errorPage(message: string, baseUrl: string) {
   return `<!doctype html>
 <html lang="fr">
@@ -375,8 +417,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── GET + action=full → page HTML avec spinner (pas de traitement) ──────
     if (req.method === "GET" && action === "full") {
-      const { error, row } = await loadToken(token);
+      const { error, row, alreadyUsed } = await loadToken(token);
       if (error) {
+        // Lien déjà cliqué une 1ère fois (ex. réseau faible qui a masqué le succès) :
+        // on cherche le paiement correspondant plutôt que d'afficher un message qui
+        // laisse croire que rien n'a été enregistré.
+        if (alreadyUsed && row) {
+          const payment = await supabaseAdmin
+            .from("rent_payments")
+            .select("total_amount,paid_at")
+            .eq("lease_id", row.lease_id)
+            .eq("period_start", row.period_start)
+            .eq("period_end", row.period_end)
+            .maybeSingle();
+          if (payment.data?.paid_at) {
+            res.setHeader("Content-Type", "text/html; charset=utf-8");
+            return res.status(200).send(alreadyConfirmedPage({
+              amount: Number(payment.data.total_amount || 0),
+              paidAt: payment.data.paid_at,
+              baseUrl,
+            }));
+          }
+        }
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         return res.status(200).send(errorPage(error, baseUrl));
       }
