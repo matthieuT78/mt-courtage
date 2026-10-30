@@ -800,8 +800,15 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   const [manualTenantResult, setManualTenantResult] = useState<{ listingId: string; tenantId: string; tenantName: string; propertyId: string | null } | null>(null);
 
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  // Erreur d'une action (retenir/refuser/clôturer/convertir) — un seul état
+  // partagé, affiché en bannière en haut de la section : ces actions peuvent
+  // échouer côté serveur (session expirée, erreur transitoire) et doivent le
+  // signaler, contrairement au silence précédent qui laissait le bailleur
+  // sans retour après un clic resté sans effet.
+  const [actionErr, setActionErr] = useState<string | null>(null);
   const [expandedArchive, setExpandedArchive] = useState<string | null>(null);
   const [activeLeasePropIds, setActiveLeasePropIds] = useState<Set<string>>(new Set());
+  const [activeLeaseLotKeys, setActiveLeaseLotKeys] = useState<Set<string>>(new Set());
   // clé "listingId|email" -> date de la prochaine visite réservée, pour croiser
   // l'agenda de visite avec la liste des candidatures (jointure par email).
   const [visitByEmail, setVisitByEmail] = useState<Map<string, string>>(new Map());
@@ -870,7 +877,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
       const [listRes, leasesRes] = await Promise.all([
         fetch("/api/candidature/list", { headers }).then(async (r) => ({ ok: r.ok, data: await r.json() })),
         supabase
-          ? supabase.from("leases").select("property_id").eq("user_id", userId).in("status", ["active", "signed"])
+          ? supabase.from("leases").select("property_id,lot_id").eq("user_id", userId).in("status", ["active", "signed"])
           : Promise.resolve({ data: [] as any[] }),
       ]);
       if (!listRes.ok) {
@@ -880,7 +887,14 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
         const firstActive = listRes.data.listings.find((l: Listing) => l.status === "active");
         if (!activeListing && firstActive) setActiveListing(firstActive.id);
       }
-      setActiveLeasePropIds(new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean)));
+      // Deux ensembles distincts : un bail sans lot_id (bien simple) ne doit
+      // matcher que les annonces sans lot, un bail avec lot_id (immeuble à
+      // plusieurs lots) ne doit matcher que l'annonce du même lot — sinon un
+      // bail actif sur le lot 1 d'un immeuble masque à tort le CTA "Créer le
+      // bail" d'un nouveau locataire du lot 2 (cf. audit du 2026-10-30).
+      const leaseRows = (leasesRes.data || []) as any[];
+      setActiveLeasePropIds(new Set<string>(leaseRows.filter((l) => !l.lot_id).map((l) => l.property_id).filter(Boolean)));
+      setActiveLeaseLotKeys(new Set<string>(leaseRows.filter((l) => l.lot_id).map((l) => `${l.property_id}:${l.lot_id}`)));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Erreur inattendue.");
     } finally {
@@ -954,16 +968,24 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   async function closeListing(listing_id: string) {
     setClosingId(listing_id);
     setCloseConfirm(null);
-    const headers = await getHeaders();
-    const res = await fetch("/api/candidature/close-listing", {
-      method: "POST", headers,
-      body: JSON.stringify({ listing_id }),
-    });
-    const json = await res.json();
-    setClosingId(null);
-    if (res.ok) {
+    setActionErr(null);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch("/api/candidature/close-listing", {
+        method: "POST", headers,
+        body: JSON.stringify({ listing_id }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionErr(json?.error || "La clôture de l'annonce a échoué. Réessayez.");
+        return;
+      }
       setCloseResult({ listingId: listing_id, deleted: json.deleted_count });
       await load();
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : "La clôture de l'annonce a échoué. Réessayez.");
+    } finally {
+      setClosingId(null);
     }
   }
 
@@ -1024,14 +1046,18 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
 
   async function convertToTenant(candidature_id: string, tenantName: string, propertyId?: string | null) {
     setConvertingId(candidature_id);
-    const headers = await getHeaders();
-    const res = await fetch("/api/candidature/convert-to-tenant", {
-      method: "POST", headers,
-      body: JSON.stringify({ candidature_id }),
-    });
-    const json = await res.json();
-    setConvertingId(null);
-    if (res.ok) {
+    setActionErr(null);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch("/api/candidature/convert-to-tenant", {
+        method: "POST", headers,
+        body: JSON.stringify({ candidature_id }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionErr(json?.error || "La conversion en locataire a échoué. Réessayez.");
+        return;
+      }
       // Le nouveau locataire doit être présent dans `tenants` (props du cockpit)
       // AVANT d'afficher "Créer le bail" — sinon le menu déroulant du bail ne
       // trouve pas encore cet id et paraît vide, alors que le préremplissage
@@ -1039,7 +1065,16 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
       await onRefresh?.();
       await load();
       setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists, tenantId: json.tenant?.id ?? null, propertyId: propertyId ?? null });
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : "La conversion en locataire a échoué. Réessayez.");
+    } finally {
+      setConvertingId(null);
     }
+  }
+
+  function hasActiveLease(propertyId?: string | null, lotId?: string | null) {
+    if (!propertyId) return false;
+    return lotId ? activeLeaseLotKeys.has(`${propertyId}:${lotId}`) : activeLeasePropIds.has(propertyId);
   }
 
   function navigateToBailCreate(c: Candidature, propertyId?: string | null, lotId?: string | null) {
@@ -1059,13 +1094,24 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
 
   async function updateStatus(candidature_id: string, status: string) {
     setUpdatingId(candidature_id);
-    const headers = await getHeaders();
-    await fetch("/api/candidature/update-status", {
-      method: "POST", headers,
-      body: JSON.stringify({ candidature_id, status }),
-    });
-    await load();
-    setUpdatingId(null);
+    setActionErr(null);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch("/api/candidature/update-status", {
+        method: "POST", headers,
+        body: JSON.stringify({ candidature_id, status }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        setActionErr(json?.error || "La mise à jour du statut a échoué. Réessayez.");
+        return;
+      }
+      await load();
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : "La mise à jour du statut a échoué. Réessayez.");
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   function copyLink(token: string) {
@@ -1120,6 +1166,16 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
           Nouvelle annonce
         </button>
       </div>
+
+      {actionErr && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <XCircleIcon className="h-5 w-5 shrink-0 mt-0.5" />
+          <div className="flex-1">{actionErr}</div>
+          <button type="button" onClick={() => setActionErr(null)} className="shrink-0 text-red-400 hover:text-red-600" aria-label="Fermer">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Formulaire de création */}
       {showCreate && (
@@ -1295,7 +1351,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                   <div>
                     <p className="font-semibold">Annonce clôturée</p>
                     <p className="text-xs mt-0.5">
-                      {closeResult.deleted} dossier{closeResult.deleted > 1 ? "s" : ""} supprimé{closeResult.deleted > 1 ? "s" : ""} (refusés + brouillons) — données personnelles effacées conformément au RGPD.
+                      {closeResult.deleted} dossier{closeResult.deleted > 1 ? "s" : ""} supprimé{closeResult.deleted > 1 ? "s" : ""} (refusés, en liste d'attente et brouillons) — données personnelles effacées conformément au RGPD.
                     </p>
                   </div>
                 </div>
@@ -1407,7 +1463,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             listing={currentListing}
                             updating={false}
                             converting={convertingId === c.id}
-                            hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                            hasBail={hasActiveLease(currentListing.property_id, currentListing.lot_id)}
                             visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={() => {}}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
@@ -1464,7 +1520,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                               listing={currentListing}
                               updating={updatingId === c.id}
                               converting={convertingId === c.id}
-                              hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                              hasBail={hasActiveLease(currentListing.property_id, currentListing.lot_id)}
                               visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                               onUpdateStatus={(status) => updateStatus(c.id, status)}
                               onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
@@ -1488,7 +1544,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             listing={currentListing}
                             updating={updatingId === c.id}
                             converting={convertingId === c.id}
-                            hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                            hasBail={hasActiveLease(currentListing.property_id, currentListing.lot_id)}
                             visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={(status) => updateStatus(c.id, status)}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
@@ -1687,7 +1743,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                                   listing={l}
                                   updating={false}
                                   converting={convertingId === c.id}
-                                  hasBail={!!(l.property_id && activeLeasePropIds.has(l.property_id))}
+                                  hasBail={hasActiveLease(l.property_id, l.lot_id)}
                                   visitAt={visitByEmail.get(`${l.id}|${(c.email || "").toLowerCase()}`)}
                                   onUpdateStatus={() => {}}
                                   onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), l.property_id)}
