@@ -188,7 +188,6 @@ export default function DonneesPage({ donnees }: { donnees: DonneesImmo }) {
                 <tr className="border-b border-slate-100 text-left">
                   <th className="px-5 py-3 font-semibold text-slate-700">Ville</th>
                   <th className="px-5 py-3 font-semibold text-slate-700">Loyer médian (€/m²)</th>
-                  <th className="px-5 py-3 font-semibold text-slate-500">Évolution annuelle</th>
                   <th className="px-5 py-3 font-semibold text-slate-500">Rendement brut T2 médian</th>
                 </tr>
               </thead>
@@ -199,7 +198,6 @@ export default function DonneesPage({ donnees }: { donnees: DonneesImmo }) {
                     <tr key={row.ville} className="border-b border-slate-50 hover:bg-slate-50">
                       <td className="px-5 py-3 font-medium text-slate-900">{row.ville}</td>
                       <td className="px-5 py-3 font-semibold text-slate-900">{row.loyer_median_m2.toFixed(1)} €/m²</td>
-                      <td className="px-5 py-3 text-emerald-700">+{row.evolution_annuelle_pct.toFixed(1)} %</td>
                       <td className="px-5 py-3 text-indigo-700">{rdmt ? `${rdmt.rendement_brut_median.toFixed(1)} %` : "—"}</td>
                     </tr>
                   );
