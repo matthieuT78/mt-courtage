@@ -87,11 +87,15 @@ def compute(gares: pd.DataFrame, communes: pd.DataFrame) -> pd.DataFrame:
     mean_lat_rad = math.radians(communes["lat"].mean())
     cos_lat = math.cos(mean_lat_rad)
 
-    gares_xy = gares[["lon", "lat"]].to_numpy(dtype=float)
+    # copy=True : to_numpy() peut renvoyer une vue en lecture seule quand le
+    # dtype demandé correspond déjà au dtype des colonnes (fast path sans
+    # copie des versions récentes de pandas/numpy), ce qui fait planter la
+    # multiplication in-place ci-dessous ("output array is read-only").
+    gares_xy = gares[["lon", "lat"]].to_numpy(dtype=float, copy=True)
     gares_xy[:, 0] *= cos_lat
     tree = cKDTree(gares_xy)
 
-    communes_xy = communes[["lon", "lat"]].to_numpy(dtype=float)
+    communes_xy = communes[["lon", "lat"]].to_numpy(dtype=float, copy=True)
     communes_xy[:, 0] *= cos_lat
     _, idx = tree.query(communes_xy, k=1)
 

@@ -84,7 +84,7 @@ jobs:
             Logs : ${RUN_URL}"
           else
             export SUBJECT="🚨 lokt.fr — le refresh DVF a échoué"
-            export BODY_TEXT="Le refresh automatique DVF a échoué (année ciblée : ${TARGET_YEAR:-inconnue, échec probable avant la détection de l'année}).
+            export BODY_TEXT="Le refresh automatique DVF a échoué (année ciblée : ${TARGET_YEAR:-inconnue, échec probable avant détection de l année}).
 
             Logs : ${RUN_URL}"
           fi
