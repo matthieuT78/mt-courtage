@@ -304,10 +304,10 @@ export default function GestionLocativeLmnpPage() {
                     Créer mon espace bailleur gratuit →
                   </Link>
                   <Link
-                    href="/outil-gestion-locative"
+                    href="/"
                     className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#3f37c9] hover:bg-slate-50 sm:w-auto"
                   >
-                    Voir la page produit générale →
+                    Voir lokt.fr en général →
                   </Link>
                 </div>
 
