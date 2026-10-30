@@ -206,7 +206,7 @@ function CodeBlock({ code }: { code: string }) {
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
     q: "C'est vraiment gratuit ?",
-    a: "Oui, cette version du simulateur est gratuite et sans engagement. Elle est encore en phase de test : nous l'enrichirons selon les retours des agences qui l'utilisent.",
+    a: "Oui, gratuite et sans engagement. Nous continuons à l'améliorer en continu avec les retours des agences qui l'utilisent — aucun passage à une offre payante n'est prévu à ce stade.",
   },
   {
     q: "Le résultat du simulateur engage-t-il lokt.fr ou l'agence ?",
@@ -242,7 +242,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Qui est responsable des coordonnées transmises par le visiteur ?",
-    a: "Vous. Dès qu'un visiteur accepte d'être recontacté, ses coordonnées vous sont transmises directement par email et deviennent votre responsabilité en tant qu'agence — ce n'est pas couvert par la politique de confidentialité de lokt.fr, qui ne conserve ni ne traite ces données. Le texte du consentement affiché au visiteur le précise explicitement.",
+    a: "Vous. Dès qu'un visiteur accepte d'être recontacté, ses coordonnées vous sont transmises directement par email et deviennent votre responsabilité en tant qu'agence — ce n'est pas couvert par la politique de confidentialité de lokt.fr, qui ne conserve ni ne traite ces données. Le texte du consentement affiché au visiteur le précise explicitement. Comme pour toute collecte de coordonnées sur votre site, cette collecte reste soumise au RGPD : c'est votre politique de confidentialité qui doit couvrir ce traitement, pas celle de lokt.fr.",
   },
   {
     q: "La page d'où vient le lead est-elle précisée ?",
@@ -482,6 +482,38 @@ export default function WidgetPage() {
                 Essayer le simulateur
               </a>
             </div>
+
+            {/* Aperçu statique dans une fausse fenêtre de navigateur — la
+                vraie iframe du simulateur, tronquée et non interactive
+                (pointer-events-none), pour montrer immédiatement le rendu
+                sur un site d'agence sans dupliquer la démo interactive
+                plus bas (#demo), qui reste la seule à utiliser réellement. */}
+            <div className="mx-auto mt-10 max-w-md">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                  <span className="ml-2 truncate rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] text-slate-400">
+                    votre-site-agence.fr/financement
+                  </span>
+                </div>
+                <div className="h-60 overflow-hidden">
+                  <iframe
+                    src="/embed/capacite?size=small"
+                    width="100%"
+                    height={700}
+                    style={{ border: 0, pointerEvents: "none" }}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    title="Exemple d'intégration du simulateur sur un site d'agence"
+                  />
+                </div>
+              </div>
+              <p className="mt-3 text-center text-xs text-slate-400">
+                Exemple : le simulateur capacité d'emprunt intégré sur le site d'une agence.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -658,6 +690,38 @@ export default function WidgetPage() {
                             d'être recontactés après la simulation.
                           </span>
                         </label>
+
+                        {/* Aperçu de l'email réellement envoyé par
+                            notify-agency.ts — contenu reflétant les lignes
+                            du tableau généré (métriques, page d'origine,
+                            numéro de lead), avec des valeurs d'exemple. */}
+                        <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">
+                            Aperçu de l'email que vous recevrez
+                          </p>
+                          <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                            <p className="text-xs font-semibold text-slate-800">Nouveau lead — Capacité d'emprunt (310 000 €)</p>
+                            <div className="mt-2 space-y-1 text-[0.72rem] text-slate-500">
+                              <div className="flex justify-between gap-3">
+                                <span>Email</span>
+                                <span className="font-semibold text-slate-900">marie.dupont@exemple.fr</span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span>Capital empruntable</span>
+                                <span className="font-semibold text-slate-900">310 000 €</span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span>Score lokt.fr</span>
+                                <span className="font-semibold text-slate-900">78/100 — Solide</span>
+                              </div>
+                              <div className="flex justify-between gap-3">
+                                <span>Page d'origine</span>
+                                <span className="truncate font-semibold text-slate-900">votre-site.fr/financement</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
                         {leadForwardEnabled && (
                           <div className="mt-3 space-y-3">
                             <div>
@@ -768,6 +832,22 @@ export default function WidgetPage() {
                   {item}
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Où coller ce code selon votre site ?</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {[
+                  { label: "WordPress", text: "Ajoutez un bloc « HTML personnalisé » (éditeur par blocs) ou un module « Code HTML » (Elementor/Divi) sur la page voulue." },
+                  { label: "Wix", text: "Nécessite un forfait Business/VIP : Éléments → Intégrations → Intégrer du code HTML, puis collez le code." },
+                  { label: "Site sur mesure", text: "Collez le code directement dans le template de la page, à l'endroit où le simulateur doit apparaître." },
+                ].map(({ label, text }) => (
+                  <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold text-slate-800">{label}</p>
+                    <p className="mt-1 text-[0.72rem] leading-5 text-slate-500">{text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
