@@ -482,38 +482,6 @@ export default function WidgetPage() {
                 Essayer le simulateur
               </a>
             </div>
-
-            {/* Aperçu statique dans une fausse fenêtre de navigateur — la
-                vraie iframe du simulateur, tronquée et non interactive
-                (pointer-events-none), pour montrer immédiatement le rendu
-                sur un site d'agence sans dupliquer la démo interactive
-                plus bas (#demo), qui reste la seule à utiliser réellement. */}
-            <div className="mx-auto mt-10 max-w-md">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-                <div className="flex items-center gap-1.5 border-b border-slate-200 bg-slate-100 px-3 py-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  <span className="ml-2 truncate rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] text-slate-400">
-                    votre-site-agence.fr/financement
-                  </span>
-                </div>
-                <div className="h-60 overflow-hidden">
-                  <iframe
-                    src="/embed/capacite?size=small"
-                    width="100%"
-                    height={700}
-                    style={{ border: 0, pointerEvents: "none" }}
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    title="Exemple d'intégration du simulateur sur un site d'agence"
-                  />
-                </div>
-              </div>
-              <p className="mt-3 text-center text-xs text-slate-400">
-                Exemple : le simulateur capacité d'emprunt intégré sur le site d'une agence.
-              </p>
-            </div>
           </div>
         </section>
 
@@ -690,38 +658,6 @@ export default function WidgetPage() {
                             d'être recontactés après la simulation.
                           </span>
                         </label>
-
-                        {/* Aperçu de l'email réellement envoyé par
-                            notify-agency.ts — contenu reflétant les lignes
-                            du tableau généré (métriques, page d'origine,
-                            numéro de lead), avec des valeurs d'exemple. */}
-                        <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
-                          <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">
-                            Aperçu de l'email que vous recevrez
-                          </p>
-                          <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
-                            <p className="text-xs font-semibold text-slate-800">Nouveau lead — Capacité d'emprunt (310 000 €)</p>
-                            <div className="mt-2 space-y-1 text-[0.72rem] text-slate-500">
-                              <div className="flex justify-between gap-3">
-                                <span>Email</span>
-                                <span className="font-semibold text-slate-900">marie.dupont@exemple.fr</span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span>Capital empruntable</span>
-                                <span className="font-semibold text-slate-900">310 000 €</span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span>Score lokt.fr</span>
-                                <span className="font-semibold text-slate-900">78/100 — Solide</span>
-                              </div>
-                              <div className="flex justify-between gap-3">
-                                <span>Page d'origine</span>
-                                <span className="truncate font-semibold text-slate-900">votre-site.fr/financement</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
                         {leadForwardEnabled && (
                           <div className="mt-3 space-y-3">
                             <div>
