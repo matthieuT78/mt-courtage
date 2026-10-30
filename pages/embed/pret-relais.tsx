@@ -16,9 +16,17 @@ import { useRouter } from "next/router";
 import PretRelaisWizard from "../../components/PretRelaisWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
 
+function agencyLeadFromQuery(query: Record<string, any>) {
+  const token = typeof query.agency_token === "string" ? query.agency_token.trim() : "";
+  if (!token) return undefined;
+  const siteLabel = typeof query.agency_name === "string" ? query.agency_name.trim().slice(0, 80) : undefined;
+  return { token, siteLabel };
+}
+
 export default function EmbedPretRelaisPage() {
   useWidgetAutoResize();
   const router = useRouter();
+  const agencyLead = agencyLeadFromQuery(router.query);
   const size = router.query.size;
   const compactSteps = size === "small";
   const compactHeader = size === "small" || size === "medium";
@@ -57,7 +65,7 @@ export default function EmbedPretRelaisPage() {
       `}</style>
 
       <div className="mx-auto max-w-3xl">
-        <PretRelaisWizard showSaveButton={false} compactSteps={compactSteps} compactHeader={compactHeader} resultPopup />
+        <PretRelaisWizard showSaveButton={false} compactSteps={compactSteps} compactHeader={compactHeader} resultPopup agencyLead={agencyLead} />
       </div>
 
       <p className="mx-auto mt-5 max-w-3xl text-center text-xs text-slate-400">

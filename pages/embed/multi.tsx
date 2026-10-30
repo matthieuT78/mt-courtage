@@ -150,9 +150,9 @@ export default function EmbedMultiPage() {
             />
           )}
           {active === "pret-relais" && (
-            <PretRelaisWizard showSaveButton={false} compactSteps={compactSteps} compactHeader={compactHeader} resultPopup />
+            <PretRelaisWizard showSaveButton={false} compactSteps={compactSteps} compactHeader={compactHeader} resultPopup agencyLead={agencyLead} />
           )}
-          {active === "investissement" && <InvestissementWizard compactHeader={compactHeader} resultPopup />}
+          {active === "investissement" && <InvestissementWizard compactHeader={compactHeader} resultPopup agencyLead={agencyLead} />}
         </div>
       )}
 

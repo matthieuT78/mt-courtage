@@ -48,15 +48,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const agencyEmail = String(req.body?.agencyEmail || "").trim().toLowerCase();
     const siteLabel = req.body?.siteLabel ? String(req.body.siteLabel).trim().slice(0, 80) : null;
-    const simulator = "capacite";
+    const requestedSimulator = String(req.body?.simulator || "capacite").trim();
+    const ALLOWED_SIMULATORS = ["capacite", "pret-relais", "investissement"];
+    const simulator = ALLOWED_SIMULATORS.includes(requestedSimulator) ? requestedSimulator : "capacite";
 
     if (!isValidEmail(agencyEmail)) return res.status(400).json({ ok: false, error: "agencyEmail invalide" });
 
+    // Un seul token par agence (pas par simulateur) : une agence qui a
+    // plusieurs calculettes embarquées doit recevoir tous ses leads avec le
+    // même code, cf. supabase/migrations/20261030140000_widget_agencies_single_token.sql.
     const { data: existing, error: selectError } = await supabaseAdmin
       .from("widget_agencies")
       .select("token, site_label")
       .eq("agency_email", agencyEmail)
-      .eq("simulator", simulator)
       .maybeSingle();
 
     if (selectError) return res.status(500).json({ ok: false, error: selectError.message });

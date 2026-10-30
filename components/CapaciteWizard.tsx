@@ -20,6 +20,7 @@ import {
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
 import StyledSelect from "./calculators/StyledSelect";
+import StepHeader from "./calculators/StepHeader";
 import {
   buildCapaciteEmailHtml,
   buildCapaciteEmailText,
@@ -190,6 +191,15 @@ export default function CapaciteWizard({
   resultPopup = false,
 }: CapaciteWizardProps) {
   const router = useRouter();
+
+  // La case "être recontacté" du lead-gate n'a de sens que si elle correspond
+  // à une vraie transmission. resultPopup est toujours true dans pages/embed/*
+  // et jamais sur le site principal — donc dans le widget agence (resultPopup)
+  // sans token configuré (agencyLead absent : l'agence a copié le code par
+  // défaut sans activer le transfert de leads), l'afficher promettrait un
+  // recontact qui n'arrivera jamais. On ne la montre que s'il existe un vrai
+  // destinataire : site principal lokt.fr, ou agence avec lead-forwarding actif.
+  const showContactConsent = !resultPopup || !!agencyLead;
 
   /* ======================== Session ======================== */
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -812,10 +822,12 @@ export default function CapaciteWizard({
         visitorEmail: params.email,
         visitorPhone: leadPhone.trim() || null,
         referrerUrl,
-        budgetTotalMax: params.computed.resume.budgetTotalMax,
-        montantMax: params.computed.resume.montantMax,
-        scoreLabel: params.computed.assessment.label,
-        score: params.computed.assessment.score,
+        simulatorLabel: "capacité d'emprunt",
+        metrics: [
+          { label: "Budget estimé (apport inclus)", value: formatEuro(params.computed.resume.budgetTotalMax) },
+          { label: "Capital empruntable", value: formatEuro(params.computed.resume.montantMax) },
+          { label: "Score lokt.fr", value: `${params.computed.assessment.score}/100 — ${params.computed.assessment.label}` },
+        ],
       }),
     });
     if (!r.ok) {
@@ -1052,37 +1064,19 @@ export default function CapaciteWizard({
             </div>
           </aside>
 
-          <div className={"flex flex-col bg-white p-5 sm:p-8" + (compactSteps ? "" : " min-h-[39rem]")}>
-            {compactSteps ? (
-              // Étape (icône + titre) sur une seule ligne plutôt qu'empilée
-              // sur 4 blocs distincts — l'étiquette "Étape 0X" est déjà
-              // redondante avec le bandeau fin au-dessus (compactHeader),
-              // donc retirée ici pour ce format.
-              <header className="flex items-start gap-2.5 border-b border-slate-100 pb-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 via-cyan-50 to-emerald-50 text-[#3f37c9]">
-                  <ActiveStepIcon className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="text-base font-semibold leading-tight text-slate-950">{activeStepMeta.label}</h2>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-600">{activeStepMeta.description}</p>
-                </div>
-              </header>
-            ) : (
-              <header className="border-b border-slate-100 pb-5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 via-cyan-50 to-emerald-50 text-[#3f37c9]">
-                  <ActiveStepIcon className="h-6 w-6" />
-                </span>
-                <p className="mt-4 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
-                  Étape 0{step}
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold leading-tight text-slate-950">
-                  {activeStepMeta.label}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  {activeStepMeta.description}
-                </p>
-              </header>
-            )}
+          {/* Pas de min-height fixe ici : à une largeur généreuse (widget
+              agence en taille "large"), un contenu de 2 lignes de champs
+              dans une hauteur pensée pour une colonne étroite laissait un
+              grand vide avant le bouton. La hauteur suit maintenant le
+              contenu réel de chaque étape. */}
+          <div className="flex flex-col bg-white p-5 sm:p-8">
+            <StepHeader
+              icon={ActiveStepIcon}
+              stepNumber={step}
+              label={activeStepMeta.label}
+              description={activeStepMeta.description}
+              compact={compactSteps}
+            />
 
             {/* Contenu */}
             <div className="flex-1 space-y-5 py-6">
@@ -1497,8 +1491,7 @@ export default function CapaciteWizard({
             setPhone={setLeadPhone}
             consent={consentLokt}
             setConsent={setConsentLokt}
-            contactConsent={consentContact}
-            setContactConsent={setConsentContact}
+            {...(showContactConsent ? { contactConsent: consentContact, setContactConsent: setConsentContact } : {})}
             contactConsentLabel={
               agencyLead
                 ? `j’accepte que mes coordonnées soient transmises par email à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet — cette transmission relève de la responsabilité de ${agencyLead.siteLabel || "ce site"}, et non de la politique de confidentialité de lokt.fr.`

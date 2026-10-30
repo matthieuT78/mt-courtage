@@ -71,11 +71,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const visitorEmail = safeEmail(req.body?.visitorEmail);
     const visitorPhone = req.body?.visitorPhone ? String(req.body.visitorPhone).trim() : null;
     const referrerUrl = req.body?.referrerUrl ? String(req.body.referrerUrl).slice(0, 500) : null;
-    const budgetTotalMax = Number(req.body?.budgetTotalMax || 0);
-    const montantMax = Number(req.body?.montantMax || 0);
-    const scoreLabel = String(req.body?.scoreLabel || "").slice(0, 60);
-    const score = Number(req.body?.score || 0);
     const isTest = req.body?.isTest === true;
+    // simulatorLabel + metrics : forme générique, commune aux 3 simulateurs
+    // (capacité, prêt relais, rentabilité locative) — chacun a ses propres
+    // indicateurs (capital empruntable, montant du relais, cash-flow…), donc
+    // c'est le wizard appelant qui pré-formate ce qu'il veut afficher plutôt
+    // que ce endpoint qui connaîtrait le détail de chaque simulateur.
+    const simulatorLabel = String(req.body?.simulatorLabel || "simulateur immobilier").slice(0, 60);
+    const metricsInput = Array.isArray(req.body?.metrics) ? req.body.metrics : [];
+    const metrics: Array<{ label: string; value: string }> = metricsInput
+      .filter((m: any) => m && typeof m.label === "string" && typeof m.value === "string")
+      .slice(0, 8)
+      .map((m: any) => ({ label: String(m.label).slice(0, 60), value: String(m.value).slice(0, 60) }));
+
+    // Compat rétroactive : anciens appels (widget capacité déployé avant la
+    // généralisation) qui envoient encore les champs numériques capacité
+    // directement plutôt que metrics/simulatorLabel.
+    if (metrics.length === 0 && (req.body?.budgetTotalMax != null || req.body?.montantMax != null)) {
+      const budgetTotalMax = Number(req.body?.budgetTotalMax || 0);
+      const montantMax = Number(req.body?.montantMax || 0);
+      const scoreLabel = String(req.body?.scoreLabel || "").slice(0, 60);
+      const score = Number(req.body?.score || 0);
+      metrics.push({ label: "Budget estimé (apport inclus)", value: euro(budgetTotalMax) });
+      metrics.push({ label: "Capital empruntable", value: euro(montantMax) });
+      if (scoreLabel) metrics.push({ label: "Score lokt.fr", value: `${score}/100 — ${scoreLabel}` });
+    }
 
     if (!agencyToken) return res.status(400).json({ ok: false, error: "agencyToken manquant" });
     if (!isValidEmail(visitorEmail)) return res.status(400).json({ ok: false, error: "visitorEmail invalide" });
@@ -91,38 +111,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const nextLeadCount = isTest ? agency.lead_count : agency.lead_count + 1;
 
+    const headlineMetric = metrics[0]?.value || "";
+
     const contentHtml = `
       <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#334155;">
         ${
           isTest
             ? "Ceci est un email de test — aucun visiteur réel n'a utilisé le simulateur. Si vous recevez bien cet email, l'intégration est correctement configurée."
-            : "Un visiteur a utilisé le simulateur de capacité d'emprunt intégré sur votre site et a accepté d'être recontacté."
+            : `Un visiteur a utilisé le simulateur ${escapeHtml(simulatorLabel)} intégré sur votre site et a accepté d'être recontacté.`
         }
       </p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:13.5px;margin:4px 0 16px;">
         <tr><td style="padding:4px 0;color:#64748b;">Email</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${escapeHtml(visitorEmail)}</td></tr>
         ${visitorPhone ? `<tr><td style="padding:4px 0;color:#64748b;">Téléphone</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${escapeHtml(visitorPhone)}</td></tr>` : ""}
-        <tr><td style="padding:4px 0;color:#64748b;">Budget estimé (apport inclus)</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${euro(budgetTotalMax)}</td></tr>
-        <tr><td style="padding:4px 0;color:#64748b;">Capital empruntable</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${euro(montantMax)}</td></tr>
-        ${scoreLabel ? `<tr><td style="padding:4px 0;color:#64748b;">Score lokt.fr</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${score}/100 — ${escapeHtml(scoreLabel)}</td></tr>` : ""}
+        ${metrics.map((m) => `<tr><td style="padding:4px 0;color:#64748b;">${escapeHtml(m.label)}</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">${escapeHtml(m.value)}</td></tr>`).join("")}
         ${referrerUrl ? `<tr><td style="padding:4px 0;color:#64748b;">Page d'origine</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;word-break:break-all;">${escapeHtml(referrerUrl)}</td></tr>` : ""}
         ${!isTest ? `<tr><td style="padding:4px 0;color:#64748b;">Lead reçu via ce widget</td><td style="padding:4px 0;text-align:right;font-weight:700;color:#0f172a;">n°${nextLeadCount}</td></tr>` : ""}
       </table>
       <p style="margin:0 0 14px;font-size:13.5px;line-height:1.6;color:#475569;">
-        Ce montant est une estimation indicative, pas une offre de prêt. Nous vous recommandons de recontacter directement ce visiteur pour qualifier son projet.
+        Ces chiffres sont une estimation indicative, pas une offre engageante. Nous vous recommandons de recontacter directement ce visiteur pour qualifier son projet.
       </p>
     `;
 
     const html = emailLayout({
-      title: isTest ? "Email de test — widget capacité d'emprunt" : "Nouveau lead — simulateur de capacité d'emprunt",
-      preheader: isTest ? "Test de configuration du widget lokt.fr" : `${visitorEmail} — budget estimé ${euro(budgetTotalMax)}`,
+      title: isTest ? `Email de test — widget ${simulatorLabel}` : `Nouveau lead — simulateur ${simulatorLabel}`,
+      preheader: isTest ? "Test de configuration du widget lokt.fr" : `${visitorEmail}${headlineMetric ? ` — ${headlineMetric}` : ""}`,
       contentHtml,
       footerText: "Lead transmis par le widget lokt.fr intégré sur votre site — lokt.fr ne conserve pas ces coordonnées.",
     });
 
     const mail = await sendEmailViaResend({
       to: agency.agency_email,
-      subject: isTest ? "[Test] Votre widget lokt.fr est bien configuré" : `Nouveau lead — ${euro(budgetTotalMax)} de budget estimé`,
+      subject: isTest ? "[Test] Votre widget lokt.fr est bien configuré" : `Nouveau lead — ${simulatorLabel}${headlineMetric ? ` (${headlineMetric})` : ""}`,
       html,
       replyTo: isTest ? undefined : visitorEmail,
     });

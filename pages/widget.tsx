@@ -54,6 +54,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     title: "Simulateur de prêt relais",
     pitch: "Utile pour vos clients vendeurs qui veulent acheter avant d'avoir vendu leur bien actuel.",
     sizes: true,
+    leadForwarding: true,
   },
   {
     id: "investissement",
@@ -62,6 +63,7 @@ const WIDGET_OPTIONS: WidgetOption[] = [
     title: "Simulateur de rentabilité locative",
     pitch: "Pour les agences qui traitent aussi de l'investissement locatif : cash-flow, rendement brut et net.",
     sizes: true,
+    leadForwarding: true,
   },
 ];
 
@@ -356,7 +358,7 @@ export default function WidgetPage() {
         const r = await fetch("/api/tools/capacite/widget-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agencyEmail, siteLabel: agencySiteLabel }),
+          body: JSON.stringify({ agencyEmail, siteLabel: agencySiteLabel, simulator: selectedIds[0] }),
         });
         const data = await r.json().catch(() => null);
         if (cancelled) return;

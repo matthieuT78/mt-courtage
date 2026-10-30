@@ -17,6 +17,7 @@ import {
 import type { ComponentType, SVGProps } from "react";
 import { supabase } from "../lib/supabaseClient";
 import InfoBadge from "./calculators/InfoBadge";
+import StepHeader from "./calculators/StepHeader";
 import LeadGate from "./LeadGate";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
@@ -316,13 +317,19 @@ export type PretRelaisWizardProps = {
   // superposée plutôt qu'en ligne — cf. resultPopup dans CapaciteWizard.tsx
   // pour le détail. false sur /pret-relais, comportement inchangé.
   resultPopup?: boolean;
+  // Widget agence avec transfert de leads activé (cf. pages/embed/pret-relais.tsx
+  // et agencyLead dans CapaciteWizard.tsx pour le détail du mécanisme).
+  agencyLead?: { token: string; siteLabel?: string };
 };
 
 function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();
 }
 
-export default function PretRelaisWizard({ compactSteps = false, compactHeader = false, resultPopup = false }: PretRelaisWizardProps) {
+export default function PretRelaisWizard({ compactSteps = false, compactHeader = false, resultPopup = false, agencyLead }: PretRelaisWizardProps) {
+  // Cf. showContactConsent dans CapaciteWizard.tsx : la case "être
+  // recontacté" ne s'affiche que s'il existe un vrai destinataire.
+  const showContactConsent = !resultPopup || !!agencyLead;
   // ---------------------------
   // Session
   // ---------------------------
@@ -371,21 +378,21 @@ export default function PretRelaisWizard({ compactSteps = false, compactHeader =
   // rester léger dans un format étroit. Rien n'est retiré, juste
   // repaginé différemment.
   type StepSection = "projet" | "profil" | "revenus" | "bien" | "pret";
-  const progressSteps = useMemo<Array<{ label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; sections: StepSection[] }>>(
+  const progressSteps = useMemo<Array<{ label: string; description: string; icon: ComponentType<SVGProps<SVGSVGElement>>; sections: StepSection[] }>>(
     () =>
       compactSteps
         ? [
-            { label: "Votre projet", icon: HomeModernIcon, sections: ["projet"] },
-            { label: "Profil", icon: UserGroupIcon, sections: ["profil"] },
-            { label: "Revenus", icon: BanknotesIcon, sections: ["revenus"] },
-            { label: "Bien actuel & Apport", icon: CreditCardIcon, sections: ["bien"] },
-            { label: "Nouveau prêt", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+            { label: "Votre projet", description: "Quel bien, où et dans quel délai ?", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil", description: "Votre situation professionnelle.", icon: UserGroupIcon, sections: ["profil"] },
+            { label: "Revenus", description: "Vos revenus mensuels nets.", icon: BanknotesIcon, sections: ["revenus"] },
+            { label: "Bien actuel & Apport", description: "Le bien à vendre et vos crédits en cours.", icon: CreditCardIcon, sections: ["bien"] },
+            { label: "Nouveau prêt", description: "Les hypothèses du financement à venir.", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
           ]
         : [
-            { label: "Votre projet", icon: HomeModernIcon, sections: ["projet"] },
-            { label: "Profil & Revenus", icon: UserGroupIcon, sections: ["profil", "revenus"] },
-            { label: "Bien actuel & Apport", icon: CreditCardIcon, sections: ["bien"] },
-            { label: "Nouveau prêt", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
+            { label: "Votre projet", description: "Quel bien, où et dans quel délai ?", icon: HomeModernIcon, sections: ["projet"] },
+            { label: "Profil & Revenus", description: "Votre situation professionnelle et vos revenus.", icon: UserGroupIcon, sections: ["profil", "revenus"] },
+            { label: "Bien actuel & Apport", description: "Le bien à vendre et vos crédits en cours.", icon: CreditCardIcon, sections: ["bien"] },
+            { label: "Nouveau prêt", description: "Les hypothèses du financement à venir.", icon: AdjustmentsHorizontalIcon, sections: ["pret"] },
           ],
     [compactSteps]
   );
@@ -1091,6 +1098,30 @@ async function sendPretRelaisEmail(email: string) {
     setSendingEmail(false);
   }
 }
+  const notifyAgencyOfLead = async (email: string) => {
+    if (!agencyLead || !resume) return;
+    const referrerUrl = typeof document !== "undefined" ? document.referrer || null : null;
+    const r = await fetch("/api/tools/capacite/notify-agency", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agencyToken: agencyLead.token,
+        visitorEmail: email,
+        referrerUrl,
+        simulatorLabel: "prêt relais",
+        metrics: [
+          { label: "Montant du relais", value: formatEuro(resume.montantRelais) },
+          { label: "Mensualité nouveau prêt", value: formatEuro(resume.mensualiteNouveauMax) },
+          { label: "Budget max", value: formatEuro(resume.budgetMax) },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const data = await r.json().catch(() => null);
+      throw new Error(data?.error || "notify_agency_failed");
+    }
+  };
+
   const handleUnlock = async () => {
     setUnlockMsg(null);
 
@@ -1107,7 +1138,16 @@ async function sendPretRelaisEmail(email: string) {
 
     setUnlocking(true);
     try {
-      await capturePretRelaisViaRpc();
+      // Widget embarqué sur le site d'une agence : jamais d'écriture dans la
+      // base de leads lokt.fr, le lead ne part que vers l'agence, et
+      // seulement si le visiteur a explicitement coché le consentement.
+      if (agencyLead) {
+        if (consentContact) {
+          await notifyAgencyOfLead(email);
+        }
+      } else {
+        await capturePretRelaisViaRpc();
+      }
       setUnlocked(true);
       setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
 if (sendByEmail) {
@@ -1184,19 +1224,17 @@ const renderAnalysisBlocks = (text: string) => {
         compactHeader={compactHeader}
       >
         <div className="calculator-premium-form space-y-5">
+        <StepHeader
+          icon={progressSteps[step - 1].icon}
+          stepNumber={step}
+          label={progressSteps[step - 1].label}
+          description={progressSteps[step - 1].description}
+          compact={compactSteps}
+        />
         {/* Contenu */}
-        <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
-          {/* --- (identique à ton UI : steps 1..5) --- */}
-          {/* ✅ IMPORTANT : je n'ai pas modifié le contenu des steps pour éviter les régressions */}
-          {/* Tu peux garder ton JSX tel quel ici (copie/colle depuis ton fichier actuel) */}
-          {/* START: steps */}
+        <div className="space-y-3">
           {activeSections.includes("projet") && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
-              <p className="text-[0.75rem] text-slate-600">
-                Quelques infos simples : elles permettent de qualifier votre besoin (et de produire une analyse utile).
-              </p>
-
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className={labelBase}>
@@ -1613,8 +1651,12 @@ const renderAnalysisBlocks = (text: string) => {
                 setPhone={setLeadPhone}
                 consent={consentLokt}
                 setConsent={setConsentLokt}
-                contactConsent={consentContact}
-                setContactConsent={setConsentContact}
+                {...(showContactConsent ? { contactConsent: consentContact, setContactConsent: setConsentContact } : {})}
+                contactConsentLabel={
+                  agencyLead
+                    ? `j’accepte que mes coordonnées soient transmises par email à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet — cette transmission relève de la responsabilité de ${agencyLead.siteLabel || "ce site"}, et non de la politique de confidentialité de lokt.fr.`
+                    : undefined
+                }
                 unlocking={unlocking || sendingEmail}
                 unlockMsg={unlockMsg}
                 onUnlock={handleUnlock}

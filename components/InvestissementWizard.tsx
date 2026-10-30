@@ -25,6 +25,7 @@ import { usePermissions } from "./PermissionProvider";
 import { useAgenceMode } from "../lib/useAgenceMode";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
+import StepHeader from "./calculators/StepHeader";
 
 import {
   Chart as ChartJS,
@@ -204,11 +205,17 @@ export type InvestissementWizardProps = {
   // superposée plutôt qu'en ligne — cf. resultPopup dans CapaciteWizard.tsx
   // pour le détail. false sur /investissement, comportement inchangé.
   resultPopup?: boolean;
+  // Widget agence avec transfert de leads activé (cf. pages/embed/investissement.tsx
+  // et agencyLead dans CapaciteWizard.tsx pour le détail du mécanisme).
+  agencyLead?: { token: string; siteLabel?: string };
 };
 
-export default function InvestissementWizard({ compactHeader = false, resultPopup = false }: InvestissementWizardProps = {}) {
+export default function InvestissementWizard({ compactHeader = false, resultPopup = false, agencyLead }: InvestissementWizardProps = {}) {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
   const router = useRouter();
+  // Cf. showContactConsent dans CapaciteWizard.tsx : la case "être
+  // recontacté" ne s'affiche que s'il existe un vrai destinataire.
+  const showContactConsent = !resultPopup || !!agencyLead;
 
   /* ======================== Session (pré-remplir email) ======================== */
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -1106,6 +1113,29 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
   };
 
 
+    const notifyAgencyOfLead = async (email: string) => {
+      if (!agencyLead || !resumeRendement) return;
+      const referrerUrl = typeof document !== "undefined" ? document.referrer || null : null;
+      const r = await fetch("/api/tools/capacite/notify-agency", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agencyToken: agencyLead.token,
+          visitorEmail: email,
+          referrerUrl,
+          simulatorLabel: "rentabilité locative",
+          metrics: [
+            { label: "Rendement net avant crédit", value: formatPct(resumeRendement.rendementNetAvantCredit) },
+            { label: "Cash-flow mensuel", value: formatEuro(resumeRendement.cashflowMensuel) },
+          ],
+        }),
+      });
+      if (!r.ok) {
+        const data = await r.json().catch(() => null);
+        throw new Error(data?.error || "notify_agency_failed");
+      }
+    };
+
     const handleUnlock = async () => {
       setUnlockMsg(null);
       setSendEmailMsg(null); // ✅ reset message email
@@ -1123,6 +1153,14 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
 
     setUnlocking(true);
     try {
+      // Widget embarqué sur le site d'une agence : jamais d'écriture dans la
+      // base de leads lokt.fr, le lead ne part que vers l'agence, et
+      // seulement si le visiteur a explicitement coché le consentement.
+      if (agencyLead) {
+        if (consentContact) {
+          await notifyAgencyOfLead(email);
+        }
+      } else {
       try {
         await captureLeadViaRpc({
           email,
@@ -1132,6 +1170,7 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
         // on ne bloque pas l'UX si RPC indispo, mais on garde une trace
         // eslint-disable-next-line no-console
         console.warn("[rpc upsert_lead_v1] unlock capture error:", e);
+      }
       }
 
       if (typeof window !== "undefined") {
@@ -1183,7 +1222,7 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
 
   /* ======================== UI helpers ======================== */
   const primaryNavButtonClass =
-    "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-6 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition hover:shadow-2xl hover:shadow-sky-400/60 active:scale-[0.99]";
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 active:scale-[0.99]";
   const secondaryNavButtonClass =
     "inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50";
 
@@ -1312,11 +1351,13 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
       {/* STEP: Coûts */}
       {step === "couts" && (
         <section className="calculator-premium-form space-y-5">
-          <div>
-            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>)}
-            <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
-            <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
-          </div>
+          <StepHeader
+            icon={progressSteps[0].icon}
+            stepNumber={1}
+            label="Coût global du projet"
+            description="Prix, notaire, agence, travaux (+ localité & surface optionnelles)."
+            compact={compactHeader}
+          />
 
           <div className="space-y-3">
             <div className="space-y-1">
@@ -1477,11 +1518,13 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
       {/* STEP: Revenus */}
       {step === "revenus" && (
         <section className="calculator-premium-form space-y-5">
-          <div>
-            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>)}
-            <h2 className="text-lg font-semibold text-slate-900">Revenus locatifs : longue durée & saisonnière</h2>
-            <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
-          </div>
+          <StepHeader
+            icon={progressSteps[1].icon}
+            stepNumber={2}
+            label="Revenus locatifs : longue durée & saisonnière"
+            description="Configurez le nombre de lots et le mode de location."
+            compact={compactHeader}
+          />
 
           <div className="space-y-3">
             <div className="space-y-1">
@@ -1596,11 +1639,13 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
       {/* STEP: Charges */}
       {step === "charges" && (
         <section className="calculator-premium-form space-y-5">
-          <div>
-            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>)}
-            <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
-            <p className="text-xs text-slate-500">Copro, taxe foncière, assurance, gestion / conciergerie.</p>
-          </div>
+          <StepHeader
+            icon={progressSteps[2].icon}
+            stepNumber={3}
+            label="Charges récurrentes & gestion"
+            description="Copro, taxe foncière, assurance, gestion / conciergerie."
+            compact={compactHeader}
+          />
 
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
@@ -1666,11 +1711,13 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
       {/* STEP: Crédit */}
       {step === "credit" && (
         <section className="calculator-premium-form space-y-5">
-          <div>
-            {!compactHeader && (<p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>)}
-            <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
-            <p className="text-xs text-slate-500">Apport, taux, durée du crédit et assurance.</p>
-          </div>
+          <StepHeader
+            icon={progressSteps[3].icon}
+            stepNumber={4}
+            label="Paramètres du financement"
+            description="Apport, taux, durée du crédit et assurance."
+            compact={compactHeader}
+          />
 
           <div className="grid gap-3 sm:grid-cols-4 mt-2">
   <div className="space-y-1">
@@ -1815,8 +1862,12 @@ export default function InvestissementWizard({ compactHeader = false, resultPopu
                   setEmail={setLeadEmail}
                   phone={leadPhone}
                   setPhone={setLeadPhone}
-                  contactConsent={consentContact}
-                  setContactConsent={setConsentContact}
+                  {...(showContactConsent ? { contactConsent: consentContact, setContactConsent: setConsentContact } : {})}
+                  contactConsentLabel={
+                    agencyLead
+                      ? `j’accepte que mes coordonnées soient transmises par email à ${agencyLead.siteLabel || "ce site"} pour être recontacté(e) au sujet de mon projet — cette transmission relève de la responsabilité de ${agencyLead.siteLabel || "ce site"}, et non de la politique de confidentialité de lokt.fr.`
+                      : undefined
+                  }
                   unlocking={unlocking || sendingEmail}
                   unlockMsg={unlockMsg}
                   onUnlock={handleUnlock}
