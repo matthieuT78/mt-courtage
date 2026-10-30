@@ -98,7 +98,7 @@ export default function App({ Component, pageProps }: AppProps) {
               url: "https://lokt.fr",
               logo: "https://lokt.fr/lokt-logo.jpg",
               description: "Outil français de gestion locative gratuit et de simulateurs immobiliers pour propriétaires bailleurs particuliers.",
-              sameAs: [],
+              sameAs: ["https://www.trustpilot.com/review/lokt.fr"],
               contactPoint: {
                 "@type": "ContactPoint",
                 contactType: "customer support",
