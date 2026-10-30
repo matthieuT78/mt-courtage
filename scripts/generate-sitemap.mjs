@@ -69,6 +69,8 @@ const staticPagesV1 = [
   "/blog",
   "/guides",
   "/tarifs",
+  "/widget",
+  "/agences-immobilieres",
   "/aide",
   "/a-propos",
   "/cgu",

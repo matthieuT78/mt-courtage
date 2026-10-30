@@ -1,6 +1,7 @@
 // pages/agences-immobilieres.tsx
 import { useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
@@ -170,6 +171,13 @@ export default function AgencesImmobilieresPage() {
               location (états des lieux, baux, encaissement, quittances) pour le compte de vos propriétaires, avec
               reversement des loyers en option. Avant de le construire, 5 minutes pour comprendre votre organisation
               actuelle et ce qui vous manque vraiment.
+            </p>
+            <p className="mt-5 text-sm text-slate-500">
+              En attendant, un outil est déjà disponible dès aujourd'hui :{" "}
+              <Link href="/widget" className="font-semibold text-[#4f46e5] underline hover:text-[#4338ca]">
+                un simulateur immobilier gratuit à intégrer sur votre site
+              </Link>
+              , pour qualifier vos visiteurs avant même qu'ils vous contactent.
             </p>
           </div>
         </section>

@@ -248,6 +248,9 @@ export default function AProposPage() {
                 <Link href="/tarifs" className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-950 hover:border-slate-300 hover:bg-white">
                   Tarifs →
                 </Link>
+                <Link href="/widget" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-950 hover:border-amber-300 hover:bg-amber-100">
+                  Widget pour agences immobilières →
+                </Link>
               </div>
             </aside>
           </div>

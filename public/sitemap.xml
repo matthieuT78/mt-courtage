@@ -2,127 +2,139 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://lokt.fr/</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://lokt.fr/calculettes</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/acheter-ou-louer</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/capacite</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/pret-relais</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/investissement</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/investissement-locatif</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/plus-value-vente-immobiliere</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/parc-immobilier</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/gestion-locative-lmnp</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://lokt.fr/outil-gestion-locative</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://lokt.fr/comparatif-logiciel-gestion-locative</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/etats-des-lieux-documents</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/cautions-loyers</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/blog</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/guides</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/tarifs</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://lokt.fr/widget</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/agences-immobilieres</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
     <loc>https://lokt.fr/aide</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/a-propos</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://lokt.fr/cgu</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://lokt.fr/confidentialite</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -290,127 +302,127 @@
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/lyon</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/bordeaux</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/toulouse</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/marseille</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/rennes</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/nantes</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/strasbourg</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/lille</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/montpellier</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/grenoble</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/angers</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/clermont-ferrand</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/nancy</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/metz</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/nice</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/paris</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/le-mans</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/mulhouse</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/roubaix</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://lokt.fr/rendement-locatif/limoges</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -872,1807 +884,1807 @@
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/toulouse-31555</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nice-06088</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nantes-44109</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/montpellier-34172</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bordeaux-33063</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lille-59350</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rennes-35238</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-15e-arrondissement-75115</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-18e-arrondissement-75118</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/toulon-83137</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/dijon-21231</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-etienne-42218</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-17e-arrondissement-75117</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/brest-29019</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-16e-arrondissement-75116</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cannes-06029</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-11e-arrondissement-75111</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-havre-76351</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/reims-51454</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/grenoble-38185</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-mans-72181</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/angers-49007</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rouen-76540</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nimes-30189</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/tours-37261</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/perpignan-66136</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/clermont-ferrand-63113</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/aix-en-provence-13001</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/antibes-06004</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-20e-arrondissement-75120</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villeurbanne-69266</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/caen-14118</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/limoges-87085</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nancy-54395</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/agde-34003</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/besancon-25056</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/annecy-74010</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/pau-64445</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/orleans-45234</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-12e-arrondissement-75112</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/amiens-80021</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/boulogne-billancourt-92012</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-14e-arrondissement-75114</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-19e-arrondissement-75119</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-13e-arrondissement-75113</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-10e-arrondissement-75110</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/avignon-84007</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/beziers-34032</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-3e-arrondissement-69383</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-rochelle-17300</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-8e-arrondissement-13208</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/frejus-83061</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-denis-97411</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/asnieres-sur-seine-92004</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/poitiers-86194</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-7e-arrondissement-69387</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/tourcoing-59599</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-raphael-83118</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/les-sables-d-olonne-85194</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-maur-des-fosses-94068</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-9e-arrondissement-75109</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/narbonne-11262</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/merignac-33281</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/montreuil-93048</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/hyeres-83069</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-seyne-sur-mer-83126</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-nazaire-44184</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/sete-34301</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/quimper-29232</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/niort-79191</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/valence-26362</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/courbevoie-92026</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-cannet-06030</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vannes-56260</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-8e-arrondissement-69388</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/marseille-5e-arrondissement-13205</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-4e-arrondissement-13204</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/marseille-5e-arrondissement-13205</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/colombes-92025</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/dunkerque-59183</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/menton-06083</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/dunkerque-59183</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bourges-18033</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/troyes-10387</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/versailles-78646</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cagnes-sur-mer-06027</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-13e-arrondissement-13213</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-7e-arrondissement-75107</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cherbourg-en-cotentin-50129</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/neuilly-sur-seine-92051</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rueil-malmaison-92063</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-9e-arrondissement-13209</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lorient-56121</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/levallois-perret-92044</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-5e-arrondissement-75105</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-6e-arrondissement-13206</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-12e-arrondissement-13212</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-brieuc-22278</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-denis-93066</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chambery-73065</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-10e-arrondissement-13210</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/montauban-82121</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/brive-la-gaillarde-19031</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bayonne-64102</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-roche-sur-yon-85191</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-malo-35288</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/six-fours-les-plages-83129</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/argenteuil-95018</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/six-fours-les-plages-83129</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/roubaix-59512</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/laval-53130</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vincennes-94080</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-grau-du-roi-30133</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-6e-arrondissement-75106</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/calais-62193</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/grasse-06069</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/tarbes-65440</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-7e-arrondissement-13207</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/carcassonne-11069</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chalon-sur-saone-71076</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/ajaccio-2A004</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/biarritz-64122</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/mandelieu-la-napoule-06079</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-grande-motte-34344</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/mandelieu-la-napoule-06079</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/clichy-92024</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/issy-les-moulineaux-92040</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-3e-arrondissement-75103</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-herblain-44162</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/antony-92002</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/anglet-64024</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vichy-03310</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cholet-49099</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/montrouge-92049</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-8e-arrondissement-75108</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/roanne-42187</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/noisy-le-grand-93051</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-9e-arrondissement-69389</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/pessac-33318</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/royan-17306</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/belfort-90010</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/reze-44143</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-quentin-02691</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-1er-arrondissement-13201</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/valenciennes-59606</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-6e-arrondissement-69386</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-ciotat-13028</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/aix-les-bains-73008</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-ouen-sur-seine-93070</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/talence-33522</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/annemasse-74012</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/maisons-alfort-94046</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/angouleme-16015</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-11e-arrondissement-13211</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/clamart-92023</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chartres-28085</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/salon-de-provence-13103</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/evreux-27229</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/salon-de-provence-13103</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vallauris-06155</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/creteil-94028</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marcq-en-bar-ul-59378</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/montelimar-26198</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/caluire-et-cuire-69034</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://lokt.fr/prix-m2/thonon-les-bains-74281</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <loc>https://lokt.fr/prix-m2/montelimar-26198</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-barcares-66017</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/thonon-les-bains-74281</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-5e-arrondissement-69385</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/albi-81004</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-baule-escoublac-44055</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-cyprien-66171</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/champigny-sur-marne-94017</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/blois-41018</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/beauvais-60057</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/gap-05061</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/arles-13004</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chelles-77108</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-4e-arrondissement-75104</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/puteaux-92062</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/aulnay-sous-bois-93005</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bourg-en-bresse-01053</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/corbeil-essonnes-91174</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/draguignan-83050</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/agen-47001</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/martigues-13056</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-hilaire-de-riez-85226</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/cergy-95127</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-3e-arrondissement-13203</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/cergy-95127</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villefranche-sur-saone-69264</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/suresnes-92073</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/montlucon-03185</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/meaux-77284</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-germain-en-laye-78551</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/meaux-77284</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-priest-69290</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-laurent-du-var-06123</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chateauroux-36044</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/fontenay-sous-bois-94033</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/aubervilliers-93001</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/evry-courcouronnes-91228</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/compiegne-60159</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/pantin-93055</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-paul-97415</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/romans-sur-isere-26281</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/arras-62041</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/aubagne-13005</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/joue-les-tours-37122</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villenave-d-ornon-33550</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/ivry-sur-seine-94041</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/colomiers-31149</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/ivry-sur-seine-94041</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/charleville-mezieres-08105</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/meudon-92048</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nevers-58194</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vitry-sur-seine-94081</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/sartrouville-78586</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/perigueux-24322</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/lyon-4e-arrondissement-69384</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-pierre-97416</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/lyon-4e-arrondissement-69384</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/massy-91377</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/dax-40088</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villeneuve-d-ascq-59009</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-14e-arrondissement-13214</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/auxerre-89024</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rochefort-17299</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/roquebrune-cap-martin-06104</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/dieppe-76217</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/leucate-11202</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rodez-12202</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://lokt.fr/prix-m2/nanterre-92050</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <loc>https://lokt.fr/prix-m2/leucate-11202</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/sanary-sur-mer-83123</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/nanterre-92050</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-15e-arrondissement-13215</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/aurillac-15014</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/nogent-sur-marne-94052</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/mont-de-marsan-40192</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/aurillac-15014</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-perreux-sur-marne-94058</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/venissieux-69259</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/canet-en-roussillon-66037</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chalons-en-champagne-51108</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/istres-13047</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villeneuve-loubet-06161</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/franconville-95252</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/oullins-69149</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/ales-30007</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/drancy-93029</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/wattrelos-59650</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-teste-de-buch-33529</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/douai-59178</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/argeles-sur-mer-66008</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-tampon-97422</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/arcachon-33009</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-sebastien-sur-loire-44190</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/le-bouscat-33069</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/livry-gargan-93046</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/sainte-maxime-83115</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-2e-arrondissement-69382</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-madeleine-59368</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/la-garenne-colombes-92035</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/macon-71270</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/boulogne-sur-mer-62160</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lambersart-59328</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/boulogne-sur-mer-62160</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bergerac-24037</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bron-69029</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cambrai-59122</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/villejuif-94076</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saintes-17415</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/rosny-sous-bois-93064</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/conflans-sainte-honorine-78172</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chatillon-92020</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/begles-33039</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/conflans-sainte-honorine-78172</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bastia-2B033</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-jean-de-monts-85234</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/savigny-sur-orge-91589</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/houilles-78311</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/savigny-sur-orge-91589</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/choisy-le-roi-94022</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/alfortville-94002</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lyon-1er-arrondissement-69381</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/alfortville-94002</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/melun-77288</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/marseille-2e-arrondissement-13202</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/poissy-78498</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/castelnau-le-lez-34057</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/sotteville-les-rouen-76681</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bois-colombes-92009</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chamalieres-63075</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chatenay-malabry-92019</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/epinal-88160</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/hendaye-64260</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/gruissan-11170</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/paris-2e-arrondissement-75102</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vitrolles-13117</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/frontignan-34108</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/mauguio-34154</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/libourne-33243</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/prix-m2/marignane-13054</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/bourgoin-jallieu-38053</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://lokt.fr/prix-m2/marignane-13054</loc>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/castres-81065</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cavalaire-sur-mer-83036</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/cenon-33119</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/gagny-93032</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/chatou-78146</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saumur-49328</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/lunel-34145</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/armentieres-59017</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/vanves-92075</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/croix-59163</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/saint-cloud-92064</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/palaiseau-91477</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
     <loc>https://lokt.fr/prix-m2/pontault-combault-77373</loc>
-    <lastmod>2026-10-27T09:19:44.096Z</lastmod>
+    <lastmod>2026-10-30T14:51:14.045Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>

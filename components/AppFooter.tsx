@@ -76,6 +76,9 @@ export default function AppFooter() {
           <Link href="/calculettes" className="underline hover:text-slate-700">
             Calculettes
           </Link>
+          <Link href="/widget" className="underline hover:text-slate-700">
+            Widget pour agences
+          </Link>
           <Link href="/comparatif-logiciel-gestion-locative" className="underline hover:text-slate-700">
             Comparatif logiciels
           </Link>
