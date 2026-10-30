@@ -118,6 +118,54 @@ export default function PlusValueVenteImmobilierePage() {
         q: "La calculette tient-elle compte du LMNP ?",
         a: "Oui, elle permet d’ajouter les amortissements LMNP déjà déduits pour obtenir une estimation plus prudente du cash net vendeur. Le montant exact doit être vérifié avec votre liasse ou votre expert-comptable.",
       },
+      {
+        q: "Combien de temps faut-il détenir un bien pour ne payer aucun impôt sur la plus-value ?",
+        a: "Il faut distinguer les deux taxes : l'impôt sur le revenu (IR) est totalement exonéré à partir de 22 ans de détention, les prélèvements sociaux (PS) seulement à partir de 30 ans. Entre 22 et 30 ans, vous ne payez donc plus que les PS, à un taux dégressif.",
+      },
+      {
+        q: "Quel est le taux d'imposition sur une plus-value immobilière en 2026 ?",
+        a: "Le taux plein (sans abattement, détention ≤ 5 ans) est de 19 % au titre de l'impôt sur le revenu + 17,2 % de prélèvements sociaux, soit 36,2 % du gain taxable. Une surtaxe additionnelle de 2 à 6 % peut s'ajouter si le gain taxable dépasse 50 000 €.",
+      },
+      {
+        q: "Comment fonctionne l'abattement pour durée de détention, année par année ?",
+        a: "Pour l'IR : 0 % jusqu'à la 5e année incluse, puis 6 % par an de la 6e à la 21e année, soit une exonération totale à 22 ans. Pour les prélèvements sociaux : 0 % jusqu'à 5 ans, 1,65 %/an de la 6e à la 21e année, +1,6 % la 22e année, puis 9 %/an de la 23e à la 30e année, pour une exonération totale à 30 ans.",
+      },
+      {
+        q: "Qu'est-ce que la surtaxe sur les plus-values immobilières élevées ?",
+        a: "Une taxe additionnelle s'applique sur la part du gain taxable (après abattement IR) qui dépasse 50 000 €, selon un barème progressif de 2 % à 6 % par tranche. Elle ne concerne donc que les plus-values déjà conséquentes après abattement — la calculette l'estime automatiquement si vous activez cette option.",
+      },
+      {
+        q: "Qu'est-ce que le forfait de travaux de 15 % et quand peut-on l'utiliser ?",
+        a: "Si vous détenez le bien depuis plus de 5 ans, vous pouvez majorer forfaitairement le prix d'acquisition de 15 % au titre des travaux, sans avoir à produire la moindre facture — même si vous n'avez rien fait faire. C'est souvent plus avantageux que le réel pour des travaux modestes, et ça évite de devoir ressortir d'anciennes factures.",
+      },
+      {
+        q: "Faut-il garder les factures de travaux pour les déduire ?",
+        a: "Oui, si vous optez pour le réel plutôt que le forfait de 15 % — par exemple si les travaux ont coûté bien plus que 15 % du prix d'achat. Seuls les travaux de construction, reconstruction, agrandissement ou amélioration réalisés par des professionnels sont éligibles (pas l'entretien courant, ni les travaux que vous avez faits vous-même).",
+      },
+      {
+        q: "Qu'est-ce que le forfait de frais d'acquisition de 7,5 % ?",
+        a: "À défaut de connaître le détail des frais de notaire réellement payés à l'achat, vous pouvez les estimer forfaitairement à 7,5 % du prix d'acquisition pour les ajouter au coût d'achat et réduire la plus-value imposable. Si vos frais réels étaient plus élevés (justificatifs à l'appui), le réel peut être plus avantageux.",
+      },
+      {
+        q: "Qu'est-ce que l'IRA et comment est-il plafonné ?",
+        a: "L'indemnité de remboursement anticipé (IRA) est la pénalité que la banque peut appliquer quand vous soldez un crédit avant son terme. Elle est plafonnée par la loi au plus petit des deux montants : 3 % du capital restant dû, ou l'équivalent de 6 mois d'intérêts sur ce capital au taux du prêt. La calculette applique ce plafond légal par défaut.",
+      },
+      {
+        q: "Résidence secondaire : comment est-elle imposée à la revente ?",
+        a: "Une résidence secondaire est imposée comme un investissement locatif classique : IR + prélèvements sociaux selon la durée de détention, avec les mêmes abattements. Elle ne bénéficie pas de l'exonération totale de la résidence principale, sauf cas particulier (première cession d'une résidence secondaire par un propriétaire qui ne détient pas sa résidence principale, sous conditions strictes de remploi).",
+      },
+      {
+        q: "Le capital restant dû (CRD) réduit-il la plus-value imposable ?",
+        a: "Non, c'est une confusion fréquente. Le CRD n'intervient pas dans le calcul fiscal de la plus-value (qui compare uniquement prix de vente et prix d'achat) — il réduit seulement le cash net que vous récupérez après la vente, une fois le prêt soldé. Deux vendeurs avec le même gain mais des CRD différents paient le même impôt, mais repartent avec des montants différents.",
+      },
+      {
+        q: "Le prix net vendeur inclut-il les frais d'agence ?",
+        a: "Ça dépend de qui les paie selon le mandat : si les frais d'agence sont \"à la charge acquéreur\", le prix net vendeur correspond au prix affiché. S'ils sont \"à la charge vendeur\", ils viennent en déduction. Vérifiez le mandat de vente ou le compromis — c'est une source d'erreur fréquente dans les simulations de cash net.",
+      },
+      {
+        q: "Un bien détenu en indivision ou en SCI est-il imposé différemment ?",
+        a: "En indivision, chaque indivisaire est imposé séparément sur sa quote-part de plus-value, avec ses propres abattements. En SCI à l'IR (la forme la plus courante), le régime est transparent : c'est comme si chaque associé vendait sa part directement, mêmes règles qu'en nom propre. Une SCI à l'IS suit en revanche le régime des plus-values professionnelles, nettement moins favorable (pas d'abattement pour durée de détention) — un point à vérifier avant de vendre.",
+      },
     ],
     []
   );
@@ -179,7 +227,53 @@ export default function PlusValueVenteImmobilierePage() {
       })),
     };
 
-    return [webPage, softwareApp, breadcrumb, faqPage];
+    const howTo = {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: "Comment calculer sa plus-value immobilière et son cash net vendeur",
+      description: "Étapes pour estimer la plus-value imposable, l'impôt dû et le montant réellement récupéré après une vente immobilière.",
+      inLanguage: "fr-FR",
+      step: [
+        {
+          "@type": "HowToStep",
+          position: 1,
+          name: "Renseigner le prix de vente et le prix d'achat",
+          text: "Indiquez le prix de vente signé (ou envisagé) et le prix d'acquisition initial du bien, point de départ du calcul de la plus-value brute.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 2,
+          name: "Ajouter les frais d'acquisition et les travaux",
+          text: "Majorez le prix d'achat des frais de notaire (réel ou forfait 7,5 %) et des travaux éligibles (réel ou forfait 15 % si détention de plus de 5 ans) pour obtenir le coût d'acquisition total.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 3,
+          name: "Appliquer les abattements pour durée de détention",
+          text: "La calculette applique automatiquement le barème officiel : abattement IR progressif jusqu'à l'exonération totale à 22 ans, abattement PS jusqu'à l'exonération totale à 30 ans.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 4,
+          name: "Calculer l'impôt dû",
+          text: "19 % d'impôt sur le revenu + 17,2 % de prélèvements sociaux sur le gain taxable après abattement, plus une surtaxe de 2 à 6 % si le gain taxable dépasse 50 000 €.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 5,
+          name: "Renseigner le capital restant dû",
+          text: "Indiquez le CRD de votre crédit en cours et une éventuelle indemnité de remboursement anticipé (IRA) pour passer de la plus-value théorique au cash réellement récupéré.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 6,
+          name: "Lire le cash net vendeur",
+          text: "Le résultat final (prix net vendeur − CRD − frais − impôt) indique le montant disponible pour financer votre projet suivant.",
+        },
+      ],
+    };
+
+    return [webPage, softwareApp, breadcrumb, faqPage, howTo];
   }, [description, faqData, ogImage, pageUrl, siteUrl, title]);
 
   return (
@@ -304,6 +398,101 @@ export default function PlusValueVenteImmobilierePage() {
             <p className="text-xs text-slate-500">
               Note : calculs indicatifs. Les règles fiscales et les conditions bancaires varient selon votre situation.
             </p>
+          </section>
+
+          {/* ── Barème des abattements pour durée de détention ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Barème des abattements pour durée de détention</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              L'impôt sur le revenu (IR) et les prélèvements sociaux (PS) suivent deux calendriers d'abattement différents
+              — c'est l'une des sources d'erreur les plus fréquentes dans les estimations faites à la main.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Durée de détention</th>
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Abattement IR (19 %)</th>
+                    <th className="pb-2 font-semibold text-slate-700">Abattement PS (17,2 %)</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600">
+                  {[
+                    ["0 à 5 ans", "0 %", "0 %"],
+                    ["10 ans", "30 %", "8,25 %"],
+                    ["15 ans", "60 %", "16,5 %"],
+                    ["20 ans", "90 %", "24,75 %"],
+                    ["22 ans", "100 % (exonération totale)", "28 %"],
+                    ["25 ans", "100 %", "55 %"],
+                    ["30 ans et +", "100 %", "100 % (exonération totale)"],
+                  ].map(([duree, ir, ps]) => (
+                    <tr key={duree} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 font-medium text-slate-800">{duree}</td>
+                      <td className="py-2 pr-4 font-semibold text-indigo-700">{ir}</td>
+                      <td className="py-2 text-slate-600">{ps}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500">
+              Barème officiel 2026. L'exonération IR arrive 8 ans avant l'exonération PS — entre 22 et 30 ans de détention,
+              seuls les prélèvements sociaux restent dus, à un taux résiduel dégressif.
+            </p>
+          </section>
+
+          {/* ── Erreurs classiques ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Les erreurs les plus fréquentes à éviter</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-800 mb-2">Pièges courants</p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {[
+                    "Confondre plus-value imposable et cash net : le CRD réduit ce que vous touchez, pas l'impôt dû.",
+                    "Appliquer le même abattement à l'IR et aux PS — les deux calendriers sont différents.",
+                    "Oublier le forfait de 7,5 % (frais d'acquisition) ou 15 % (travaux) quand les justificatifs réels manquent.",
+                    "Négliger le plafond légal de l'IRA en cas de remboursement anticipé du crédit.",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 text-amber-500 shrink-0">⚠</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 mb-2">Bons réflexes</p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {[
+                    "Vérifier si le bien est votre résidence principale : l'exonération totale change tout le calcul.",
+                    "Rassembler les factures de travaux avant de choisir entre le réel et le forfait de 15 %.",
+                    "Demander le décompte de CRD à jour auprès de la banque, pas une estimation approximative.",
+                    "Comparer plusieurs dates de vente si vous approchez d'un seuil d'abattement (22 ou 30 ans).",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 text-indigo-500 shrink-0">→</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+              {[
+                { href: "/investissement", label: "Simuler la rentabilité locative" },
+                { href: "/pret-relais", label: "Simuler un prêt relais" },
+                { href: "/capacite", label: "Calculer ma capacité d'emprunt" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="inline-flex min-h-10 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:border-indigo-200 hover:bg-indigo-50"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </section>
         </div>
       </main>
