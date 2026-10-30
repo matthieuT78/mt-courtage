@@ -44,12 +44,12 @@ jobs:
             export SUBJECT="✅ lokt.fr — refresh ADEME DPE OK"
             export BODY_TEXT="Le refresh automatique ADEME (part de logements F/G par commune) s'est terminé avec succès.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           else
             export SUBJECT="🚨 lokt.fr — le refresh ADEME DPE a échoué"
             export BODY_TEXT="Le refresh automatique ADEME (passoires thermiques par commune) a échoué.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           fi
           curl -s -o /dev/null -w "Resend: %{http_code}\n" -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer $RESEND_API_KEY" \

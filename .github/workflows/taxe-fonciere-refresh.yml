@@ -42,12 +42,12 @@ jobs:
             export SUBJECT="✅ lokt.fr — refresh taxe foncière OK"
             export BODY_TEXT="Le refresh automatique du taux de taxe foncière par commune (DGFiP) s'est terminé avec succès.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           else
             export SUBJECT="🚨 lokt.fr — le refresh taxe foncière a échoué"
             export BODY_TEXT="Le refresh automatique du taux de taxe foncière par commune a échoué.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           fi
           curl -s -o /dev/null -w "Resend: %{http_code}\n" -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer $RESEND_API_KEY" \

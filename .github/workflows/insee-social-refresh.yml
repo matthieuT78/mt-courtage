@@ -44,12 +44,12 @@ jobs:
             export SUBJECT="✅ lokt.fr — refresh INSEE (revenus/population) OK"
             export BODY_TEXT="Le refresh automatique INSEE (revenu médian, population, vacance/résidences secondaires) s'est terminé avec succès.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           else
             export SUBJECT="🚨 lokt.fr — le refresh INSEE a échoué"
             export BODY_TEXT="Le refresh automatique INSEE (revenu médian, population, vacance) a échoué.
 
-Logs : ${RUN_URL}"
+            Logs : ${RUN_URL}"
           fi
           curl -s -o /dev/null -w "Resend: %{http_code}\n" -X POST "https://api.resend.com/emails" \
             -H "Authorization: Bearer $RESEND_API_KEY" \
