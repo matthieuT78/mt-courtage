@@ -57,7 +57,12 @@ function daysBetween(a: Date, b: Date) {
 }
 
 function addMonths(date: Date, months: number) {
-  return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
+  const year = date.getFullYear();
+  const month0 = date.getMonth() + months;
+  // Clamp au dernier jour réel du mois cible (ex: 31 janvier + 1 mois ne doit
+  // pas rouler vers le 3 mars) — clampDay est une function declaration donc
+  // hissée (hoisted), utilisable ici bien que définie plus bas dans le fichier.
+  return new Date(year, month0, clampDay(year, month0, date.getDate()));
 }
 
 function parseISODate(v?: string | null) {

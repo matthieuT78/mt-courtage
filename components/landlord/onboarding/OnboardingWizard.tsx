@@ -137,8 +137,12 @@ function toNumOrNull(v: string): number | null {
 function defaultEndDate(startDate?: string): string {
   const base = startDate ? new Date(startDate) : new Date();
   if (Number.isNaN(base.getTime())) return "";
-  const end = new Date(base);
-  end.setFullYear(end.getFullYear() + 1);
+  // Clampé au dernier jour réel du mois cible : un bail démarré un 29 février
+  // ne doit pas suggérer une fin au 1er mars les années non bissextiles.
+  const year = base.getFullYear() + 1;
+  const month = base.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const end = new Date(year, month, Math.min(base.getDate(), lastDay));
   return end.toISOString().slice(0, 10);
 }
 

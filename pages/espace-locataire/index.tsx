@@ -214,7 +214,11 @@ export default function EspaceLocatairePage() {
     const items: Array<{ tone: "red" | "amber" | "emerald" | "slate"; icon: React.ReactNode; title: string; desc: string }> = [];
 
     const paymentDay = Number(activeLease.payment_day || 1);
-    const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), Math.min(paymentDay, 28));
+    // Clamp au dernier jour RÉEL du mois (pas un "28" fixe) : un jour de
+    // paiement au 31 ne doit pas être traité comme en retard dès le 29 dans
+    // un mois qui a 29, 30 ou 31 jours (bug réel du 2026-11, cf. audit).
+    const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), Math.min(paymentDay, lastDayThisMonth));
     const duePassed = today.getTime() >= dueThisMonth.getTime();
 
     const currentPayment = (data.payments || []).find(

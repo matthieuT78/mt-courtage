@@ -38,7 +38,12 @@ export function isInTransition(lease: Lease, allLeases: Lease[], propertyById: M
   } else {
     endDate = new Date(lease.end_date + "T00:00:00");
   }
-  const sixMonthsAhead = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate());
+  // Clampé au dernier jour réel du mois cible : exécuté un 31 (ou un 29/30
+  // qui n'existe pas 6 mois plus tard), la fenêtre ne doit pas déborder de
+  // quelques jours au-delà de 6 mois calendaires.
+  const sixMonthsAheadMonth0 = now.getMonth() + 6;
+  const sixMonthsAheadLastDay = new Date(now.getFullYear(), sixMonthsAheadMonth0 + 1, 0).getDate();
+  const sixMonthsAhead = new Date(now.getFullYear(), sixMonthsAheadMonth0, Math.min(now.getDate(), sixMonthsAheadLastDay));
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
 
   if (endDate < ninetyDaysAgo || endDate > sixMonthsAhead) return false;

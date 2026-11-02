@@ -268,12 +268,20 @@ export function SectionDashboard({
       const tenantName    = tenant?.full_name    || (l as any).tenant_name    || "Locataire";
       const propertyLabel = leasePropertyLabel(l);
 
-      // Prochain anniversaire du bail (révision IRL)
+      // Prochain anniversaire du bail (révision IRL) — clampé au dernier jour
+      // réel du mois cible : un bail démarré un 29 février ne doit pas rouler
+      // au 1er mars les années non bissextiles (même pattern que
+      // nextLeaseAnniversary dans pages/api/cron/landlord-alerts.ts).
       if (l.start_date && Number(l.rent_amount || 0) > 0) {
         const start = new Date(l.start_date + "T00:00:00");
-        const ann = new Date(start);
-        ann.setFullYear(now.getFullYear());
-        if (ann.getTime() <= now.getTime()) ann.setFullYear(now.getFullYear() + 1);
+        const annMonth = start.getMonth();
+        const annDay = start.getDate();
+        const anniversaryForYear = (year: number) => {
+          const lastDay = new Date(year, annMonth + 1, 0).getDate();
+          return new Date(year, annMonth, Math.min(annDay, lastDay));
+        };
+        let ann = anniversaryForYear(now.getFullYear());
+        if (ann.getTime() <= now.getTime()) ann = anniversaryForYear(now.getFullYear() + 1);
         const days = Math.ceil((ann.getTime() - now.getTime()) / 86400000);
         if (days <= 60) {
           events.push({ type: "anniversary", leaseId: l.id, tenantName, propertyLabel, days, urgency: days <= 14 ? "high" : days <= 30 ? "medium" : "low" });
