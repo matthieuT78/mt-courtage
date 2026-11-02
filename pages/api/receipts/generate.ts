@@ -16,6 +16,14 @@ function safeStr(v: any) {
   return String(v ?? "").trim();
 }
 
+// Borne haute exclusive (1er jour du mois suivant) plutôt qu'un "-31" fixe :
+// invalide pour les mois à 28/29/30 jours (ex. "2026-11-31" fait échouer la
+// comparaison de date côté Postgres — bug réel rencontré le 2026-11-02).
+function nextMonthStart(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+
 function euro(n: any) {
   const x = Number(n || 0);
   try {
@@ -549,7 +557,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .eq("lease_id", leaseId)
       .eq("period_start", periodStart)
       .gte("period_end", `${yyyymm}-01`)
-      .lte("period_end", `${yyyymm}-31`)
+      .lt("period_end", nextMonthStart(yyyymm))
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

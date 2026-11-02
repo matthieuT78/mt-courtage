@@ -29,6 +29,14 @@ const todayISO = () => {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
+// Borne haute exclusive (1er jour du mois suivant) plutôt qu'un "-31" fixe :
+// invalide pour les mois à 28/29/30 jours (ex. "2026-11-31" fait échouer la
+// comparaison de date côté Postgres — bug réel rencontré le 2026-11-02).
+function nextMonthStart(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+
 function safeStr(v: unknown) {
   return String(v ?? "").trim();
 }
@@ -350,7 +358,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     .eq("lease_id", leaseId)
     .eq("period_start", normalizedPeriodStart)
     .gte("period_end", `${yyyymmR}-01`)
-    .lte("period_end", `${yyyymmR}-31`)
+    .lt("period_end", nextMonthStart(yyyymmR))
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

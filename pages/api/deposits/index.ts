@@ -5,6 +5,14 @@ import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 const safeStr = (v: any) => String(v ?? "").trim();
 const safeNum = (v: any) => { const n = parseFloat(String(v ?? "")); return Number.isFinite(n) ? n : null; };
 
+// Borne haute exclusive (1er jour du mois suivant) plutôt qu'un "-31" fixe :
+// invalide pour les mois à 28/29/30 jours (ex. "2026-11-31" fait échouer la
+// comparaison de date côté Postgres — bug réel rencontré le 2026-11-02).
+function nextMonthStart(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -158,7 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .select("id")
           .eq("lease_id", leaseId)
           .gte("period_start", `${yyyymm}-01`)
-          .lte("period_start", `${yyyymm}-31`);
+          .lt("period_start", nextMonthStart(yyyymm));
 
         if (existingAll && existingAll.length > 0) {
           await supabaseAdmin
@@ -166,7 +174,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .update({ status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() })
             .eq("lease_id", leaseId)
             .gte("period_start", `${yyyymm}-01`)
-            .lte("period_start", `${yyyymm}-31`);
+            .lt("period_start", nextMonthStart(yyyymm));
         } else {
           await supabaseAdmin.from("rent_receipts").insert({
             lease_id: leaseId,
@@ -261,7 +269,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .select("id")
           .eq("lease_id", leaseId)
           .gte("period_start", `${yyyymm}-01`)
-          .lte("period_start", `${yyyymm}-31`);
+          .lt("period_start", nextMonthStart(yyyymm));
         if (findErr) return res.status(500).json({ error: `Recherche quittance échouée : ${findErr.message}` });
 
         if (existingAll && existingAll.length > 0) {
