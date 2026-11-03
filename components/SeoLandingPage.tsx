@@ -99,17 +99,6 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
     },
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      name: "lokt.fr",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      url: `${siteUrl}/outil-gestion-locative`,
-      description: "Espace bailleur pour suivre baux, loyers, quittances, documents, alertes et dossiers locatifs.",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
-      provider: organization,
-    },
-    {
-      "@context": "https://schema.org",
       "@type": "HowTo",
       name: page.h1,
       description: page.description,

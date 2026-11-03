@@ -39,6 +39,10 @@ const faq = [
   },
 ];
 
+// Organisation minimale réutilisée pour author/publisher ci-dessous — pas de
+// bloc Organization top-level ici, _app.tsx en injecte déjà un sitewide.
+const organization = { "@type": "Organization" as const, name: "lokt.fr", url: siteUrl };
+
 const schemas = [
   {
     "@context": "https://schema.org",
@@ -48,6 +52,24 @@ const schemas = [
     url: pageUrl,
     inLanguage: "fr-FR",
     dateModified: "2026-06-26",
+  },
+  {
+    // Page de contenu (guide), pas un outil : Article plutôt que
+    // SoftwareApplication — cf. audit SEO/GEO du 2026-11-03, qui avait
+    // justement repéré un abus de SoftwareApplication sur des pages qui
+    // n'en sont pas sur ce même site.
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: metaTitle,
+    name: metaTitle,
+    description: metaDesc,
+    url: pageUrl,
+    inLanguage: "fr-FR",
+    datePublished: "2026-06-26",
+    dateModified: "2026-06-26",
+    author: organization,
+    publisher: organization,
+    mainEntityOfPage: pageUrl,
   },
   {
     "@context": "https://schema.org",

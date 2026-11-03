@@ -142,13 +142,9 @@ const jsonLdItems = [
       priceCurrency: "EUR",
       description: "Gestion gratuite pour un logement actif.",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: TRUSTPILOT_RATING,
-      reviewCount: TRUSTPILOT_REVIEW_COUNT,
-      bestRating: 5,
-      worstRating: 1,
-    },
+    // Pas d'aggregateRating ici : gardé uniquement sur /outil-gestion-locative
+    // (page produit canonique) pour éviter 3 SoftwareApplication distinctes
+    // revendiquant chacune la même note Trustpilot (cf. audit SEO/GEO).
     featureList: [
       "Gestion locative LMNP",
       "Inventaire location meublée",

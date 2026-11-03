@@ -62,6 +62,7 @@ export default function GuideArticlePage({ guide }: Props) {
   const category = GUIDE_CATEGORIES.find((row) => row.key === guide.category);
   const pageUrl = `https://lokt.fr/guides/${guide.slug}`;
   const metaTitle = `${guide.title} | lokt.fr`;
+  const ogImage = "https://lokt.fr/lokt-logo.jpg";
   const related = GUIDES.filter((row) => row.category === guide.category && row.slug !== guide.slug).slice(0, 3);
   const blogLinks = GUIDE_BLOG_LINKS[guide.slug] ?? [];
 
@@ -72,6 +73,19 @@ export default function GuideArticlePage({ guide }: Props) {
         <meta name="description" content={guide.description} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
+        <meta property="og:type" content="article" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:title" content={guide.title} />
+        <meta property="og:description" content={guide.description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — guides bailleurs" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={guide.title} />
+        <meta name="twitter:description" content={guide.description} />
+        <meta name="twitter:image" content={ogImage} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

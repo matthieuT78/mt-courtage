@@ -40,6 +40,7 @@ export default function AProposPage() {
       logo: ogImage,
       description:
         "lokt.fr aide les bailleurs particuliers à simuler leur investissement locatif, décider avec des données claires et gérer leurs locations — quittances, baux, candidatures et suivi des loyers — depuis un seul outil en ligne.",
+      sameAs: [TRUSTPILOT_URL],
       areaServed: "FR",
       knowsAbout: [
         "gestion locative",

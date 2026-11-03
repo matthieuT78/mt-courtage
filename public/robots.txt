@@ -9,4 +9,56 @@ Disallow: /mon-compte
 Disallow: /projets
 Disallow: /test-quittance
 
+# Moteurs de réponse IA : autorisés explicitement (visibilité GEO —
+# citations dans ChatGPT, Perplexity, Google AI Overviews). Mêmes
+# routes privées exclues que pour le reste.
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /auth
+Disallow: /espace-bailleur
+Disallow: /espace-locataire
+Disallow: /mon-compte
+Disallow: /projets
+Disallow: /test-quittance
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /auth
+Disallow: /espace-bailleur
+Disallow: /espace-locataire
+Disallow: /mon-compte
+Disallow: /projets
+Disallow: /test-quittance
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /auth
+Disallow: /espace-bailleur
+Disallow: /espace-locataire
+Disallow: /mon-compte
+Disallow: /projets
+Disallow: /test-quittance
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /auth
+Disallow: /espace-bailleur
+Disallow: /espace-locataire
+Disallow: /mon-compte
+Disallow: /projets
+Disallow: /test-quittance
+
+# Common Crawl : alimente des corpus d'entraînement tiers génériques
+# sans bénéfice de visibilité traçable pour lokt.fr — bloqué.
+User-agent: CCBot
+Disallow: /
+
 Sitemap: https://lokt.fr/sitemap.xml

@@ -44,10 +44,13 @@ Bailleurs particuliers gérant 1 à 3 logements en France, investisseurs locatif
 - /investissement : calculette rentabilité locative (rendement brut/net/net-net, cash-flow)
 - /plus-value-vente-immobiliere : simulateur plus-value immobilière avec abattements
 - /pret-relais : simulateur prêt relais immobilier
+- /acheter-ou-louer : simulateur comparatif acheter ou louer selon revenus, loyer actuel et prix du marché
 - /prix-m2 : prix médian au m² par ville, département et région (29 000+ communes, historique 2021-2025, données DVF/DGFiP officielles)
 - /rendement-locatif : rendement locatif estimé, prix d'achat et loyers médians par ville
 - /outil-gestion-locative : présentation et fonctionnalités détaillées de l'outil de gestion locative
 - /gestion-locative-lmnp : gestion locative meublée (LMNP)
+- /widget : simulateurs lokt.fr intégrables gratuitement sur le site d'une agence immobilière
+- /tarifs : offres et tarifs de l'outil de gestion locative (plan gratuit et abonnements payants)
 - /loky-assistant-ia : Loky, l'assistant IA du cockpit bailleur (crée un bail, confirme un paiement, relance un locataire en langage naturel)
 - /guides : 16 guides pratiques bailleur (DPE, bail, choix du locataire, quittances, IRL, dépôt de garantie...)
 - /blog : articles immobilier (investissement, crédit, fiscalité, gestion)
