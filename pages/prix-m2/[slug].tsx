@@ -960,7 +960,18 @@ export default function PrixM2City({
 }
 
 export async function getStaticPaths() {
-  const slugs = await getTopCitySlugs(300);
+  // 3000 plutôt que 300 (~3x le trafic réel observé via GSC, ~919 pages
+  // avec impressions sur 90j début nov. 2026) : les pages pré-générées au
+  // build ne consomment pas le quota ISR Writes (déjà dans le déploiement),
+  // contrairement à la génération à la première visite (fallback:
+  // "blocking") qui, elle, écrit dans le cache ISR à chaque fois. Réduit
+  // la vague d'écritures après chaque déploiement sur les pages les plus
+  // visitées. Testé : +20s de build pour 10x plus de pages (55s -> 75s),
+  // +~100 Mo de sortie, aucune erreur de connexion Supabase (cf. incident
+  // du 2026-11-05). Vercel plafonne à 15k pages pré-générées au build —
+  // large marge ici. Au-delà de ce lot, le reste des ~29k communes se
+  // génère toujours à la volée comme avant.
+  const slugs = await getTopCitySlugs(3000);
   return {
     paths: slugs.map((slug) => ({ params: { slug } })),
     fallback: "blocking",
@@ -1002,5 +1013,12 @@ export async function getStaticProps({ params }: { params: { slug: string } }) {
     .sort((a, b) => Math.abs(a.priceM2! - city.priceM2!) - Math.abs(b.priceM2! - city.priceM2!))
     .slice(0, 8);
 
-  return { props: { city, externalKpis, nearbyCommunes }, revalidate: 60 * 60 * 24 * 7 };
+  // 30 jours plutôt que 7 : les données DVF sous-jacentes ne sont
+  // rafraîchies que 2x/an (.github/workflows/dvf-refresh.yml, 20 avril et
+  // 20 octobre) — un revalidate hebdomadaire ne gagnait rien en fraîcheur
+  // réelle, mais synchronisait la régénération de tout un lot de pages
+  // générées la même semaine, créant des pics d'écritures ISR périodiques
+  // (cf. incident du 2026-11-05 : pics toutes les ~7-8 jours sur le
+  // dashboard Vercel, alignés sur ce revalidate).
+  return { props: { city, externalKpis, nearbyCommunes }, revalidate: 60 * 60 * 24 * 30 };
 }
