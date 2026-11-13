@@ -8,6 +8,7 @@ import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { PAID_BILLING_PLANS } from "../../lib/billingPlans";
 import { usePermissions } from "../../components/PermissionProvider";
+import { planAllowsPerformance } from "../../lib/permissions";
 
 type SubDetails = {
   ends_at: string | null;
@@ -294,7 +295,9 @@ export default function MonCompteAbonnementPage() {
 
             {!isFreePlan && !permissionsLoading ? (
               <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                Votre abonnement est actif. Vous pouvez gérer plusieurs logements et accéder aux fonctionnalités premium, dont l’aide à la déclaration.
+                {planAllowsPerformance(plan)
+                  ? "Votre abonnement est actif. Vous pouvez gérer plusieurs logements et accéder aux fonctionnalités premium, dont l’aide à la déclaration."
+                  : "Votre abonnement est actif. Vous pouvez gérer plusieurs logements et automatiser la gestion locative. L’aide à la déclaration fiscale est réservée à l’offre lokt·plus."}
               </div>
             ) : null}
 
