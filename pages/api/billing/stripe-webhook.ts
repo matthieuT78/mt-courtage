@@ -65,7 +65,14 @@ async function saveSubscription(params: {
       cancel_at_period_end: params.cancelAtPeriodEnd ?? false,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "stripe_subscription_id", ignoreDuplicates: false }
+    // onConflict doit cibler la vraie clé primaire de la table (user_id —
+    // une seule ligne par utilisateur), pas stripe_subscription_id : sinon
+    // un utilisateur ayant déjà une ligne (plan gratuit, octroi manuel...)
+    // fait planter l'upsert sur subscriptions_pkey dès qu'un nouvel
+    // événement Stripe arrive pour lui (incident du 2026-11-13, cf. issue
+    // #2 — même cause racine que la contrainte manquante sur
+    // stripe_subscription_id, corrigée par ailleurs).
+    { onConflict: "user_id", ignoreDuplicates: false }
   );
 
   if (error) throw error;
