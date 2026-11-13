@@ -1,6 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getStripePriceId, type BillingInterval } from "../../../lib/billingPlans";
 import { requireApiUser } from "../../../lib/apiAuth";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+
+async function stripeGet(path: string, secretKey: string) {
+  const resp = await fetch(`https://api.stripe.com/v1/${path.replace(/^\//, "")}`, {
+    headers: { Authorization: `Bearer ${secretKey}` },
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data?.error?.message || `Erreur Stripe ${resp.status}`);
+  return data;
+}
 
 function getBaseUrl(req: NextApiRequest) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
@@ -28,6 +38,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!price?.plan) return res.status(400).json({ error: "Offre inconnue." });
 
   if (!price.priceId) return res.status(500).json({ error: `${price.envKey} manquant.` });
+
+  // Changement de plan avec un abonnement Stripe déjà actif : on modifie CET
+  // abonnement (avec proration) plutôt que de créer un second Checkout Session
+  // indépendant — sinon le client paie les deux plans en plein tarif sans
+  // aucune déduction (incident réel du 2026-11-13, cf. issue #2).
+  if (supabaseAdmin) {
+    const { data: existing } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan, status, stripe_subscription_id")
+      .eq("user_id", auth.userId)
+      .eq("status", "active")
+      .not("stripe_subscription_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.stripe_subscription_id) {
+      if (existing.plan === price.plan.id) {
+        return res.status(400).json({ error: "Vous êtes déjà sur cette offre." });
+      }
+
+      try {
+        const subscription = await stripeGet(`/subscriptions/${existing.stripe_subscription_id}`, secretKey);
+        const itemId = subscription?.items?.data?.[0]?.id;
+        if (!itemId) return res.status(500).json({ error: "Ligne d'abonnement Stripe introuvable." });
+
+        const updateParams = new URLSearchParams();
+        updateParams.set("items[0][id]", itemId);
+        updateParams.set("items[0][price]", price.priceId);
+        updateParams.set("proration_behavior", "always_invoice");
+        updateParams.set("metadata[user_id]", auth.userId);
+        updateParams.set("metadata[plan]", price.plan.id);
+        updateParams.set("metadata[billing]", price.billing);
+
+        const updateRes = await fetch(`https://api.stripe.com/v1/subscriptions/${existing.stripe_subscription_id}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: updateParams.toString(),
+        });
+        const updated = await updateRes.json();
+        if (!updateRes.ok) {
+          return res.status(updateRes.status).json({ error: updated?.error?.message || "Mise à jour de l'abonnement impossible." });
+        }
+
+        return res.status(200).json({ updated: true });
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || "Mise à jour de l'abonnement impossible." });
+      }
+    }
+  }
 
   const baseUrl = getBaseUrl(req);
   const params = new URLSearchParams();

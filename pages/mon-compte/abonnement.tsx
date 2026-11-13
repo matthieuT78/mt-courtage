@@ -147,6 +147,16 @@ export default function MonCompteAbonnementPage() {
       });
       const payload = await resp.json();
       if (!resp.ok) throw new Error(payload?.error || "Impossible de démarrer le paiement.");
+
+      // Changement de plan sur un abonnement déjà actif : l'API modifie
+      // directement l'abonnement Stripe existant (avec proration) plutôt que
+      // de créer un nouveau Checkout Session — pas de redirection, on
+      // recharge simplement la page pour refléter le nouveau plan.
+      if (payload?.updated) {
+        window.location.href = "/espace-bailleur?checkout=success";
+        return;
+      }
+
       if (!payload?.url) throw new Error("URL de paiement Stripe manquante.");
 
       window.location.href = payload.url;
