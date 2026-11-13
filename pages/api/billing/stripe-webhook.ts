@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getPlanFromStripePrice } from "../../../lib/billingPlans";
+import { getPlanFromStripePrice, getBillingPlan } from "../../../lib/billingPlans";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { sendEmailViaResend } from "../../../lib/mailer/resend";
 
 export const config = {
   api: {
@@ -149,13 +150,22 @@ function tsToIso(value: any) {
   return n > 0 ? new Date(n * 1000).toISOString() : null;
 }
 
-async function saveInvoice(invoice: any) {
+async function saveInvoice(invoice: any): Promise<{ userId: string; priceId: string | null; justPaid: boolean }> {
   if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
   const invoiceId = typeof invoice?.id === "string" ? invoice.id : "";
   if (!invoiceId) throw new Error("stripe_invoice_id manquant.");
 
   const userId = await findUserIdForInvoice(invoice);
   if (!userId) throw new Error(`Utilisateur introuvable pour la facture ${invoiceId}.`);
+
+  // "justPaid" = cette facture n'avait pas encore de paid_at avant CET
+  // upsert, et en obtient un maintenant — capture le vrai instant où le
+  // paiement réussit, pas juste "ligne jamais vue" (invoice.finalized crée
+  // déjà la ligne AVANT le paiement). invoice.paid et invoice.payment_succeeded
+  // arrivent tous les deux pour un même paiement : ce guard évite d'envoyer
+  // la confirmation deux fois pour la même facture.
+  const { data: existingRow } = await supabaseAdmin.from("billing_invoices").select("paid_at").eq("stripe_invoice_id", invoiceId).maybeSingle();
+  const justPaid = !existingRow?.paid_at && !!invoice?.status_transitions?.paid_at;
 
   const subscriptionId = typeof invoice?.subscription === "string" ? invoice.subscription : invoice?.subscription?.id || null;
   const customerId = typeof invoice?.customer === "string" ? invoice.customer : invoice?.customer?.id || null;
@@ -189,6 +199,54 @@ async function saveInvoice(invoice: any) {
   );
 
   if (error) throw error;
+
+  return { userId, priceId, justPaid };
+}
+
+// Reçu transactionnel simple ("paiement réussi, plan activé") — PAS un
+// email de bienvenue marketing. Demandé suite à l'incident du 2026-11-13
+// (issue #2) : aucune confirmation n'était envoyée après un paiement réussi.
+async function sendPaymentConfirmationEmail(params: { userId: string; priceId: string | null; invoice: any }) {
+  if (!supabaseAdmin) return;
+  const { userId, priceId, invoice } = params;
+
+  const amountPaid = typeof invoice?.amount_paid === "number" ? invoice.amount_paid : 0;
+  if (amountPaid <= 0) return; // facture à 0€ (ex: crédit intégral) : rien à confirmer
+
+  const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const to = userRes?.user?.email;
+  if (!to) return;
+
+  const planId = getPlanFromStripePrice(priceId);
+  const planName = planId ? getBillingPlan(planId)?.name || planId : "votre offre";
+  const amountLabel = (amountPaid / 100).toLocaleString("fr-FR", { style: "currency", currency: (invoice?.currency || "eur").toUpperCase() });
+
+  let attachments: { filename: string; content: string }[] | undefined;
+  try {
+    if (invoice?.invoice_pdf) {
+      const pdfResp = await fetch(invoice.invoice_pdf);
+      if (pdfResp.ok) {
+        const buf = Buffer.from(await pdfResp.arrayBuffer());
+        attachments = [{ filename: `facture-${invoice?.number || invoice.id}.pdf`, content: buf.toString("base64") }];
+      }
+    }
+  } catch {
+    // email envoyé sans PJ plutôt que pas envoyé du tout
+  }
+
+  await sendEmailViaResend({
+    to,
+    subject: `Paiement confirmé — ${planName} activé`,
+    html: `
+      <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
+        <p>Bonjour,</p>
+        <p>Nous confirmons la réception de votre paiement de <b>${amountLabel}</b>. Votre offre <b>${planName}</b> est active.</p>
+        ${attachments ? "<p>Votre facture est en pièce jointe.</p>" : invoice?.hosted_invoice_url ? `<p><a href="${invoice.hosted_invoice_url}">Voir votre facture</a></p>` : ""}
+        <p>Cordialement,<br/>lokt.fr</p>
+      </div>
+    `,
+    attachments,
+  });
 }
 
 async function stripeGet(path: string) {
@@ -413,7 +471,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       event.type === "invoice.finalized" ||
       event.type === "invoice.payment_failed"
     ) {
-      await saveInvoice(object);
+      const { userId: invoiceUserId, priceId: invoicePriceId, justPaid } = await saveInvoice(object);
+      if (justPaid) {
+        await sendPaymentConfirmationEmail({ userId: invoiceUserId, priceId: invoicePriceId, invoice: object }).catch(() => {
+          // non bloquant : un email raté ne doit jamais faire échouer le webhook
+        });
+      }
     }
 
     return res.status(200).json({ received: true });
