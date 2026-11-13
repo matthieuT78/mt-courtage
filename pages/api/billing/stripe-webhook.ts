@@ -341,7 +341,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stripeSubscriptionId: subscriptionId,
         stripePriceId: priceId,
         cancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
-        currentPeriodEnd: subscription?.current_period_end || null,
+        // Depuis l'API Stripe "Basil" (2025-03-31+), current_period_end
+        // n'existe plus sur l'objet Subscription — déplacé sur chaque ligne
+        // d'abonnement (items.data[0]). Constaté en conditions réelles le
+        // 2026-11-13 : "Prochain renouvellement" restait vide (cf. issue #2).
+        currentPeriodEnd: item?.current_period_end || subscription?.current_period_end || null,
       });
 
       // Récompense parrainage (non bloquant) — côté filleul (on vient de
@@ -366,7 +370,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stripeSubscriptionId: object?.id || null,
         stripePriceId: priceId,
         cancelAtPeriodEnd: !!object?.cancel_at_period_end,
-        currentPeriodEnd: object?.current_period_end || null,
+        // Même repli que pour checkout.session.completed ci-dessus.
+        currentPeriodEnd: item?.current_period_end || object?.current_period_end || null,
       });
     }
 
