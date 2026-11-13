@@ -35,6 +35,23 @@ function verifyStripeSignature(rawBody: Buffer, signature: string, secret: strin
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
+// Protège un octroi manuel (billing_interval = "manual") contre un événement
+// Stripe plus ANCIEN que ce dernier octroi — typiquement un retry tardif
+// d'un événement sur un abonnement d'avant l'octroi manuel (ex: annulation
+// d'un abonnement d'origine déjà remboursé). On ne bloque PAS un événement
+// plus récent que l'octroi : une vraie nouvelle souscription doit toujours
+// pouvoir convertir un octroi manuel en abonnement réel. Repro réel du
+// 2026-11-13 (Nadia Gabriel, cf. issue #2) : annuler son abonnement Stripe
+// d'origine avait réactivé ce retry et écrasé son geste commercial.
+async function isStaleEventForManualGrant(userId: string, eventCreatedUnix: number): Promise<boolean> {
+  if (!supabaseAdmin || !userId) return false;
+  const { data } = await supabaseAdmin.from("subscriptions").select("billing_interval, updated_at").eq("user_id", userId).maybeSingle();
+  if (data?.billing_interval !== "manual") return false;
+  const grantedAtMs = new Date(data.updated_at).getTime();
+  const eventAtMs = (eventCreatedUnix || 0) * 1000;
+  return eventAtMs < grantedAtMs;
+}
+
 async function saveSubscription(params: {
   userId: string | null;
   plan: string | null;
@@ -332,6 +349,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const priceId = item?.price?.id || null;
       const userId = object?.metadata?.user_id || object?.client_reference_id || null;
 
+      if (userId && (await isStaleEventForManualGrant(userId, event?.created))) {
+        return res.status(200).json({ received: true, skipped: "manual_grant_protected" });
+      }
+
       await saveSubscription({
         userId,
         plan: object?.metadata?.plan || getPlanFromStripePrice(priceId),
@@ -358,11 +379,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+      const eventUserId = object?.metadata?.user_id || null;
+
+      // Repro réel du 2026-11-13 (Nadia Gabriel, cf. issue #2) : annuler son
+      // abonnement Stripe d'origine (créé avant son geste commercial manuel)
+      // a fait repasser sa ligne en "canceled" — le webhook retrouve toujours
+      // la ligne par user_id, donc n'importe quel événement sur n'importe
+      // lequel de ses anciens abonnements peut la toucher.
+      if (eventUserId && (await isStaleEventForManualGrant(eventUserId, event?.created))) {
+        return res.status(200).json({ received: true, skipped: "manual_grant_protected" });
+      }
+
       const item = firstSubscriptionItem(object);
       const priceId = item?.price?.id || null;
       const plan = object?.metadata?.plan || getPlanFromStripePrice(priceId);
       await saveSubscription({
-        userId: object?.metadata?.user_id || null,
+        userId: eventUserId,
         plan,
         status: event.type === "customer.subscription.deleted" ? "canceled" : object?.status || "active",
         billing: object?.metadata?.billing || item?.price?.recurring?.interval || null,
