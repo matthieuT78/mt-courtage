@@ -108,6 +108,22 @@ async function findUserIdForInvoice(invoice: any) {
     if ((data as any)?.user_id) return String((data as any).user_id);
   }
 
+  // Repli : Stripe envoie souvent les événements invoice.* AVANT
+  // checkout.session.completed pour un nouvel abonnement (constaté en
+  // conditions réelles le 2026-11-13, cf. issue #2) — la ligne subscriptions
+  // qui permet de retrouver l'utilisateur n'existe donc pas encore au moment
+  // du traitement de la facture. stripeGet est une function declaration
+  // (hoisted), utilisable ici bien que définie plus bas dans ce fichier.
+  if (subscriptionId) {
+    try {
+      const subscription = await stripeGet(`/subscriptions/${subscriptionId}`);
+      const metaUserId = subscription?.metadata?.user_id;
+      if (metaUserId) return String(metaUserId);
+    } catch {
+      // ignore — on retombe sur le null ci-dessous, Stripe réessaiera
+    }
+  }
+
   return null;
 }
 
