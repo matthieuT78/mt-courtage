@@ -185,6 +185,12 @@ export default function TarifsPage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  // Redirige systématiquement vers mon-compte/abonnement plutôt que
+  // d'appeler Stripe directement ici : cette page avait sa propre logique de
+  // paiement dupliquée, jamais mise à jour en même temps que l'autre
+  // (ex: gestion du changement de plan sans redirection) — un même fix posé
+  // ici et oublié là-bas, cf. incident du 2026-11-13 (issue #2). Un seul
+  // chemin d'abonnement/changement de plan à maintenir désormais.
   const startCheckout = async (planId: string) => {
     setCheckoutError(null);
     setCheckoutLoading(planId);
@@ -193,26 +199,14 @@ export default function TarifsPage() {
       if (!supabase) throw new Error("Authentification indisponible.");
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
+      const redirect = `/mon-compte/abonnement?plan=${encodeURIComponent(planId)}&billing=${billing}`;
 
       if (!token) {
-        const redirect = `/mon-compte/abonnement?plan=${encodeURIComponent(planId)}&billing=${billing}`;
         router.push(`/mon-compte?mode=register&redirect=${encodeURIComponent(redirect)}`);
         return;
       }
 
-      const resp = await fetch("/api/billing/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ plan: planId, billing }),
-      });
-      const payload = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(payload?.error || "Impossible de démarrer le paiement.");
-      if (!payload?.url) throw new Error("URL de paiement Stripe manquante.");
-
-      window.location.href = payload.url;
+      router.push(redirect);
     } catch (error: any) {
       setCheckoutError(error?.message || "Impossible de démarrer le paiement.");
       setCheckoutLoading(null);

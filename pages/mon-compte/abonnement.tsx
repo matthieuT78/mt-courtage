@@ -70,6 +70,15 @@ export default function MonCompteAbonnementPage() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
   const [subDetails, setSubDetails] = useState<SubDetails | null>(null);
+  const [planChangePreview, setPlanChangePreview] = useState<{
+    plan: string;
+    amountDueCents: number | null;
+    currency: string;
+    currentPlanName: string;
+    newPlanName: string;
+    newPlanMonthlyPrice: string;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const handleLogout = async () => { await signOutAll(); };
 
@@ -167,6 +176,50 @@ export default function MonCompteAbonnementPage() {
     }
   };
 
+  // Avant de débiter quoi que ce soit, on vérifie si c'est un changement de
+  // plan (abonnement déjà actif) — si oui, on affiche une pop-up avec le
+  // montant exact avant de confirmer. Une première souscription (pas
+  // d'abonnement actif) part directement sur la page Stripe classique, qui a
+  // déjà sa propre confirmation. Ajouté suite à l'incident du 2026-11-13
+  // (issue #2) : un changement de plan débitait la carte enregistrée sans
+  // aucune confirmation visible côté utilisateur.
+  const initiatePlanChange = async (plan: string) => {
+    setCheckoutError(null);
+    setPreviewLoading(true);
+    try {
+      if (!supabase) throw new Error("Authentification indisponible.");
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Merci de vous connecter avant de souscrire.");
+
+      const resp = await fetch("/api/billing/preview-plan-change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan, billing }),
+      });
+      const payload = await resp.json();
+      if (!resp.ok) throw new Error(payload?.error || "Impossible de vérifier ce changement de plan.");
+
+      if (!payload?.isPlanChange) {
+        await startCheckout(plan);
+        return;
+      }
+
+      setPlanChangePreview({
+        plan,
+        amountDueCents: payload.amountDueCents ?? null,
+        currency: payload.currency || "eur",
+        currentPlanName: payload.currentPlanName,
+        newPlanName: payload.newPlanName,
+        newPlanMonthlyPrice: payload.newPlanMonthlyPrice,
+      });
+    } catch (error: any) {
+      setCheckoutError(error?.message || "Impossible de vérifier ce changement de plan.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!router.isReady || checking || !isLoggedIn || autoCheckoutStarted) return;
     const requestedPlan = typeof router.query.plan === "string" ? router.query.plan : "";
@@ -178,7 +231,7 @@ export default function MonCompteAbonnementPage() {
       return;
     }
     setAutoCheckoutStarted(true);
-    startCheckout(requestedPlan);
+    initiatePlanChange(requestedPlan);
   }, [autoCheckoutStarted, billing, checking, isLoggedIn, router.isReady, router.query.billing, router.query.plan]);
 
   const openCustomerPortal = async () => {
@@ -257,7 +310,11 @@ export default function MonCompteAbonnementPage() {
               </div>
             ) : null}
 
-            {checkoutError ? (
+            {previewLoading ? (
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">Vérification du changement d’offre…</div>
+            ) : null}
+
+            {checkoutError && !planChangePreview ? (
               <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{checkoutError}</div>
             ) : null}
 
@@ -422,6 +479,59 @@ export default function MonCompteAbonnementPage() {
           </div>
         </div>
       )}
+
+      {planChangePreview ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl sm:p-7">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Confirmer le changement d’offre</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-950">
+              {planChangePreview.currentPlanName} → {planChangePreview.newPlanName}
+            </h2>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">À régler maintenant</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-950">
+                {planChangePreview.amountDueCents != null
+                  ? (planChangePreview.amountDueCents / 100).toLocaleString("fr-FR", { style: "currency", currency: planChangePreview.currency.toUpperCase() })
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Montant proratisé pour le temps restant sur votre cycle actuel — la différence seulement, jamais le prix plein d’un second abonnement.
+              </p>
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-slate-500">
+              Ensuite, votre abonnement continue normalement à {planChangePreview.newPlanMonthlyPrice}. Un seul débit aura lieu : celui affiché ci-dessus, sur la carte déjà enregistrée sur votre compte.
+            </p>
+
+            {checkoutError ? (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{checkoutError}</div>
+            ) : null}
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={checkoutLoading === planChangePreview.plan}
+                onClick={() => startCheckout(planChangePreview.plan)}
+                className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+              >
+                {checkoutLoading === planChangePreview.plan ? "Paiement en cours…" : "Confirmer et payer"}
+              </button>
+              <button
+                type="button"
+                disabled={checkoutLoading === planChangePreview.plan}
+                onClick={() => {
+                  setPlanChangePreview(null);
+                  setCheckoutError(null);
+                }}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AccountLayout>
   );
 }
