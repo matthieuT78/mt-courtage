@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
+import { TRUSTPILOT_URL } from "../lib/trustpilot";
 
 const STORAGE_KEY = "lokt:review";
 const DELAY_MS = 45_000;
@@ -132,6 +133,19 @@ export function ReviewPrompt({ user }: { user: any }) {
             <p className="text-2xl">🙏</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">Merci pour votre retour !</p>
             <p className="mt-1 text-xs text-slate-500">Votre avis nous aide à améliorer lokt.fr.</p>
+            {/* Proposé à tout le monde, quelle que soit la note donnée ci-dessus —
+                ne jamais filtrer selon le sentiment avant Trustpilot ("review
+                gating"), c'est interdit par leurs guidelines et risque de faire
+                suspendre le profil lokt.fr. */}
+            <a
+              href={TRUSTPILOT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              <span aria-hidden className="text-[#00b67a]">★★★★★</span>
+              Le partager aussi sur Trustpilot
+            </a>
           </div>
         ) : (
           <div className="px-5 py-5">

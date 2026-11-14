@@ -364,9 +364,6 @@ export default function MonCompteAbonnementPage() {
               <Link href="/espace-bailleur" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 Accéder à l’espace bailleur
               </Link>
-              <a href="mailto:contact@lokt.fr" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
-                Donner mon avis sur l’offre
-              </a>
               {!isFreePlan ? (
                 <button
                   type="button"
