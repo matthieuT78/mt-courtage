@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowPathIcon, Bars3Icon, CheckCircleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
+import { isValidIban } from "../../../lib/validateIban";
 import type { LandlordSettings } from "../../../lib/landlord/types";
 import {
   DEFAULT_LANDLORD_NAV_ORDER,
@@ -145,11 +146,15 @@ export function SectionParametres({ userId, navOrder, onNavOrderChange, landlord
   const saveRib = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase || !userId) return;
-    setRibSaving(true);
     setRibFeedback(null);
+    const cleanIban = iban.replace(/\s/g, "").toUpperCase();
+    const cleanBic = bic.replace(/\s/g, "").toUpperCase();
+    if (cleanIban && !isValidIban(cleanIban)) {
+      setRibFeedback({ ok: false, msg: "Cet IBAN n'est pas valide. Vérifiez qu'il est complet et correctement recopié." });
+      return;
+    }
+    setRibSaving(true);
     try {
-      const cleanIban = iban.replace(/\s/g, "").toUpperCase();
-      const cleanBic = bic.replace(/\s/g, "").toUpperCase();
       const { data, error } = await supabase
         .from("landlords")
         .upsert(

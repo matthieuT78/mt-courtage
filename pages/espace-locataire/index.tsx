@@ -63,7 +63,11 @@ export default function EspaceLocatairePage() {
   const tenant = data?.tenants?.[0] || null;
   const propertyById = useMemo(() => new Map((data?.properties || []).map((row: any) => [row.id, row])), [data?.properties]);
   const leaseById = useMemo(() => new Map((data?.leases || []).map((row: any) => [row.id, row])), [data?.leases]);
-  const activeLease = data?.leases?.[0] || null;
+  // "le plus récent créé" n'est pas forcément "actif" (plusieurs baux dans le
+  // temps chez le même bailleur) — privilégier un bail au statut réellement
+  // actif, sinon retomber sur le plus récent pour ne pas casser l'affichage
+  // d'un locataire dont le bail est terminé.
+  const activeLease = (data?.leases || []).find((l: any) => l.status === "active") || data?.leases?.[0] || null;
   const property: any = activeLease ? propertyById.get(activeLease.property_id) || null : null;
 
   const loadPortal = useCallback(async () => {

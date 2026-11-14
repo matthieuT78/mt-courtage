@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
 import DatePicker from "../../components/forms/DatePicker";
+import { isValidIban } from "../../lib/validateIban";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
@@ -18,18 +19,6 @@ const inputErrorCls =
 
 const selectCls = inputCls + " cursor-pointer";
 const selectErrorCls = inputErrorCls + " cursor-pointer";
-
-// Validation structurelle (longueur/pays) + clé de contrôle mod-97 (norme ISO 7064).
-function isValidIban(iban: string): boolean {
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
-  const rearranged = iban.slice(4) + iban.slice(0, 4);
-  const numeric = rearranged.replace(/[A-Z]/g, (ch) => String(ch.charCodeAt(0) - 55));
-  let remainder = 0;
-  for (const digit of numeric) {
-    remainder = (remainder * 10 + Number(digit)) % 97;
-  }
-  return remainder === 1;
-}
 
 function Field({ label, children, full, hint }: { label: string; children: React.ReactNode; full?: boolean; hint?: string }) {
   return (
