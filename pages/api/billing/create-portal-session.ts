@@ -34,7 +34,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .maybeSingle();
 
   if (error) return res.status(500).json({ error: error.message });
-  const customerId = String((data as any)?.stripe_customer_id || "");
+  let customerId = String((data as any)?.stripe_customer_id || "");
+
+  // Repli : un compte passé en octroi manuel (billing_interval = "manual",
+  // cf. issue #2) a stripe_customer_id = null sur sa ligne actuelle, même
+  // s'il a un vrai historique Stripe (ex: Nadia Gabriel) — on le retrouve
+  // dans billing_invoices, qui conserve l'id même après un octroi manuel.
+  if (!customerId) {
+    const { data: invoiceRow } = await supabaseAdmin
+      .from("billing_invoices")
+      .select("stripe_customer_id")
+      .eq("user_id", auth.userId)
+      .not("stripe_customer_id", "is", null)
+      .order("stripe_created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    customerId = String((invoiceRow as any)?.stripe_customer_id || "");
+  }
+
   if (!customerId) return res.status(404).json({ error: "Aucun client Stripe trouvé pour ce compte." });
 
   const baseUrl = getBaseUrl(req);

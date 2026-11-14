@@ -10,6 +10,11 @@
 //      auth.users, donc la ligne disparaîtrait avec le compte alors qu'elle est
 //      soumise à une obligation légale de conservation de 10 ans (Code de
 //      commerce art. L.123-22). On en garde une copie sans lien vers auth.users.
+//      billing_invoices (les factures individuelles, même obligation légale)
+//      n'est volontairement PAS touchée ici : cette table n'a aucune FK vers
+//      auth.users (voir commentaire sur la table en base, cf. migration
+//      20261114112500), donc ses lignes survivent déjà naturellement à la
+//      suppression du compte. Ne JAMAIS ajouter de FK avec CASCADE dessus.
 //   5. Suppression de tous les fichiers de storage (quittances, baux, EDL, DPE,
 //      photos, pièces de candidature) — best-effort, ne bloque pas la suite :
 //      les lignes DB (properties/tenants/leases/rent_receipts...) cascadent déjà
