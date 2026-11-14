@@ -37,7 +37,6 @@ import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing, planAllowsCandidatures } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
 import AssistantChat from "./AssistantChat";
-import { ReviewPrompt } from "../ReviewPrompt";
 
 function MobileBottomNav({
   active,
@@ -1133,9 +1132,6 @@ export function DashboardShell(props: any) {
         onNavigate={(section, link) => navigateDeep(section as LandlordSectionKey, link)}
         initialMessage={assistantPreset}
       />
-
-      {/* ── Popup notation ───────────────────────────────────── */}
-      <ReviewPrompt user={props?.user} />
 
       {/* ── Choix du départ sur un bail avec colocataire ───────── */}
       {departureChoiceLeaseId ? (() => {

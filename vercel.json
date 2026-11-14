@@ -63,6 +63,14 @@
     {
       "path": "/api/cron/legal-watch",
       "schedule": "35 9 * * 1"
+    },
+    {
+      "path": "/api/cron/review-invitations",
+      "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/trustpilot-invitations",
+      "schedule": "45 11 * * *"
     }
   ]
 }

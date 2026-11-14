@@ -3,9 +3,16 @@ export function emailLayout(params: {
   preheader?: string;
   contentHtml: string;
   footerText?: string;
+  logoHeight?: number;
+  logoUrl?: string;
 }) {
   const preheader = params.preheader || "";
   const footerText = params.footerText || "Calculs indicatifs — ne constitue pas une offre de prêt.";
+  const logoHeight = params.logoHeight || 40;
+  // lokt-logo.jpg a beaucoup de marge blanche intégrée à l'image elle-même —
+  // le logo visible reste minuscule même à grande hauteur CSS. lokt-logo-small.jpg
+  // est recadré plus serré, à utiliser quand le logo doit être bien visible.
+  const logoUrl = params.logoUrl || "https://lokt.fr/lokt-logo.jpg";
   return `
 <!doctype html>
 <html lang="fr">
@@ -25,7 +32,7 @@ export function emailLayout(params: {
         <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="width:640px;max-width:92vw;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
           <tr>
             <td style="padding:18px 20px;border-bottom:1px solid #e2e8f0;background:#ffffff;">
-              <img src="https://lokt.fr/lokt-logo.jpg" alt="lokt.fr" height="40" style="display:block;height:40px;width:auto;" />
+              <img src="${logoUrl}" alt="lokt.fr" height="${logoHeight}" style="display:block;height:${logoHeight}px;width:auto;" />
             </td>
           </tr>
 
