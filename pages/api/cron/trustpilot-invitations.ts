@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendTrustpilotInvitationEmail } from "../../../lib/emails/trustpilotInvitation";
+import { resolveProfileEmail } from "../../../lib/resolveProfileEmail";
 
 const DELAY_DAYS = 60;
 
@@ -20,8 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from("profiles")
     .select("id, email, full_name, first_name")
     .lte("review_invitation_sent_at", threshold)
-    .is("trustpilot_invitation_sent_at", null)
-    .not("email", "is", null);
+    .is("trustpilot_invitation_sent_at", null);
   if (profilesError) return res.status(500).json({ error: profilesError.message });
 
   let sent = 0;
@@ -29,8 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const failures: Array<{ userId: string; error: any }> = [];
 
   for (const profile of eligibleProfiles || []) {
+    const email = await resolveProfileEmail({ id: (profile as any).id, email: (profile as any).email });
+    if (!email) {
+      skipped++;
+      continue;
+    }
+
     const name = (profile as any).first_name || (profile as any).full_name || null;
-    const result = await sendTrustpilotInvitationEmail({ email: (profile as any).email, name });
+    const result = await sendTrustpilotInvitationEmail({ email, name });
 
     if (!result.ok) {
       skipped++;

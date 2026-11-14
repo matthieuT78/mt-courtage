@@ -10,6 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendReviewInvitationEmail } from "../../../lib/emails/reviewInvitation";
+import { resolveProfileEmail } from "../../../lib/resolveProfileEmail";
 
 const MIN_ACCOUNT_AGE_DAYS = 60;
 
@@ -34,8 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from("profiles")
     .select("id, email, full_name, first_name, created_at")
     .in("id", candidateIds)
-    .is("review_invitation_sent_at", null)
-    .not("email", "is", null);
+    .is("review_invitation_sent_at", null);
   if (profilesError) return res.status(500).json({ error: profilesError.message });
 
   const ageThresholdMs = MIN_ACCOUNT_AGE_DAYS * 86_400_000;
@@ -50,9 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const failures: Array<{ userId: string; error: any }> = [];
 
   for (const profile of eligibleProfiles) {
+    const email = await resolveProfileEmail({ id: (profile as any).id, email: (profile as any).email });
+    if (!email) {
+      skipped++;
+      continue;
+    }
+
     const name = (profile as any).first_name || (profile as any).full_name || null;
     const source = receiptUserIds.has((profile as any).id) ? "first_receipt" : "account_age";
-    const result = await sendReviewInvitationEmail({ email: (profile as any).email, name, source });
+    const result = await sendReviewInvitationEmail({ email, name, source });
 
     if (!result.ok) {
       skipped++;
