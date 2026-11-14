@@ -203,6 +203,22 @@ async function saveInvoice(invoice: any): Promise<{ userId: string; priceId: str
   return { userId, priceId, justPaid };
 }
 
+async function getUserEmail(userId: string): Promise<string | null> {
+  if (!supabaseAdmin) return null;
+  const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(userId);
+  return userRes?.user?.email || null;
+}
+
+function resolvePlanName(priceId: string | null): string {
+  const planId = getPlanFromStripePrice(priceId);
+  return planId ? getBillingPlan(planId)?.name || planId : "votre offre";
+}
+
+function formatDateFr(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
 // Reçu transactionnel simple ("paiement réussi, plan activé") — PAS un
 // email de bienvenue marketing. Demandé suite à l'incident du 2026-11-13
 // (issue #2) : aucune confirmation n'était envoyée après un paiement réussi.
@@ -213,12 +229,10 @@ async function sendPaymentConfirmationEmail(params: { userId: string; priceId: s
   const amountPaid = typeof invoice?.amount_paid === "number" ? invoice.amount_paid : 0;
   if (amountPaid <= 0) return; // facture à 0€ (ex: crédit intégral) : rien à confirmer
 
-  const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(userId);
-  const to = userRes?.user?.email;
+  const to = await getUserEmail(userId);
   if (!to) return;
 
-  const planId = getPlanFromStripePrice(priceId);
-  const planName = planId ? getBillingPlan(planId)?.name || planId : "votre offre";
+  const planName = resolvePlanName(priceId);
   const amountLabel = (amountPaid / 100).toLocaleString("fr-FR", { style: "currency", currency: (invoice?.currency || "eur").toUpperCase() });
 
   let attachments: { filename: string; content: string }[] | undefined;
@@ -247,6 +261,141 @@ async function sendPaymentConfirmationEmail(params: { userId: string; priceId: s
     `,
     attachments,
   });
+}
+
+// Avant cet ajout, un paiement refusé (carte expirée, solde insuffisant...)
+// ne prévenait jamais le client — il ne l'aurait découvert qu'au moment où
+// une fonctionnalité se bloque. Audit facturation du 2026-11-14.
+async function sendPaymentFailedEmail(params: { userId: string; priceId: string | null; invoice: any }) {
+  if (!supabaseAdmin) return;
+  const { userId, priceId, invoice } = params;
+
+  const to = await getUserEmail(userId);
+  if (!to) return;
+
+  const planName = resolvePlanName(priceId);
+  const amountLabel =
+    typeof invoice?.amount_due === "number"
+      ? (invoice.amount_due / 100).toLocaleString("fr-FR", { style: "currency", currency: (invoice?.currency || "eur").toUpperCase() })
+      : null;
+
+  await sendEmailViaResend({
+    to,
+    subject: `Paiement refusé — action requise sur votre offre ${planName}`,
+    html: `
+      <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
+        <p>Bonjour,</p>
+        <p>Le paiement${amountLabel ? ` de <b>${amountLabel}</b>` : ""} pour votre offre <b>${planName}</b> n'a pas pu être prélevé (carte refusée ou expirée).</p>
+        <p>Stripe retentera automatiquement le prélèvement dans les prochains jours. Pour éviter toute interruption d'accès, vous pouvez mettre à jour votre moyen de paiement dès maintenant${
+          invoice?.hosted_invoice_url ? ` :</p><p><a href="${invoice.hosted_invoice_url}">Régler cette facture</a></p>` : "."
+        }</p>
+        <p>Cordialement,<br/>lokt.fr</p>
+      </div>
+    `,
+  });
+}
+
+// Deux moments distincts côté Stripe pour une annulation : "programmée"
+// (cancel_at_period_end passe à true — l'accès continue jusqu'à la fin de
+// la période en cours) et "effective" (customer.subscription.deleted —
+// l'abonnement est réellement terminé, le compte repasse en gratuit).
+// Aucun des deux n'envoyait d'email avant cet ajout. Audit facturation du
+// 2026-11-14.
+async function sendCancellationScheduledEmail(params: { userId: string; priceId: string | null; endsAtIso: string | null }) {
+  if (!supabaseAdmin) return;
+  const { userId, priceId, endsAtIso } = params;
+
+  const to = await getUserEmail(userId);
+  if (!to) return;
+
+  const planName = resolvePlanName(priceId);
+  const endsAtLabel = formatDateFr(endsAtIso);
+
+  await sendEmailViaResend({
+    to,
+    subject: `Confirmation de l'annulation de votre offre ${planName}`,
+    html: `
+      <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
+        <p>Bonjour,</p>
+        <p>Nous confirmons l'annulation de votre offre <b>${planName}</b>.</p>
+        <p>${
+          endsAtLabel
+            ? `Vous conservez l'accès à toutes les fonctionnalités jusqu'au <b>${endsAtLabel}</b>. Passé cette date, votre compte repassera automatiquement sur l'offre gratuite.`
+            : "Votre compte repassera automatiquement sur l'offre gratuite à la fin de la période en cours."
+        }</p>
+        <p>Vous pouvez annuler cette résiliation à tout moment avant cette date depuis votre espace lokt.fr, bouton « Paiement et annulation ».</p>
+        <p>Cordialement,<br/>lokt.fr</p>
+      </div>
+    `,
+  });
+}
+
+async function sendSubscriptionEndedEmail(params: { userId: string; priceId: string | null }) {
+  if (!supabaseAdmin) return;
+  const { userId, priceId } = params;
+
+  const to = await getUserEmail(userId);
+  if (!to) return;
+
+  const planName = resolvePlanName(priceId);
+
+  await sendEmailViaResend({
+    to,
+    subject: `Votre offre ${planName} est résiliée`,
+    html: `
+      <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
+        <p>Bonjour,</p>
+        <p>Votre offre <b>${planName}</b> est désormais résiliée et votre compte lokt.fr est repassé sur l'offre gratuite.</p>
+        <p>Vous pouvez vous réabonner à tout moment depuis <a href="https://lokt.fr/tarifs">lokt.fr/tarifs</a>.</p>
+        <p>Cordialement,<br/>lokt.fr</p>
+      </div>
+    `,
+  });
+}
+
+// Après tout changement de statut/plan d'abonnement, remet le nombre de
+// biens actifs en cohérence avec le quota réellement autorisé — en
+// réutilisant la même fonction Postgres que le trigger qui bloque déjà la
+// création de biens (landlord_property_limit_for_user, cf.
+// supabase/migrations/20260521_enforce_free_property_limit.sql), pour ne
+// jamais diverger de ce qui est réellement imposé en base. Aucune
+// suppression : en cas de dépassement (paiement refusé, résiliation), on
+// archive les biens en trop (le plus ancien reste actif, pas de choix côté
+// client) en les marquant plan_locked_at — ce qui permet de les réactiver
+// automatiquement, dans la limite du nouveau quota, dès que l'abonnement
+// redevient actif (si le client repaie un plan plus petit qu'avant, certains
+// restent en pause mais jamais perdus). Décision produit du 2026-11-14 :
+// pas de rétroactivité sur les comptes déjà en dépassement aujourd'hui, ce
+// mécanisme ne s'applique qu'aux changements de statut à partir de maintenant.
+async function syncPropertyQuota(userId: string) {
+  if (!supabaseAdmin || !userId) return;
+
+  const { data: limitData, error: limitError } = await supabaseAdmin.rpc("landlord_property_limit_for_user", { p_user_id: userId });
+  if (limitError) return;
+  const max = Number(limitData || 0);
+
+  const { data: allProps } = await supabaseAdmin
+    .from("properties")
+    .select("id, status, plan_locked_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (!allProps) return;
+
+  const active = (allProps as any[]).filter((p) => (p.status || "active") !== "archived");
+  const lockedArchived = (allProps as any[]).filter((p) => p.status === "archived" && p.plan_locked_at);
+
+  if (active.length > max) {
+    const toLock = active.slice(max).map((p) => p.id);
+    if (toLock.length > 0) {
+      await supabaseAdmin.from("properties").update({ status: "archived", plan_locked_at: new Date().toISOString() }).in("id", toLock);
+    }
+  } else if (active.length < max && lockedArchived.length > 0) {
+    const capacity = max - active.length;
+    const toRestore = lockedArchived.slice(0, capacity).map((p) => p.id);
+    if (toRestore.length > 0) {
+      await supabaseAdmin.from("properties").update({ status: "active", plan_locked_at: null }).in("id", toRestore);
+    }
+  }
 }
 
 async function stripeGet(path: string) {
@@ -434,6 +583,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         applyReferralReward(userId, subscriptionId).catch(() => {});
         applyPendingParrainReward(userId, subscriptionId).catch(() => {});
       }
+
+      if (userId) await syncPropertyQuota(userId);
     }
 
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
@@ -451,6 +602,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const item = firstSubscriptionItem(object);
       const priceId = item?.price?.id || null;
       const plan = object?.metadata?.plan || getPlanFromStripePrice(priceId);
+      const currentPeriodEndUnix = item?.current_period_end || object?.current_period_end || null;
+
+      // Capturé AVANT l'upsert : seul moyen de savoir si cancel_at_period_end
+      // vient de passer à true (annulation programmée) ou si la ligne était
+      // déjà "canceled" (webhook retry, cf. note stale ci-dessus) pour ne pas
+      // ré-envoyer les emails ci-dessous à chaque retry Stripe.
+      const previousRow = eventUserId
+        ? (await supabaseAdmin!.from("subscriptions").select("cancel_at_period_end, status").eq("user_id", eventUserId).maybeSingle()).data
+        : null;
+
       await saveSubscription({
         userId: eventUserId,
         plan,
@@ -461,8 +622,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stripePriceId: priceId,
         cancelAtPeriodEnd: !!object?.cancel_at_period_end,
         // Même repli que pour checkout.session.completed ci-dessus.
-        currentPeriodEnd: item?.current_period_end || object?.current_period_end || null,
+        currentPeriodEnd: currentPeriodEndUnix,
       });
+
+      if (eventUserId) {
+        if (event.type === "customer.subscription.updated" && object?.cancel_at_period_end && !previousRow?.cancel_at_period_end) {
+          sendCancellationScheduledEmail({ userId: eventUserId, priceId, endsAtIso: tsToIso(currentPeriodEndUnix) }).catch(() => {});
+        } else if (event.type === "customer.subscription.deleted" && previousRow?.status !== "canceled") {
+          sendSubscriptionEndedEmail({ userId: eventUserId, priceId }).catch(() => {});
+        }
+
+        await syncPropertyQuota(eventUserId);
+      }
     }
 
     if (
@@ -475,6 +646,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (justPaid) {
         await sendPaymentConfirmationEmail({ userId: invoiceUserId, priceId: invoicePriceId, invoice: object }).catch(() => {
           // non bloquant : un email raté ne doit jamais faire échouer le webhook
+        });
+      }
+      if (event.type === "invoice.payment_failed") {
+        await sendPaymentFailedEmail({ userId: invoiceUserId, priceId: invoicePriceId, invoice: object }).catch(() => {
+          // non bloquant, même logique que sendPaymentConfirmationEmail ci-dessus
         });
       }
     }

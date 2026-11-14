@@ -117,12 +117,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const [{ data: property }, { data: tenant }] = await Promise.all([
           lease.property_id
-            ? supabaseAdmin.from("properties").select("label,address_line1,city").eq("id", lease.property_id).maybeSingle()
+            ? supabaseAdmin.from("properties").select("label,address_line1,city,status").eq("id", lease.property_id).maybeSingle()
             : Promise.resolve({ data: null }),
           lease.tenant_id
             ? supabaseAdmin.from("tenants").select("full_name").eq("id", lease.tenant_id).maybeSingle()
             : Promise.resolve({ data: null }),
         ]);
+
+        // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
+        // abonnement devenu inactif, cf. syncPropertyQuota dans
+        // pages/api/billing/stripe-webhook.ts) ne doit plus relancer son
+        // locataire ni permettre de nouvelle quittance.
+        if ((property as any)?.status === "archived") {
+          skipped++;
+          continue;
+        }
 
         const tokenValue = encodeURIComponent(token.token);
         const email = buildRentReminderOwnerEmail({

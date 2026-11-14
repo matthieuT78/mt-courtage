@@ -248,6 +248,16 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     };
   }
 
+  // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
+  // abonnement devenu inactif, cf. syncPropertyQuota dans
+  // pages/api/billing/stripe-webhook.ts) ne doit plus jamais produire de
+  // nouvelle quittance. Placé APRÈS le chemin idempotent ci-dessus pour ne
+  // pas casser un re-clic sur un lien de confirmation dont la quittance
+  // avait déjà été correctement envoyée avant l'archivage du bien.
+  if (property?.status === "archived") {
+    throw new Error("Ce bien a été archivé : impossible de générer une nouvelle quittance.");
+  }
+
   // Quittances déléguées à une agence : jamais de PDF ni d'envoi au locataire — cette
   // confirmation (déclenchée par un lien email ou l'app) ne sert qu'à alimenter la Finance
   // du bailleur, exactement comme la confirmation manuelle depuis la section Quittances.

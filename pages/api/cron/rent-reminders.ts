@@ -137,6 +137,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       if (existingPayment.data) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "already_confirmed" }); continue; }
 
+      const [{ data: property }, { data: tenant }] = await Promise.all([
+        l.property_id ? supabaseAdmin.from("properties").select("label,address_line1,city,status").eq("id", l.property_id).maybeSingle() : Promise.resolve({ data: null }),
+        l.tenant_id ? supabaseAdmin.from("tenants").select("full_name").eq("id", l.tenant_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+
+      // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
+      // abonnement devenu inactif, cf. syncPropertyQuota dans
+      // pages/api/billing/stripe-webhook.ts) ne doit plus relancer son
+      // locataire ni permettre de nouvelle quittance.
+      if ((property as any)?.status === "archived") { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "property_archived" }); continue; }
+
       // 2) créer token one-shot
       const token = crypto.randomBytes(24).toString("hex");
       const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
@@ -159,11 +170,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const baseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
       const fullUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=full`;
       const partialUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=partial`;
-
-      const [{ data: property }, { data: tenant }] = await Promise.all([
-        l.property_id ? supabaseAdmin.from("properties").select("label,address_line1,city").eq("id", l.property_id).maybeSingle() : Promise.resolve({ data: null }),
-        l.tenant_id ? supabaseAdmin.from("tenants").select("full_name").eq("id", l.tenant_id).maybeSingle() : Promise.resolve({ data: null }),
-      ]);
 
       const email = buildRentReminderOwnerEmail({
         baseUrl,

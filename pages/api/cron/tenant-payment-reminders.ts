@@ -55,8 +55,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
       if (lease.property_id) {
-        const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services").eq("id", lease.property_id).maybeSingle();
+        const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services,status").eq("id", lease.property_id).maybeSingle();
         if (Array.isArray(prop?.delegated_services) && prop.delegated_services.includes("gestion_courante")) {
+          skipped++;
+          continue;
+        }
+        // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
+        // abonnement devenu inactif, cf. syncPropertyQuota dans
+        // pages/api/billing/stripe-webhook.ts) ne doit plus relancer son
+        // locataire ni permettre de nouvelle quittance.
+        if (prop?.status === "archived") {
           skipped++;
           continue;
         }

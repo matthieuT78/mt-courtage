@@ -484,6 +484,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (pr.data) property = pr.data;
     }
 
+    // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
+    // abonnement devenu inactif, cf. syncPropertyQuota dans
+    // pages/api/billing/stripe-webhook.ts) ne doit plus jamais produire de
+    // nouvelle quittance — sinon le bail continue de fonctionner comme si de
+    // rien n'était malgré l'archivage du bien parent.
+    if (property?.status === "archived") {
+      return res.status(409).json({ error: "Ce bien a été archivé : impossible de générer une nouvelle quittance." });
+    }
+
     // Un bail sur un lot d'immeuble doit voir le nom du lot apparaître sur la
     // quittance en plus de l'adresse du bâtiment — sinon rien ne distingue les
     // quittances des différents locataires du même immeuble.
