@@ -1,0 +1,12 @@
+-- La policy subscriptions_insert_own (créée hors migration trackée, cf.
+-- audit du 2026-11-14) n'avait pour WITH CHECK que "auth.uid() = user_id",
+-- sans aucune restriction sur plan/status/billing_interval/ends_at.
+-- N'importe quel utilisateur connecté pouvait donc s'auto-attribuer un plan
+-- payant illimité gratuitement via le client Supabase direct (insert sur
+-- sa propre ligne, qui n'existe pas encore pour un compte gratuit).
+--
+-- Aucun code client n'a besoin d'insérer dans subscriptions : toutes les
+-- écritures légitimes passent par le webhook Stripe ou l'outil admin
+-- (pages/api/admin/users.ts), tous deux en service role (contourne RLS).
+-- Cette policy n'avait donc aucun usage légitime.
+drop policy if exists subscriptions_insert_own on public.subscriptions;
