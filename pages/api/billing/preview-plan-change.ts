@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: existing } = await supabaseAdmin
     .from("subscriptions")
-    .select("plan, status, stripe_subscription_id, stripe_customer_id")
+    .select("plan, status, stripe_subscription_id, stripe_customer_id, stripe_price_id")
     .eq("user_id", auth.userId)
     .eq("status", "active")
     .not("stripe_subscription_id", "is", null)
@@ -62,7 +62,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ isPlanChange: false });
   }
 
-  if (existing.plan === price.plan.id) {
+  // Comparer sur le price_id exact (pas juste le palier plan.id) : sinon un
+  // abonné déjà sur ce palier ne peut jamais basculer mensuel <-> annuel, qui
+  // partage le même plan.id mais un price_id Stripe différent — même fix que
+  // create-checkout-session.ts.
+  if (existing.stripe_price_id === price.priceId) {
     return res.status(400).json({ error: "Vous êtes déjà sur cette offre." });
   }
 
@@ -84,6 +88,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     const currentPlan = getBillingPlan(existing.plan);
+    // price.plan.priceLabel est toujours le libellé mensuel statique
+    // ("11,90 € / mois") — faux pour un passage à l'annuel, notamment pour
+    // un changement de périodicité sans changement de palier (même plan.id).
+    const newPlanPriceLabel =
+      billing === "yearly" && price.plan.yearlyPrice != null
+        ? `${price.plan.yearlyPrice.toLocaleString("fr-FR")} € / an`
+        : price.plan.priceLabel;
 
     return res.status(200).json({
       isPlanChange: true,
@@ -91,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       currency: preview?.currency || "eur",
       currentPlanName: currentPlan?.name || existing.plan,
       newPlanName: price.plan.name,
-      newPlanMonthlyPrice: price.plan.priceLabel,
+      newPlanMonthlyPrice: newPlanPriceLabel,
     });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || "Aperçu du changement de plan impossible." });

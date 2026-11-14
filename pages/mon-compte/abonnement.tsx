@@ -352,7 +352,9 @@ export default function MonCompteAbonnementPage() {
 
             {!isFreePlan && !permissionsLoading ? (
               <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                {planAllowsPerformance(plan)
+                {plan === "landlord_unlimited"
+                  ? "Votre abonnement Pro / agence est actif : dossiers locataires et garants encadrés, pièces d’identité, assurances et diagnostics centralisés, traçabilité des documents, accès équipe et 10 Go de stockage sécurisé."
+                  : planAllowsPerformance(plan)
                   ? "Votre abonnement lokt·plus est actif : pilotage de la rentabilité par logement, simulateurs LMNP/IRL et aide à la déclaration fiscale, en plus de tout lokt·one."
                   : "Votre abonnement lokt·one est actif : Loky (assistant IA), quittances et relances automatiques, candidatures en ligne avec scoring. Le plan lokt·plus débloque en plus la rentabilité par logement et l’aide à la déclaration fiscale."}
               </div>

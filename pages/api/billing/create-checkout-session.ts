@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (supabaseAdmin) {
     const { data: existing } = await supabaseAdmin
       .from("subscriptions")
-      .select("plan, status, stripe_subscription_id")
+      .select("plan, status, stripe_subscription_id, stripe_price_id")
       .eq("user_id", auth.userId)
       .eq("status", "active")
       .not("stripe_subscription_id", "is", null)
@@ -55,7 +55,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
 
     if (existing?.stripe_subscription_id) {
-      if (existing.plan === price.plan.id) {
+      // Comparer sur le price_id exact (pas juste le palier plan.id) : sinon
+      // un abonné déjà sur ce palier ne peut jamais basculer mensuel <-> annuel,
+      // qui partage le même plan.id mais un price_id Stripe différent.
+      if (existing.stripe_price_id === price.priceId) {
         return res.status(400).json({ error: "Vous êtes déjà sur cette offre." });
       }
 
