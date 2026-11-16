@@ -10,7 +10,7 @@ import { getServerUserPlan } from "../serverPermissions";
 import { landlordMaxActiveProperties } from "../permissions";
 import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
-import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory } from "./lmnpInventory";
+import { LMNP_REQUIRED_ITEMS, getLmnpItemStatus, propertyRequiresLmnpInventory, lotRequiresLmnpInventory, FURNISHED_LEASE_KINDS } from "./lmnpInventory";
 import { dateToIrlQuarter, type IrlEntry } from "../irlData";
 import { getIrlTable } from "../irlService";
 import { expectedLeaseEndDate } from "./leaseRenewal";
@@ -18,7 +18,8 @@ import { randomUUID } from "crypto";
 import { LEASE_CONTRACT_BUCKET, externalContractPdfPath, isLeaseContractKind } from "../leaseContract";
 import { invalidateStorageCache } from "../storageQuota";
 import { callCostUsd } from "./assistantCost";
-import { overlapDaysInclusive } from "./dateOverlap";
+import { overlapDaysInclusive, daysInclusive } from "./dateOverlap";
+import { isSelectableLeaseLike } from "./archiveFilters";
 
 export type AssistantToolContext = {
   userId: string;
@@ -180,6 +181,21 @@ async function resolvePropertyAddress(admin: NonNullable<typeof supabaseAdmin>, 
   return address || property.label || "";
 }
 
+async function resolveLandlordIdentity(admin: NonNullable<typeof supabaseAdmin>, userId: string) {
+  const { data: profile } = await admin.from("profiles").select("full_name,address_line1,postal_code,city").eq("id", userId).maybeSingle();
+  const landlordName = profile?.full_name || "";
+  const landlordAddress = profile
+    ? [profile.address_line1, [profile.postal_code, profile.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+    : "";
+  return { landlordName, landlordAddress };
+}
+
+function fmtDateFr(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(String(iso).slice(0, 10) + "T00:00:00");
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("fr-FR");
+}
+
 // Même logique de trimestre IRL par défaut que le panneau de révision du
 // cockpit (IrlRevisionPanel dans SectionRevision.tsx) : le trimestre de la
 // date de signature, avec repli sur le trimestre disponible le plus proche si
@@ -225,6 +241,41 @@ const FINANCE_CATEGORY_LABEL: Record<string, string> = {
   deposit_returned: "Caution restituée",
   deposit_retained: "Retenue sur caution",
 };
+
+// Réplique exacte du scoring de dossier de SectionCandidatures.tsx (composant
+// cockpit, fonctions computeScoreBreakdown/scoreProfile/profileBadge) — même
+// raison que les helpers d'occupation plus haut : pas d'import client->serveur
+// possible, les deux copies doivent être tenues à la main en phase.
+const CANDIDATURE_SITUATION_SCORE: Record<string, number> = {
+  fonctionnaire: 30, CDI: 25, retraite: 24,
+  CDI_essai: 18, CDD: 14, independant: 10,
+  etudiant: 6, autre: 5,
+};
+
+function scoreCandidatureProfile(c: any, listing: any): number {
+  const totalRent = Number(listing.rent_amount || 0) + Number(listing.charges_amount || 0);
+  const required = totalRent * Number(listing.income_ratio || 0);
+  const candidateIncome = Number(c.net_monthly_income || 0);
+  const guarantorDocsVerified = Boolean(c.guarantor_docs_identity && c.guarantor_docs_payslips);
+  let referenceIncome = candidateIncome;
+  if (c.has_guarantor && c.guarantor_type === "individual" && c.guarantor_income && guarantorDocsVerified) {
+    referenceIncome = Math.max(candidateIncome, Number(c.guarantor_income || 0));
+  } else if (c.has_guarantor && c.guarantor_type === "visale") {
+    referenceIncome = Math.max(candidateIncome, required);
+  }
+  const ratio = required > 0 ? referenceIncome / required : 0;
+  const incomeScore = ratio >= 1.5 ? 40 : ratio >= 1.25 ? 35 : ratio >= 1.0 ? 28 : ratio >= 0.85 ? 18 : ratio >= 0.67 ? 8 : 0;
+  const situScore = CANDIDATURE_SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
+  const docsScore = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length * 5;
+  const guarantorScore = c.has_guarantor ? 10 : 0;
+  return Math.min(100, incomeScore + situScore + docsScore + guarantorScore);
+}
+
+function candidatureProfileLevel(score: number): string {
+  if (score >= 72) return "Profil solide";
+  if (score >= 48) return "Profil acceptable";
+  return "Profil risqué";
+}
 
 export const assistantTools: AssistantTool[] = [
   {
@@ -700,6 +751,255 @@ N'invente jamais une valeur absente du document : utilise null.`,
         vacant_days: vacantDays,
         total_recoverable_amount: totalRecoverable,
         owner_retained_amount: Math.round((teomAfterLotShare - totalRecoverable) * 100) / 100,
+      };
+    },
+  },
+  {
+    name: "compute_preavis",
+    description: "Calcule la durée légale de préavis de congé et la date de fin de préavis — même calcul que le Calculateur de préavis de la Boîte à outils. Si lease_id est fourni, résout automatiquement le type de bail (vide/meublé) depuis lease_kind ; sinon demande-le. Zone tendue et motif du bailleur ne sont pertinents que pour un congé bailleur sur bail vide — ne les demande pas dans les autres cas.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string", description: "Pour résoudre automatiquement le type de bail (vide/meublé). Optionnel si bail_type est fourni directement." },
+        bail_type: { type: "string", enum: ["vide", "meuble"], description: "Requis si lease_id est omis." },
+        given_by: { type: "string", enum: ["locataire", "bailleur"], description: "Qui donne le congé." },
+        motif: { type: "string", enum: ["vente", "habiter", "autre"], description: "Motif du congé bailleur — uniquement pertinent si given_by='bailleur' et bail_type='vide'." },
+        zone_tendue: { type: "boolean", description: "Uniquement pertinent si given_by='locataire' et bail_type='vide' (réduit le préavis locataire à 1 mois)." },
+        notification_date: { type: "string", description: "Date de notification du congé, YYYY-MM-DD. Par défaut aujourd'hui." },
+      },
+      required: ["given_by"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      let bailType = args.bail_type === "meuble" ? "meuble" : args.bail_type === "vide" ? "vide" : null;
+      if (!bailType && args.lease_id) {
+        const admin = requireAdmin();
+        const { data: lease } = await admin.from("leases").select("lease_kind").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
+        if (lease) bailType = FURNISHED_LEASE_KINDS.has(String(lease.lease_kind || "")) ? "meuble" : "vide";
+      }
+      if (!bailType) throw new Error("Indique le type de bail (vide ou meublé), ou un lease_id pour le résoudre automatiquement.");
+
+      const by = args.given_by === "bailleur" ? "bailleur" : "locataire";
+      const motif = ["vente", "habiter", "autre"].includes(args.motif) ? args.motif : "habiter";
+      const zoneTendue = Boolean(args.zone_tendue);
+
+      let months: number;
+      let rule: string;
+      if (by === "locataire") {
+        if (bailType === "meuble") { months = 1; rule = "Bail meublé : préavis locataire toujours 1 mois (art. 25-8 loi 89-462)."; }
+        else if (zoneTendue) { months = 1; rule = "Bail vide, zone tendue : préavis réduit à 1 mois (art. 15 loi 89-462)."; }
+        else { months = 3; rule = "Bail vide, hors zone tendue : préavis 3 mois (art. 15 loi 89-462). Réduction à 1 mois possible en cas de mutation, perte d'emploi ou raisons de santé."; }
+      } else if (bailType === "meuble") {
+        months = 3; rule = "Bail meublé : préavis bailleur 3 mois avant l'échéance (art. 25-8 loi 89-462).";
+      } else if (motif === "vente") {
+        months = 6; rule = "Bail vide, congé pour vente : préavis 6 mois avant l'échéance (art. 15 loi 89-462). Droit de préemption du locataire.";
+      } else if (motif === "habiter") {
+        months = 6; rule = "Bail vide, congé pour habiter : préavis 6 mois avant l'échéance (art. 15 loi 89-462). Justificatif requis.";
+      } else {
+        months = 6; rule = "Bail vide, congé pour autre motif légitime et sérieux : préavis 6 mois avant l'échéance (art. 15 loi 89-462).";
+      }
+
+      const notifDate = args.notification_date || new Date().toISOString().slice(0, 10);
+      const [y, m, d] = notifDate.split("-").map(Number);
+      const targetRaw = (m - 1) + months;
+      const targetYear = y + Math.floor(targetRaw / 12);
+      const targetMonth = ((targetRaw % 12) + 12) % 12;
+      const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const clampedDay = Math.min(d, daysInMonth);
+      const endDate = `${String(targetYear).padStart(4, "0")}-${String(targetMonth + 1).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+
+      return { bail_type: bailType, given_by: by, months, duration_label: `${months} mois`, rule, notification_date: notifDate, preavis_end_date: endDate };
+    },
+  },
+  {
+    name: "compute_charges_allocation",
+    description: "Calcule la répartition d'un montant global de charges entre les lots d'un immeuble selon une base de tantièmes — même calcul que l'outil « Répartir des charges par lots » de la Boîte à outils. Si property_id est un immeuble (type='building'), résout automatiquement ses lots, leurs tantièmes déjà enregistrés (tantiemes_base du bien, tantiemes de chaque lot) et le locataire actuellement en place pour chacun — ne demande les tantièmes à l'utilisateur que pour les lots où ils ne sont pas encore enregistrés. Sans property_id (bien simple ou immeuble non encore configuré), les lignes doivent être fournies manuellement.",
+    input_schema: {
+      type: "object",
+      properties: {
+        property_id: { type: "string", description: "Immeuble à lots. Préremplit lots/tantièmes/occupants — toujours le préférer à une saisie manuelle quand l'immeuble existe." },
+        total_charges: { type: "number", description: "Montant global des charges à répartir." },
+        total_tantiemes: { type: "number", description: "Base de tantièmes (dénominateur). Par défaut tantiemes_base du bien si property_id est fourni et déjà enregistré, sinon la somme des tantièmes des lignes." },
+        lines: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              tantiemes: { type: "number" },
+              recoverable_percent: { type: "number", description: "Part récupérable auprès du locataire, en %. 100 par défaut (entièrement récupérable)." },
+            },
+            required: ["label", "tantiemes"],
+          },
+          description: "Lots et leurs tantièmes. Obligatoire si property_id est omis, ou pour écraser l'auto-remplissage d'un lot précis (ex. tantièmes pas encore enregistrés).",
+        },
+      },
+      required: ["total_charges"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const total = Number(args.total_charges || 0);
+      let baseTantiemes = args.total_tantiemes != null ? Number(args.total_tantiemes) : null;
+      type Line = { label: string; occupant: string | null; tantiemes: number; recoverablePercent: number };
+      let lines: Line[] = Array.isArray(args.lines)
+        ? args.lines.map((l: any) => ({
+            label: String(l.label || "Lot"),
+            occupant: null,
+            tantiemes: Number(l.tantiemes || 0),
+            recoverablePercent: l.recoverable_percent != null ? Math.min(100, Math.max(0, Number(l.recoverable_percent))) : 100,
+          }))
+        : [];
+
+      let propertyLabel: string | null = null;
+      if (args.property_id) {
+        const { data: property } = await admin.from("properties").select("label,address_line1,city,tantiemes_base").eq("id", args.property_id).eq("user_id", ctx.userId).maybeSingle();
+        if (!property) throw new Error("Bien introuvable ou non autorisé.");
+        propertyLabel = property.label || [property.address_line1, property.city].filter(Boolean).join(", ");
+        if (baseTantiemes == null && property.tantiemes_base != null) baseTantiemes = Number(property.tantiemes_base);
+
+        if (lines.length === 0) {
+          const { data: lots } = await admin
+            .from("property_lots")
+            .select("id,label,tantiemes")
+            .eq("user_id", ctx.userId)
+            .eq("property_id", args.property_id)
+            .neq("status", "archived")
+            .order("sort_order", { ascending: true });
+          if (lots && lots.length > 0) {
+            const lotIds = lots.map((l: any) => l.id);
+            const { data: leasesRows } = await admin.from("leases").select("lot_id,tenant_id,status,start_date").eq("user_id", ctx.userId).in("lot_id", lotIds);
+            const { data: tenantRows } = await admin.from("tenants").select("id,full_name").eq("user_id", ctx.userId);
+            const tenantById = new Map((tenantRows || []).map((t: any) => [t.id, t.full_name]));
+            lines = lots.map((lot: any) => {
+              const lotLeases = (leasesRows || []).filter((l: any) => l.lot_id === lot.id);
+              const best =
+                lotLeases.find((l: any) => isSelectableLeaseLike(l)) ||
+                [...lotLeases].sort((a: any, b: any) => (b.start_date || "").localeCompare(a.start_date || ""))[0] ||
+                null;
+              return {
+                label: lot.label || "Lot",
+                occupant: best ? tenantById.get(best.tenant_id) || null : null,
+                tantiemes: lot.tantiemes != null ? Number(lot.tantiemes) : 0,
+                recoverablePercent: 100,
+              };
+            });
+          }
+        }
+      }
+
+      if (lines.length === 0) throw new Error("Aucun lot à répartir — fournis property_id (immeuble à lots) ou une liste de lignes manuelle.");
+
+      const usedTantiemes = lines.reduce((s, l) => s + l.tantiemes, 0);
+      const denominator = baseTantiemes && baseTantiemes > 0 ? baseTantiemes : usedTantiemes;
+      const computed = lines.map((l) => {
+        const sharePercent = denominator > 0 ? (l.tantiemes / denominator) * 100 : 0;
+        const grossAmount = denominator > 0 ? (total * l.tantiemes) / denominator : 0;
+        const recoverableAmount = (grossAmount * l.recoverablePercent) / 100;
+        return {
+          label: l.label,
+          occupant: l.occupant,
+          tantiemes: l.tantiemes,
+          share_percent: Math.round(sharePercent * 10) / 10,
+          gross_amount: Math.round(grossAmount * 100) / 100,
+          recoverable_percent: l.recoverablePercent,
+          recoverable_amount: Math.round(recoverableAmount * 100) / 100,
+          owner_amount: Math.round((grossAmount - recoverableAmount) * 100) / 100,
+        };
+      });
+      const allocated = computed.reduce((s, l) => s + l.gross_amount, 0);
+      const recoverableTotal = Math.round(computed.reduce((s, l) => s + l.recoverable_amount, 0) * 100) / 100;
+      const ownerTotal = computed.reduce((s, l) => s + l.owner_amount, 0);
+      const unallocatedAmount = Math.round(Math.max(0, total - allocated) * 100) / 100;
+      const overAllocatedTantiemes = baseTantiemes && baseTantiemes > 0 ? Math.max(0, usedTantiemes - baseTantiemes) : 0;
+
+      return {
+        property_label: propertyLabel,
+        total_charges: total,
+        base_tantiemes: denominator,
+        used_tantiemes: usedTantiemes,
+        over_allocated_tantiemes: overAllocatedTantiemes,
+        lines: computed,
+        recoverable_total: recoverableTotal,
+        owner_total: Math.round((ownerTotal + unallocatedAmount) * 100) / 100,
+      };
+    },
+  },
+  {
+    name: "compute_charge_regularization",
+    description: "Calcule le solde de régularisation annuelle des charges locatives (provisions versées vs dépenses réelles récupérables) — même calcul que l'outil « Régulariser les charges locatives » de la Boîte à outils. Si lease_id est fourni, résout automatiquement le bien/locataire concerné et préremplit la provision mensuelle depuis charges_amount du bail (modifiable). Toujours demander à l'utilisateur le détail des dépenses réelles (motif + montant + part récupérable) — ne jamais les inventer.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string", description: "Pour résoudre automatiquement bien/locataire/provision mensuelle." },
+        period_start: { type: "string" },
+        period_end: { type: "string" },
+        monthly_provision: { type: "number", description: "Provision mensuelle versée. Par défaut charges_amount du bail si lease_id est fourni." },
+        manual_provisions_total: { type: "number", description: "Total des provisions versées sur la période, si connu directement — prime sur monthly_provision × durée si fourni." },
+        expenses: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              amount: { type: "number" },
+              recoverable_percent: { type: "number", description: "Part récupérable auprès du locataire, en %. 100 par défaut." },
+            },
+            required: ["label", "amount"],
+          },
+        },
+      },
+      required: ["period_start", "period_end", "expenses"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      let propertyLabel: string | null = null;
+      let tenantName: string | null = null;
+      let monthlyProvision = args.monthly_provision != null ? Number(args.monthly_provision) : null;
+
+      if (args.lease_id) {
+        const { data: lease } = await admin
+          .from("leases")
+          .select("id,property_id,lot_id,tenant_id,charges_amount")
+          .eq("id", args.lease_id)
+          .eq("user_id", ctx.userId)
+          .maybeSingle();
+        if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+        propertyLabel = await resolvePropertyLabel(admin, ctx.userId, lease.property_id, lease.lot_id);
+        tenantName = await resolveTenantName(admin, ctx.userId, lease.tenant_id);
+        if (monthlyProvision == null) monthlyProvision = Number(lease.charges_amount || 0);
+      }
+
+      const periodStart = String(args.period_start);
+      const periodEnd = String(args.period_end);
+      const periodDays = daysInclusive(periodStart, periodEnd);
+      const estimatedMonths = periodDays > 0 ? periodDays / 30.4375 : 0;
+      const paid =
+        args.manual_provisions_total != null ? Number(args.manual_provisions_total) : (monthlyProvision || 0) * estimatedMonths;
+
+      const expensesInput: Array<{ label: string; amount: number; recoverable_percent?: number }> = Array.isArray(args.expenses) ? args.expenses : [];
+      if (expensesInput.length === 0) throw new Error("Indique au moins une dépense réelle (motif, montant, part récupérable).");
+      const expenses = expensesInput.map((e) => {
+        const amount = Number(e.amount || 0);
+        const recoverablePercent = e.recoverable_percent != null ? Math.min(100, Math.max(0, Number(e.recoverable_percent))) : 100;
+        return { label: e.label, amount, recoverable_percent: recoverablePercent, recoverable_amount: Math.round(((amount * recoverablePercent) / 100) * 100) / 100 };
+      });
+      const real = Math.round(expenses.reduce((s, e) => s + e.recoverable_amount, 0) * 100) / 100;
+      const delta = Math.round((real - paid) * 100) / 100;
+
+      return {
+        property_label: propertyLabel,
+        tenant_name: tenantName,
+        period_start: periodStart,
+        period_end: periodEnd,
+        period_days: periodDays,
+        monthly_provision: monthlyProvision,
+        provisions_paid: Math.round(paid * 100) / 100,
+        expenses,
+        real_recoverable_expenses: real,
+        balance: Math.abs(delta),
+        tenant_owes: delta > 0,
       };
     },
   },
@@ -1382,6 +1682,69 @@ N'invente jamais une valeur absente du document : utilise null.`,
         { label: "Bien", value: propertyLabel },
         { label: "Loyer", value: euro(args.rent_amount) + (args.charges_amount ? ` + ${euro(args.charges_amount)} charges` : "") },
       ];
+    },
+  },
+  {
+    name: "list_candidatures",
+    description: "Liste les candidatures reçues sur les annonces de location publiées (voir create_listing), avec pour chacune un score de dossier (0-100) et un niveau ('Profil solide' ≥72, 'Profil acceptable' ≥48, sinon 'Profil risqué') calculés exactement comme l'écran Candidatures du cockpit — ne recalcule jamais ce score toi-même à partir des champs bruts. À utiliser pour répondre à 'qui a postulé sur mon annonce ?', 'quel est le meilleur dossier ?', 'tel candidat a-t-il un garant/un dossier complet ?'. Une annonce sans aucune candidature est normal, ne le présente jamais comme une anomalie.",
+    input_schema: {
+      type: "object",
+      properties: {
+        listing_id: { type: "string", description: "Limite le résultat à une seule annonce." },
+        status: { type: "string", enum: ["submitted", "accepted", "rejected", "waitlist", "converted"], description: "Filtre optionnel sur le statut de la candidature." },
+      },
+      required: [],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      let query = admin
+        .from("rental_listings")
+        .select(
+          "id,title,address,rent_amount,charges_amount,income_ratio,status,created_at,candidatures(id,first_name,last_name,email,phone,professional_situation,employer_name,net_monthly_income,has_guarantor,guarantor_type,guarantor_income,guarantor_docs_identity,guarantor_docs_payslips,docs_identity,docs_payslips,docs_tax,docs_address,status,submitted_at,landlord_note)"
+        )
+        .eq("user_id", ctx.userId)
+        .order("created_at", { ascending: false });
+      if (args.listing_id) query = query.eq("id", String(args.listing_id));
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+
+      const listings = (data || []).map((listing: any) => {
+        const candidatures = (listing.candidatures || [])
+          .filter((c: any) => !args.status || c.status === args.status)
+          .map((c: any) => {
+            const score = scoreCandidatureProfile(c, listing);
+            return {
+              id: c.id,
+              name: [c.first_name, c.last_name].filter(Boolean).join(" ") || null,
+              email: c.email,
+              phone: c.phone,
+              professional_situation: c.professional_situation,
+              employer_name: c.employer_name,
+              net_monthly_income: c.net_monthly_income,
+              has_guarantor: c.has_guarantor,
+              guarantor_type: c.guarantor_type,
+              docs_complete: Boolean(c.docs_identity && c.docs_payslips && c.docs_tax && c.docs_address),
+              status: c.status,
+              submitted_at: c.submitted_at,
+              landlord_note: c.landlord_note,
+              score,
+              profile_level: candidatureProfileLevel(score),
+            };
+          })
+          .sort((a: any, b: any) => b.score - a.score);
+        return {
+          id: listing.id,
+          title: listing.title,
+          address: listing.address,
+          rent_amount: listing.rent_amount,
+          charges_amount: listing.charges_amount,
+          status: listing.status,
+          created_at: listing.created_at,
+          candidatures,
+        };
+      });
+      return { listings };
     },
   },
   {
@@ -2567,6 +2930,253 @@ N'invente jamais une valeur absente du document : utilise null.`,
       if (args.kind === "vente" && args.sale_price != null) rows.push({ label: "Prix de vente", value: euro(args.sale_price) });
       if (args.kind === "motif" && args.motif_description) rows.push({ label: "Motif détaillé", value: String(args.motif_description) });
       return rows;
+    },
+  },
+  {
+    name: "generate_attestation",
+    description: "Génère le texte d'un courrier/attestation locataire courant : demande de justificatif d'assurance habitation, déclaration d'entrée du locataire, déclaration de départ du locataire, ou attestation de fin de bail — même 4 modèles que l'écran Modèles de documents. Ne produit ni PDF ni enregistrement (comme le modèle correspondant côté cockpit) : renvoie uniquement le texte du courrier, à afficher intégralement dans le chat pour que l'utilisateur puisse le copier. Résout automatiquement le nom/l'adresse du bailleur (profil), le locataire et l'adresse du logement à partir du bail.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: ["demande-assurance", "declaration-entree", "declaration-depart", "attestation-fin-bail"] },
+        lease_id: { type: "string" },
+        event_date: { type: "string", description: "Date d'entrée/de départ/de fin de bail, YYYY-MM-DD. Par défaut start_date (entrée) ou end_date (départ/fin de bail) du bail — ignoré pour demande-assurance." },
+        signature_place: { type: "string", description: "Ville de signature. Par défaut la ville du bien." },
+      },
+      required: ["kind", "lease_id"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const kind = String(args.kind);
+      if (!["demande-assurance", "declaration-entree", "declaration-depart", "attestation-fin-bail"].includes(kind)) {
+        throw new Error("Type d'attestation invalide.");
+      }
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,property_id,lot_id,tenant_id,start_date,end_date")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      const [{ landlordName, landlordAddress }, tenantName, propertyAddress, propertyCity] = await Promise.all([
+        resolveLandlordIdentity(admin, ctx.userId),
+        resolveTenantName(admin, ctx.userId, lease.tenant_id),
+        resolvePropertyAddress(admin, ctx.userId, lease.property_id, lease.lot_id),
+        admin.from("properties").select("city").eq("id", lease.property_id).eq("user_id", ctx.userId).maybeSingle().then((r) => r.data?.city || ""),
+      ]);
+
+      const defaultEventDate = kind === "declaration-entree" ? lease.start_date : kind === "declaration-depart" || kind === "attestation-fin-bail" ? lease.end_date : null;
+      const eventDate = args.event_date || defaultEventDate;
+      if (kind !== "demande-assurance" && !eventDate) {
+        throw new Error("Indique la date d'événement (entrée/départ/fin de bail) — ce bail n'a pas de date correspondante enregistrée.");
+      }
+      const signaturePlace = args.signature_place || propertyCity || "";
+      if (!signaturePlace) throw new Error("Indique la ville depuis laquelle envoyer ce courrier (lieu de signature).");
+
+      const today = fmtDateFr(new Date().toISOString().slice(0, 10));
+      const eventDateFR = eventDate ? fmtDateFr(eventDate) : null;
+      const leaseStartFR = fmtDateFr(lease.start_date);
+      const landlord = landlordName || "[Nom du bailleur]";
+      const tenant = tenantName || "[Nom du locataire]";
+      const address = propertyAddress || "[adresse du logement]";
+      const header = `${signaturePlace}, le ${today}\n\n${landlord}\n${landlordAddress || "[Adresse du bailleur]"}`;
+      const signature = `\n\n${signaturePlace}, le ${today}\n\n\n___________________________\n${landlord}`;
+
+      let letter: string;
+      if (kind === "demande-assurance") {
+        letter = `${header}\n\nÀ l'attention de ${tenant}\n\nObjet : Demande de justificatif d'assurance habitation — ${address}\n\nMadame, Monsieur,\n\nConformément à l'article 7g de la loi n° 89-462 du 6 juillet 1989, vous êtes tenu(e) de vous assurer contre les risques locatifs (incendie, dégât des eaux, explosion) pour le logement que vous occupez au ${address}, et de me justifier de cette assurance chaque année à ma demande.\n\nJe vous remercie de bien vouloir me faire parvenir une attestation d'assurance habitation en cours de validité dans les meilleurs délais.\n\nÀ défaut de réponse de votre part dans un délai raisonnable, je me réserve la possibilité de souscrire moi-même une assurance pour votre compte, dont le coût vous serait refacturé avec le loyer, conformément à la loi.\n\nVeuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.${signature}`;
+      } else if (kind === "declaration-entree") {
+        letter = `${header}\n\nObjet : Déclaration d'entrée dans les lieux\n\nJe soussigné(e) ${landlord}, propriétaire du logement situé ${address}, atteste que ${tenant} occupe ce logement à titre de résidence depuis le ${eventDateFR}${leaseStartFR ? `, dans le cadre du bail signé le ${leaseStartFR}` : ""}.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+      } else if (kind === "declaration-depart") {
+        letter = `${header}\n\nObjet : Déclaration de départ du locataire\n\nJe soussigné(e) ${landlord}, propriétaire du logement situé ${address}, atteste que ${tenant} a quitté ce logement le ${eventDateFR}, mettant fin à son occupation à titre de résidence.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+      } else {
+        letter = `${header}\n\nObjet : Attestation de fin de bail\n\nJe soussigné(e) ${landlord}, atteste que le bail conclu avec ${tenant} pour le logement situé ${address}${leaseStartFR ? `, ayant débuté le ${leaseStartFR}` : ""}, a pris fin le ${eventDateFR}.\n\nLa présente attestation est délivrée à l'intéressé(e) pour servir et valoir ce que de droit.${signature}`;
+      }
+      return { letter };
+    },
+  },
+  {
+    name: "generate_restitution_depot",
+    description: "Génère le texte du courrier de restitution du dépôt de garantie (avec ou sans retenues justifiées), délai légal inclus (1 mois sans dégradation constatée à l'état des lieux de sortie, 2 mois sinon). Ne produit ni PDF ni enregistrement : renvoie uniquement le texte du courrier, à afficher intégralement dans le chat. Résout automatiquement bailleur/locataire/logement/montant du dépôt à partir du bail (deposit_amount, voir list_leases) — ne jamais inventer un montant de dépôt.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        exit_date: { type: "string", description: "Date de remise des clés, YYYY-MM-DD. Par défaut end_date du bail." },
+        has_issues: { type: "boolean", description: "Des dégradations ont été constatées à l'état des lieux de sortie (porte le délai légal à 2 mois)." },
+        retenues: {
+          type: "array",
+          items: { type: "object", properties: { motif: { type: "string" }, amount: { type: "number" } }, required: ["motif", "amount"] },
+          description: "Retenues sur le dépôt avec justificatif (motif + montant). Omis ou vide = restitution intégrale.",
+        },
+        restitution_mode: { type: "string", enum: ["virement", "cheque"], description: "Mode de restitution du solde, virement par défaut." },
+        tenant_new_address: { type: "string", description: "Nouvelle adresse du locataire, pour l'envoi du courrier (optionnel)." },
+        signature_place: { type: "string" },
+      },
+      required: ["lease_id"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,property_id,lot_id,tenant_id,end_date,deposit_amount")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+      const depositAmount = Number(lease.deposit_amount || 0);
+      if (depositAmount <= 0) throw new Error("Ce bail n'a pas de montant de dépôt de garantie enregistré (deposit_amount) — vérifie via list_leases avant de générer ce courrier.");
+
+      const [{ landlordName, landlordAddress }, tenantName, propertyAddress, propertyCity] = await Promise.all([
+        resolveLandlordIdentity(admin, ctx.userId),
+        resolveTenantName(admin, ctx.userId, lease.tenant_id),
+        resolvePropertyAddress(admin, ctx.userId, lease.property_id, lease.lot_id),
+        admin.from("properties").select("city").eq("id", lease.property_id).eq("user_id", ctx.userId).maybeSingle().then((r) => r.data?.city || ""),
+      ]);
+
+      const exitDate = args.exit_date || lease.end_date;
+      const retenues: Array<{ motif: string; amount: number }> = Array.isArray(args.retenues) ? args.retenues : [];
+      const totalRetenues = Math.round(retenues.reduce((s, r) => s + Math.max(0, Number(r.amount) || 0), 0) * 100) / 100;
+      const montantRestitue = Math.max(0, Math.round((depositAmount - totalRetenues) * 100) / 100);
+      const delaiMois = args.has_issues ? 2 : 1;
+      const mode = args.restitution_mode === "cheque" ? "cheque" : "virement";
+      const signaturePlace = args.signature_place || propertyCity || "";
+      if (!signaturePlace) throw new Error("Indique la ville depuis laquelle envoyer ce courrier (lieu de signature).");
+
+      const today = fmtDateFr(new Date().toISOString().slice(0, 10));
+      const landlord = landlordName || "[Nom du bailleur]";
+      const retenuesBlock =
+        retenues.length > 0
+          ? `\nDéductions effectuées sur justificatifs :\n${retenues.map((r) => `  - ${r.motif} : ${euro(r.amount)}`).join("\n")}\n\nTotal des retenues : ${euro(totalRetenues)}\n`
+          : "\nAucune retenue n'est effectuée.\n";
+      const modeEnvoi = mode === "virement" ? "par virement bancaire sur le compte dont vous m'aurez communiqué les coordonnées" : "par chèque adressé à votre nouvelle adresse";
+
+      const letter = `${signaturePlace}, le ${today}
+
+${landlord}
+${landlordAddress || "[Adresse du bailleur]"}
+
+À l'attention de ${tenantName || "[Nom du locataire]"}${args.tenant_new_address ? `\n${args.tenant_new_address}` : ""}
+
+Objet : Restitution du dépôt de garantie — ${propertyAddress || "[adresse du logement]"}
+
+Madame, Monsieur,
+
+Suite à la restitution des clés du logement situé ${propertyAddress || "[adresse]"}${exitDate ? ` le ${fmtDateFr(exitDate)}` : ""}, je procède à la régularisation du dépôt de garantie conformément à l'article 22 de la loi n° 89-462 du 6 juillet 1989.
+
+Dépôt de garantie initial : ${euro(depositAmount)}
+${retenuesBlock}
+Montant restitué : ${euro(montantRestitue)}
+
+Je vous adresse ce solde ${modeEnvoi} dans un délai de ${delaiMois} mois à compter de la remise des clés, conformément à la loi.${retenues.length > 0 ? "\n\nLes justificatifs correspondant aux retenues effectuées (devis, factures) vous sont joints au présent courrier." : ""}
+
+Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
+
+${signaturePlace}, le ${today}
+
+
+___________________________
+${landlord}`;
+
+      return { letter, deposit_amount: depositAmount, total_retenues: totalRetenues, montant_restitue: montantRestitue, delai_mois: delaiMois };
+    },
+  },
+  {
+    name: "generate_regularisation_charges",
+    description: "Génère le texte du courrier de régularisation annuelle des charges locatives récupérables (provisions encaissées vs charges réelles, complément dû ou trop-perçu calculé automatiquement). Ne produit ni PDF ni enregistrement : renvoie uniquement le texte du courrier, à afficher intégralement dans le chat. Résout automatiquement bailleur/locataire/logement à partir du bail — demande toujours la période, les provisions encaissées et le détail des charges réelles à l'utilisateur, ne les invente jamais.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        period_start: { type: "string", description: "Début de la période de régularisation, YYYY-MM-DD." },
+        period_end: { type: "string", description: "Fin de la période de régularisation, YYYY-MM-DD." },
+        provisions: { type: "number", description: "Provisions sur charges encaissées sur la période." },
+        charges: {
+          type: "array",
+          items: { type: "object", properties: { motif: { type: "string" }, amount: { type: "number" } }, required: ["motif", "amount"] },
+          description: "Détail des postes de charges réelles récupérables (eau, chauffage collectif, TEOM, entretien parties communes...).",
+        },
+        est_copropriete: { type: "boolean", description: "Logement en copropriété (décompte du syndic) — true par défaut. Mettre false pour une maison / facturation directe." },
+        signature_place: { type: "string" },
+      },
+      required: ["lease_id", "period_start", "period_end", "provisions", "charges"],
+    },
+    mutates: false,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin
+        .from("leases")
+        .select("id,property_id,lot_id,tenant_id")
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      const [{ landlordName, landlordAddress }, tenantName, propertyAddress, propertyCity] = await Promise.all([
+        resolveLandlordIdentity(admin, ctx.userId),
+        resolveTenantName(admin, ctx.userId, lease.tenant_id),
+        resolvePropertyAddress(admin, ctx.userId, lease.property_id, lease.lot_id),
+        admin.from("properties").select("city").eq("id", lease.property_id).eq("user_id", ctx.userId).maybeSingle().then((r) => r.data?.city || ""),
+      ]);
+
+      const charges: Array<{ motif: string; amount: number }> = Array.isArray(args.charges) ? args.charges : [];
+      if (charges.length === 0) throw new Error("Indique au moins un poste de charges réelles.");
+      const provisions = Math.max(0, Number(args.provisions) || 0);
+      const totalCharges = Math.round(charges.reduce((s, c) => s + Math.max(0, Number(c.amount) || 0), 0) * 100) / 100;
+      const regularisation = Math.round((totalCharges - provisions) * 100) / 100;
+      const estCopropriete = args.est_copropriete !== false;
+      const signaturePlace = args.signature_place || propertyCity || "";
+      if (!signaturePlace) throw new Error("Indique la ville depuis laquelle envoyer ce courrier (lieu de signature).");
+
+      const today = fmtDateFr(new Date().toISOString().slice(0, 10));
+      const landlord = landlordName || "[Nom du bailleur]";
+      const periodLabel = args.period_start && args.period_end ? `du ${fmtDateFr(args.period_start)} au ${fmtDateFr(args.period_end)}` : "[période à préciser]";
+      const chargesBlock = charges.map((c) => `  - ${c.motif} : ${euro(c.amount)}`).join("\n");
+      const base = estCopropriete ? "selon le décompte de charges de copropriété établi par le syndic" : "selon les factures réelles de la période";
+      const resultBlock =
+        regularisation > 0
+          ? `Solde restant dû par le locataire : ${euro(regularisation)}. Je vous remercie de bien vouloir régulariser cette somme dans les meilleurs délais.`
+          : regularisation < 0
+          ? `Trop-perçu à vous rembourser : ${euro(Math.abs(regularisation))}. Ce montant vous sera restitué dans les meilleurs délais.`
+          : "Les provisions versées correspondent exactement aux charges réelles de la période : aucune somme n'est due de part et d'autre.";
+
+      const letter = `${signaturePlace}, le ${today}
+
+${landlord}
+${landlordAddress || "[Adresse du bailleur]"}
+
+À l'attention de ${tenantName || "[Nom du locataire]"}
+${propertyAddress || "[Adresse du logement]"}
+
+Objet : Régularisation annuelle des charges locatives — période ${periodLabel}
+
+Madame, Monsieur,
+
+Conformément à l'article 23 de la loi n° 89-462 du 6 juillet 1989 et au décret n° 87-713 du 26 août 1987, je procède à la régularisation annuelle des charges locatives du logement situé ${propertyAddress || "[adresse du logement]"}, pour la période ${periodLabel}.
+
+Provisions sur charges encaissées sur la période : ${euro(provisions)}
+
+Charges réelles récupérables (${base}) :
+${chargesBlock}
+
+Total des charges réelles récupérables : ${euro(totalCharges)}
+
+${resultBlock}
+
+Conformément à la loi, les justificatifs (décompte de charges de copropriété et/ou factures) sont tenus à votre disposition et vous seront communiqués sur simple demande pendant une durée de 6 mois à compter de l'envoi du présent décompte.
+
+Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
+
+${signaturePlace}, le ${today}
+
+
+___________________________
+${landlord}`;
+
+      return { letter, total_charges: totalCharges, provisions, regularisation };
     },
   },
   {
