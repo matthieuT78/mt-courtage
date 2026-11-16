@@ -65,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) baux éligibles
     const { data: leases, error } = await supabaseAdmin
       .from("leases")
-      .select("id,user_id,property_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status,receipts_disabled")
+      .select("id,user_id,property_id,lot_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status,receipts_disabled")
       .eq("auto_reminder_enabled", true)
       .neq("status", "draft")
       // Filet de sécurité : un bail peut passer à "ended" sans que
@@ -137,9 +137,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       if (existingPayment.data) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "already_confirmed" }); continue; }
 
-      const [{ data: property }, { data: tenant }] = await Promise.all([
+      const [{ data: property }, { data: tenant }, { data: lot }] = await Promise.all([
         l.property_id ? supabaseAdmin.from("properties").select("label,address_line1,city,status").eq("id", l.property_id).maybeSingle() : Promise.resolve({ data: null }),
         l.tenant_id ? supabaseAdmin.from("tenants").select("full_name").eq("id", l.tenant_id).maybeSingle() : Promise.resolve({ data: null }),
+        l.lot_id ? supabaseAdmin.from("property_lots").select("status").eq("id", l.lot_id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
 
       // Un bien archivé (vendu, ou verrouillé automatiquement suite à un
@@ -147,6 +148,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // pages/api/billing/stripe-webhook.ts) ne doit plus relancer son
       // locataire ni permettre de nouvelle quittance.
       if ((property as any)?.status === "archived") { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "property_archived" }); continue; }
+
+      // Même garde-fou au niveau du lot : un immeuble peut rester actif
+      // alors qu'un lot précis a été archivé (lot vendu, retiré de la
+      // gestion...).
+      if ((lot as any)?.status === "archived") { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "lot_archived" }); continue; }
 
       // 2) créer token one-shot
       const token = crypto.randomBytes(24).toString("hex");

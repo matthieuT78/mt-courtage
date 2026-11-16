@@ -203,11 +203,14 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   const lease: any = leaseRes.data;
   if (String(lease.user_id) !== userId) throw new Error("Accès refusé.");
 
-  const [{ data: tenant }, { data: property }, { data: landlord }, { data: landlordProfile }] = await Promise.all([
+  const [{ data: tenant }, { data: property }, { data: landlord }, { data: landlordProfile }, { data: lot }] = await Promise.all([
     supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle(),
     supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).maybeSingle(),
     supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
     supabaseAdmin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    lease.lot_id
+      ? supabaseAdmin.from("property_lots").select("status").eq("id", lease.lot_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
@@ -256,6 +259,11 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   // avait déjà été correctement envoyée avant l'archivage du bien.
   if (property?.status === "archived") {
     throw new Error("Ce bien a été archivé : impossible de générer une nouvelle quittance.");
+  }
+  // Même garde-fou au niveau du lot : un immeuble peut rester actif alors
+  // qu'un lot précis a été archivé (lot vendu, retiré de la gestion...).
+  if ((lot as any)?.status === "archived") {
+    throw new Error("Ce lot a été archivé : impossible de générer une nouvelle quittance.");
   }
 
   // Quittances déléguées à une agence : jamais de PDF ni d'envoi au locataire — cette

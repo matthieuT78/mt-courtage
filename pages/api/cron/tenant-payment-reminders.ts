@@ -69,6 +69,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
       }
+      // Même garde-fou au niveau du lot : un immeuble peut rester actif
+      // alors qu'un lot précis a été archivé (lot vendu, retiré de la
+      // gestion...).
+      if (lease.lot_id) {
+        const { data: lot } = await supabaseAdmin.from("property_lots").select("status").eq("id", lease.lot_id).maybeSingle();
+        if (lot?.status === "archived") {
+          skipped++;
+          continue;
+        }
+      }
       for (const shift of [0, -1]) {
         const period = shiftedMonth(shift);
         const rentPeriod = getLeaseRentPeriod(lease, period);

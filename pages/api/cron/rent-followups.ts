@@ -115,12 +115,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        const [{ data: property }, { data: tenant }] = await Promise.all([
+        const [{ data: property }, { data: tenant }, { data: lot }] = await Promise.all([
           lease.property_id
             ? supabaseAdmin.from("properties").select("label,address_line1,city,status").eq("id", lease.property_id).maybeSingle()
             : Promise.resolve({ data: null }),
           lease.tenant_id
             ? supabaseAdmin.from("tenants").select("full_name").eq("id", lease.tenant_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+          lease.lot_id
+            ? supabaseAdmin.from("property_lots").select("status").eq("id", lease.lot_id).maybeSingle()
             : Promise.resolve({ data: null }),
         ]);
 
@@ -129,6 +132,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // pages/api/billing/stripe-webhook.ts) ne doit plus relancer son
         // locataire ni permettre de nouvelle quittance.
         if ((property as any)?.status === "archived") {
+          skipped++;
+          continue;
+        }
+
+        // Même garde-fou au niveau du lot : un immeuble peut rester actif
+        // alors qu'un lot précis a été archivé (lot vendu, retiré de la
+        // gestion...).
+        if ((lot as any)?.status === "archived") {
           skipped++;
           continue;
         }

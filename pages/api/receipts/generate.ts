@@ -502,6 +502,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (lr.data) lot = lr.data;
     }
 
+    // Même garde-fou que pour le bien parent, mais au niveau du lot : un
+    // immeuble peut rester actif alors qu'un lot précis a été archivé (lot
+    // vendu, retiré de la gestion...) — le check sur `property.status`
+    // ci-dessus ne le détecte pas puisque le bâtiment lui-même reste actif.
+    if (lot?.status === "archived") {
+      return res.status(409).json({ error: "Ce lot a été archivé : impossible de générer une nouvelle quittance." });
+    }
+
     let tenant: any = null;
     if (lease.tenant_id) {
       const tr = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle();
