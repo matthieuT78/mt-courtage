@@ -19,8 +19,6 @@ export type SeoLandingPage = {
   links: Array<{ label: string; href: string; text: string }>;
 };
 
-const today = "2026-06-25";
-
 export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "modele-quittance-loyer-pdf",
@@ -33,7 +31,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     intro:
       "Une quittance de loyer doit rester simple, mais elle engage le bailleur : elle atteste que le locataire a payé l’intégralité du loyer et des charges pour une période donnée. La bonne page n’est donc pas seulement un modèle PDF : elle doit expliquer quand l’émettre, quoi écrire dedans et comment garder un suivi propre.",
     primaryCta: "Créer une quittance dans l’outil bailleur",
-    updatedAt: today,
+    updatedAt: "2026-06-06",
     intent: "Requête cible : modèle quittance de loyer PDF gratuit",
     sections: [
       {
@@ -154,7 +152,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "Un impayé se traite mieux lorsqu’il est détecté tôt. Le suivi doit distinguer paiement attendu, paiement reçu, paiement partiel, retard, relance, garant éventuel et quittance générable. L’objectif n’est pas d’empiler des colonnes : il faut savoir quelle action mener aujourd’hui, et garder une preuve de ce qui a déjà été fait.",
     primaryCta: "Suivre mes loyers",
     secondaryCta: { label: "Voir les quittances", href: "/modele-quittance-loyer-pdf" },
-    updatedAt: today,
+    updatedAt: "2026-07-01",
     intent: "Requête cible : tableau suivi loyers impayés",
     sections: [
       {
@@ -264,7 +262,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "L’inventaire d’une location meublée décrit les meubles et équipements remis au locataire. Il complète l’état des lieux, prouve ce qui a été mis à disposition et sécurise la restitution du logement. Sans inventaire clair, le départ du locataire devient vite une discussion de mémoire.",
     primaryCta: "Préparer mon inventaire",
     secondaryCta: { label: "Guide LMNP", href: "/guides/lmnp-checklist-location-meublee" },
-    updatedAt: today,
+    updatedAt: "2026-06-06",
     intent: "Requête cible : inventaire location meublée obligatoire",
     sections: [
       {
@@ -375,7 +373,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     intro:
       "La révision annuelle du loyer n’est pas une hausse automatique. Elle doit être prévue par le bail, respecter l’indice de référence des loyers et tenir compte des restrictions applicables au logement.",
     primaryCta: "Suivre mes échéances de bail",
-    updatedAt: today,
+    updatedAt: "2026-06-06",
     intent: "Requête cible : calcul révision loyer IRL",
     sections: [
       {
@@ -470,7 +468,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "Le dépôt de garantie est souvent source de tension au départ. En location meublée, le bailleur doit s’appuyer sur le bail, l’état des lieux, l’inventaire et les justificatifs pour restituer la bonne somme, dans le bon délai, sans confondre usure normale, dégradation et dette locative.",
     primaryCta: "Préparer un départ locataire",
     secondaryCta: { label: "Voir le suivi caution", href: "/cautions-loyers" },
-    updatedAt: today,
+    updatedAt: "2026-06-06",
     intent: "Requête cible : restitution dépôt de garantie location meublée",
     sections: [
       {
@@ -582,7 +580,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "Face à un loyer impayé, la mise en demeure est la première étape formelle avant toute procédure judiciaire. Elle constitue la preuve écrite de votre démarche amiable et marque le point de départ du délai accordé au locataire pour régulariser sa situation. Un courrier mal rédigé ou envoyé sans preuve peut fragiliser votre dossier devant le tribunal.",
     primaryCta: "Générer ma mise en demeure",
     secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
-    updatedAt: today,
+    updatedAt: "2026-08-27",
     intent: "Requête cible : mise en demeure loyer impayé modèle, lettre impayé locataire",
     sections: [
       {
@@ -698,7 +696,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "La révision annuelle du loyer est encadrée par la loi : elle ne peut se faire qu'une fois par an, à la date anniversaire du bail, et uniquement dans la limite de l'évolution de l'Indice de Référence des Loyers (IRL) publié chaque trimestre par l'INSEE. Une notification écrite au locataire est obligatoire — sans elle, la révision ne peut pas être appliquée rétroactivement au-delà de 12 mois.",
     primaryCta: "Calculer et générer ma notification",
     secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
-    updatedAt: today,
+    updatedAt: "2026-07-25",
     intent: "Requête cible : révision loyer IRL 2026, calcul révision loyer, notification révision loyer locataire",
     sections: [
       {
@@ -814,7 +812,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "La restitution du dépôt de garantie obéit à des règles strictes fixées par l'article 22 de la loi du 6 juillet 1989. Le bailleur dispose d'un ou deux mois après la remise des clés pour restituer le solde, sous peine d'une majoration automatique de 10 % du montant mensuel du loyer hors charges par mois de retard. Un courrier de restitution clair et documenté protège le bailleur en cas de contestation.",
     primaryCta: "Générer mon courrier de restitution",
     secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
-    updatedAt: today,
+    updatedAt: "2026-07-25",
     intent: "Requête cible : restitution dépôt de garantie délai, retenue dépôt locataire modèle lettre",
     sections: [
       {
@@ -930,7 +928,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "Un bailleur ne peut pas mettre fin à un bail d'habitation à tout moment. La loi du 6 juillet 1989 impose un motif précis parmi trois autorisés, un délai strict à respecter à partir de la réception par le locataire, et une forme obligatoire — lettre recommandée avec accusé de réception, remise en main propre contre signature, ou acte d'huissier. Un congé mal rédigé ou envoyé hors délai est nul de plein droit : le locataire reste en place pour une nouvelle période complète.",
     primaryCta: "Générer ma lettre de congé en PDF",
     secondaryCta: { label: "Voir les modèles de lettres", href: "/modele-lettre-conge-bailleur#modeles" },
-    updatedAt: today,
+    updatedAt: "2026-08-27",
     intent: "Requête cible : lettre de congé bailleur modèle, congé pour reprise vente motif légitime",
     sections: [
       {

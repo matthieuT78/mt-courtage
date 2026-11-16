@@ -118,6 +118,7 @@ const jsonLdItems = [
     url: pageUrl,
     description,
     inLanguage: "fr-FR",
+    dateModified: "2026-11-03",
     image: ogImage,
     isPartOf: {
       "@type": "WebSite",

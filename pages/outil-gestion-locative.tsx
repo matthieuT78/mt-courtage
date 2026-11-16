@@ -143,6 +143,7 @@ export default function OutilGestionLocativePage() {
       url: pageUrl,
       description,
       inLanguage: "fr-FR",
+      dateModified: "2026-10-16",
       image: ogImage,
       isPartOf: {
         "@type": "WebSite",

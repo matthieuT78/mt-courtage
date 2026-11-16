@@ -187,6 +187,7 @@ export default function InvestissementPage() {
       url: pageUrl,
       description,
       inLanguage: "fr-FR",
+      dateModified: "2026-10-30",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",

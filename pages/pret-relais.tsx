@@ -201,6 +201,7 @@ export default function PretRelaisPage() {
       url: pageUrl,
       description,
       inLanguage: "fr-FR",
+      dateModified: "2026-10-06",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",

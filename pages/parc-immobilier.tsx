@@ -130,6 +130,7 @@ export default function ParcImmobilierPage() {
       url: pageUrl,
       description,
       inLanguage: "fr-FR",
+      dateModified: "2026-07-15",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",

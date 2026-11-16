@@ -21,16 +21,12 @@ const blogEntries = fs.existsSync(BLOG_DIR)
 
 const seoLandingSource = fs.readFileSync(path.join(process.cwd(), "lib/seoLandingPages.ts"), "utf8");
 const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => `/${match[1]}`);
-// Fallback pour les entrées qui référencent encore `updatedAt: today` (constante
-// partagée) plutôt qu'une date explicite — les entrées avec une vraie date
-// littérale (ex: "2026-08-14") priment sur ce fallback, par entrée.
-const seoLandingTodayFallback = seoLandingSource.match(/const today\s*=\s*"([^"]+)"/)?.[1] || null;
 const seoLandingDates = new Map();
 for (const chunk of seoLandingSource.split(/(?=\s{2,4}slug:\s*")/)) {
   const slugMatch = chunk.match(/slug:\s*"([^"]+)"/);
   if (!slugMatch) continue;
   const dateMatch = chunk.match(/updatedAt:\s*"([^"]+)"/);
-  seoLandingDates.set(`/${slugMatch[1]}`, dateMatch ? dateMatch[1] : seoLandingTodayFallback);
+  if (dateMatch) seoLandingDates.set(`/${slugMatch[1]}`, dateMatch[1]);
 }
 
 const guidesSource = fs.readFileSync(path.join(process.cwd(), "lib/guides.ts"), "utf8");
