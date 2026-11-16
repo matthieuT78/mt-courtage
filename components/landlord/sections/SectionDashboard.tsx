@@ -18,6 +18,34 @@ import type { Plan } from "../../../lib/permissions";
 import { TransitionPanel } from "./TransitionPanel";
 import { ReferralBanner } from "../ReferralBanner";
 
+// Exemples de commandes Loky affichés sous forme de texte (non cliquable —
+// trop peu de chances qu'une suggestion générique corresponde exactement à
+// ce que l'utilisateur veut faire). Change une fois par jour, pas à chaque
+// rendu, pour que l'ensemble reste stable sur une session.
+const LOKY_SUGGESTIONS_POOL = [
+  "Créer un bail",
+  "Confirmer un paiement reçu",
+  "Chercher un nouveau locataire",
+  "Créer un bien",
+  "Renvoyer la dernière quittance",
+  "Vérifier si un loyer est en retard",
+  "Créer un état des lieux",
+  "Calculer le dépôt de garantie",
+  "Relancer un locataire pour une pièce manquante",
+  "Résumer les paiements du mois",
+  "Mettre à jour le loyer d'un bail",
+  "Retrouver un document archivé",
+];
+
+function getDailyLokySuggestions(count = 3): string[] {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86_400_000);
+  const pool = LOKY_SUGGESTIONS_POOL;
+  const startIndex = dayOfYear % pool.length;
+  return Array.from({ length: count }, (_, i) => pool[(startIndex + i) % pool.length]);
+}
+
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
   title: string;
@@ -1765,23 +1793,9 @@ export function SectionDashboard({
               </form>
             </div>
 
-            <div className="mt-2.5 flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
-              {[
-                "Créer un bail",
-                "Confirmer un paiement reçu",
-                "Chercher un nouveau locataire",
-                "Créer un bien",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => onOpenAssistant(suggestion)}
-                  className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+            <p className="mt-2.5 px-1 text-xs italic text-slate-400">
+              Par exemple : {getDailyLokySuggestions().map((s) => `« ${s} »`).join(" · ")}
+            </p>
           </div>
         )}
 
