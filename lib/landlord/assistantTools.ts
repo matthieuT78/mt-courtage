@@ -747,13 +747,42 @@ N'invente jamais une valeur absente du document : utilise null.`,
         throw new Error(`Limite de biens atteinte pour votre abonnement (${maxActiveProperties} bien(s) actif(s) maximum). Passez à un plan supérieur pour en ajouter un de plus.`);
       }
 
+      const addressLine1 = String(args.address_line1 || "").trim();
+      const postalCode = args.postal_code ? String(args.postal_code).trim() : null;
+      const city = args.city ? String(args.city).trim() : null;
+
+      // Le formulaire manuel (AddressAutocomplete) récupère le code INSEE en
+      // même temps que l'adresse, au moment où l'utilisateur sélectionne une
+      // suggestion — Loky collecte l'adresse en texte libre, sans ce passage.
+      // Sans code INSEE, lib/cityPriceData.ts ne peut jamais rattacher ce bien
+      // aux comparables de marché (écran Performance) : repli best-effort sur
+      // la même API Adresse (BAN) que pages/api/address-search.ts, jamais
+      // bloquant si elle échoue ou s'il n'y a pas de résultat.
+      let inseeCode: string | null = null;
+      try {
+        const q = [addressLine1, postalCode, city].filter(Boolean).join(" ");
+        if (q) {
+          const url = new URL("https://api-adresse.data.gouv.fr/search/");
+          url.searchParams.set("q", q);
+          url.searchParams.set("limit", "1");
+          const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
+          if (resp.ok) {
+            const data = await resp.json();
+            inseeCode = data?.features?.[0]?.properties?.citycode || null;
+          }
+        }
+      } catch {
+        // best-effort — le bien se crée quand même sans code INSEE
+      }
+
       const payload = {
         user_id: ctx.userId,
         type: String(args.type),
         label: String(args.label || "").trim(),
-        address_line1: String(args.address_line1 || "").trim(),
-        postal_code: args.postal_code ? String(args.postal_code).trim() : null,
-        city: args.city ? String(args.city).trim() : null,
+        address_line1: addressLine1,
+        postal_code: postalCode,
+        city,
+        insee_code: inseeCode,
         surface_m2: args.surface_m2 != null ? Number(args.surface_m2) : null,
         rooms: args.rooms != null ? Number(args.rooms) : null,
         status: "active",
@@ -805,10 +834,25 @@ N'invente jamais une valeur absente du document : utilise null.`,
     mutates: true,
     execute: async (ctx, args) => {
       const admin = requireAdmin();
+      const email = args.email ? String(args.email).trim() : null;
+
+      // Même garde-fou que SectionLocataires.tsx : le bailleur signe depuis sa
+      // session déjà authentifiée (pas via un lien emailé comme le locataire),
+      // partager son email créerait une vraie ambiguïté sur qui a signé quoi
+      // (cf. /api/signatures/create, qui le bloque déjà mais seulement au
+      // moment de la signature — plus tard que nécessaire).
+      if (email) {
+        const ownerRes = await admin.auth.admin.getUserById(ctx.userId);
+        const ownerEmail = ownerRes.data?.user?.email;
+        if (ownerEmail && email.toLowerCase() === ownerEmail.trim().toLowerCase()) {
+          throw new Error("Le locataire ne peut pas avoir le même email que le bailleur.");
+        }
+      }
+
       const payload = {
         user_id: ctx.userId,
         full_name: String(args.full_name || "").trim(),
-        email: args.email ? String(args.email).trim() : null,
+        email,
         phone: args.phone ? String(args.phone).trim() : null,
       };
       const { data, error } = await admin.from("tenants").insert(payload).select("id,full_name").single();
@@ -844,6 +888,15 @@ N'invente jamais une valeur absente du document : utilise null.`,
       if (args.phone !== undefined) patch.phone = args.phone ? String(args.phone).trim() : null;
       if (args.notes !== undefined) patch.notes = args.notes ? String(args.notes).trim() : null;
       if (Object.keys(patch).length === 0) throw new Error("Indique au moins un champ à modifier (nom, email, téléphone, notes).");
+
+      // Même garde-fou qu'à la création (cf. create_tenant).
+      if (patch.email) {
+        const ownerRes = await admin.auth.admin.getUserById(ctx.userId);
+        const ownerEmail = ownerRes.data?.user?.email;
+        if (ownerEmail && String(patch.email).toLowerCase() === ownerEmail.trim().toLowerCase()) {
+          throw new Error("Le locataire ne peut pas avoir le même email que le bailleur.");
+        }
+      }
       const { data, error } = await admin.from("tenants").update(patch).eq("id", args.tenant_id).eq("user_id", ctx.userId).select("id,full_name").maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) throw new Error("Locataire introuvable ou non autorisé.");
