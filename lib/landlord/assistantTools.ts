@@ -1154,15 +1154,37 @@ N'invente jamais une valeur absente du document : utilise null.`,
 
       const { data: lease } = await admin.from("leases").select("receipts_disabled").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
       let receiptGenerated = false;
+      let receiptSent = false;
       if (!lease?.receipts_disabled) {
         try {
-          await callInternalApi(ctx, "/api/receipts/generate", {
+          const generated = await callInternalApi(ctx, "/api/receipts/generate", {
             userId: ctx.userId,
             leaseId: args.lease_id,
             periodStart: args.period_start,
             periodEnd: args.period_end,
           });
           receiptGenerated = true;
+
+          // Même comportement par défaut que le bouton "Confirmer le paiement"
+          // de l'écran Quittances (case "Envoyer la quittance" cochée par
+          // défaut, cf. SectionQuittances.tsx) — sans cet appel, confirmer un
+          // paiement via Loky générait le PDF mais ne l'envoyait jamais au
+          // locataire, malgré la description de cet outil qui promet un
+          // comportement identique au bouton manuel.
+          if (generated?.receipt_id) {
+            try {
+              await callInternalApi(ctx, "/api/receipts/send", {
+                userId: ctx.userId,
+                receiptId: generated.receipt_id,
+                resendOnly: false,
+              });
+              receiptSent = true;
+            } catch {
+              // Le paiement et la quittance restent confirmés/générés même si
+              // l'envoi échoue ponctuellement — rattrapable depuis Quittances
+              // (resend_receipt) ou via l'alerte "Quittance à finaliser".
+            }
+          }
         } catch {
           // Le paiement reste confirmé même si la génération PDF échoue ponctuellement
           // (ex. service PDF indisponible) — l'utilisateur pourra régénérer depuis l'écran Quittances.
@@ -1172,6 +1194,7 @@ N'invente jamais une valeur absente du document : utilise null.`,
       return {
         ...confirmData,
         receipt_generated: receiptGenerated,
+        receipt_sent: receiptSent,
         next_steps: [{ section: "quittances", link: {}, label: "Voir la quittance dans Quittances" }],
       };
     },
