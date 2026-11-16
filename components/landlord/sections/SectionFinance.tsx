@@ -2314,16 +2314,23 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {([
-          { label: "Recettes", value: formatEuro(periodLedger.income), cls: "text-emerald-700" },
-          { label: "Dépenses", value: formatEuro(periodLedger.expense), cls: "text-rose-700" },
-          {
-            label: "Cashflow",
-            value: formatEuro(sum(accountingChartRows.map((r) => r.net))),
-            cls: sum(accountingChartRows.map((r) => r.net)) >= 0 ? "text-emerald-700" : "text-rose-700",
-          },
-          { label: "Écritures", value: String(filteredLedgerSummary.count), cls: "text-slate-900" },
-        ] as const).map((kpi) => (
+        {(() => {
+          const totalRecurring = sum(accountingChartRows.map((r) => r.recurring));
+          const totalCashflowKpi = sum(accountingChartRows.map((r) => r.net));
+          return [
+            { label: "Recettes", value: formatEuro(periodLedger.income), cls: "text-emerald-700" },
+            // Inclut les charges structurelles (crédit, taxes, charges fixes, copro...)
+            // en plus des dépenses ponctuelles — sinon Recettes - Dépenses ne retombe
+            // jamais sur le Cashflow affiché juste à côté, qui lui les soustrait déjà.
+            { label: "Dépenses", value: formatEuro(periodLedger.expense + totalRecurring), cls: "text-rose-700" },
+            {
+              label: "Cashflow",
+              value: formatEuro(totalCashflowKpi),
+              cls: totalCashflowKpi >= 0 ? "text-emerald-700" : "text-rose-700",
+            },
+            { label: "Écritures", value: String(filteredLedgerSummary.count), cls: "text-slate-900" },
+          ] as const;
+        })().map((kpi) => (
           <div key={kpi.label} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{kpi.label}</p>
             <p className={cx("mt-1 text-xl font-semibold tabular-nums", kpi.cls)}>{kpi.value}</p>
