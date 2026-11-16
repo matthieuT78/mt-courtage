@@ -2313,16 +2313,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {(() => {
           const totalRecurring = sum(accountingChartRows.map((r) => r.recurring));
           const totalCashflowKpi = sum(accountingChartRows.map((r) => r.net));
           return [
             { label: "Recettes", value: formatEuro(periodLedger.income), cls: "text-emerald-700" },
-            // Inclut les charges structurelles (crédit, taxes, charges fixes, copro...)
-            // en plus des dépenses ponctuelles — sinon Recettes - Dépenses ne retombe
-            // jamais sur le Cashflow affiché juste à côté, qui lui les soustrait déjà.
-            { label: "Dépenses", value: formatEuro(periodLedger.expense + totalRecurring), cls: "text-rose-700" },
+            { label: "Dépenses", value: formatEuro(periodLedger.expense), cls: "text-rose-700" },
+            // Tuile séparée plutôt que fusionnée dans "Dépenses" : un bailleur veut
+            // distinguer ce que le bien a coûté à faire tourner (réparations, frais
+            // ponctuels) du poids fixe de la propriété (crédit, taxe foncière, copro).
+            { label: "Charges structurelles", value: formatEuro(totalRecurring), cls: "text-amber-700" },
             {
               label: "Cashflow",
               value: formatEuro(totalCashflowKpi),
