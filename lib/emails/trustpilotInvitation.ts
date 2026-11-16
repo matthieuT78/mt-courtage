@@ -4,7 +4,6 @@ import { TRUSTPILOT_URL } from "../trustpilot";
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lokt.fr";
 const SIGNATURE_URL = `${SITE_URL}/signature-lokt.png`;
-const LOGO_URL = `${SITE_URL}/lokt-logo-small.jpg`;
 
 // Envoyé 60 jours après l'email de demande d'avis interne (review-invitations.ts),
 // à tout le monde à cette échéance — qu'ils aient répondu au premier email ou
@@ -44,8 +43,6 @@ export async function sendTrustpilotInvitationEmail(params: { email: string; nam
     preheader: "Moins d'une minute, et ça nous aide énormément.",
     contentHtml,
     footerText: "Vous recevez cet email car vous êtes utilisateur de lokt.fr.",
-    logoUrl: LOGO_URL,
-    logoHeight: 48,
   });
 
   const response = await fetch("https://api.resend.com/emails", {

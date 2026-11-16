@@ -39,8 +39,6 @@ export async function sendReviewInvitationEmail(params: { email: string; name?: 
     preheader: "Moins de 30 secondes pour nous dire ce que vous en pensez.",
     contentHtml,
     footerText: "Vous recevez cet email car vous êtes utilisateur de lokt.fr.",
-    logoUrl: `${SITE_URL}/lokt-logo-small.jpg`,
-    logoHeight: 48,
   });
 
   const response = await fetch("https://api.resend.com/emails", {

@@ -8,11 +8,13 @@ export function emailLayout(params: {
 }) {
   const preheader = params.preheader || "";
   const footerText = params.footerText || "Calculs indicatifs — ne constitue pas une offre de prêt.";
-  const logoHeight = params.logoHeight || 40;
   // lokt-logo.jpg a beaucoup de marge blanche intégrée à l'image elle-même —
-  // le logo visible reste minuscule même à grande hauteur CSS. lokt-logo-small.jpg
-  // est recadré plus serré, à utiliser quand le logo doit être bien visible.
-  const logoUrl = params.logoUrl || "https://lokt.fr/lokt-logo.jpg";
+  // le logo visible restait minuscule même à grande hauteur CSS, peu importe
+  // l'email (déjà vu sur reviewInvitation.ts et compte-supprime.ts). Défaut
+  // changé sur lokt-logo-small.jpg (recadré serré) pour corriger tous les
+  // emails qui utilisent emailLayout() sans override, d'un coup.
+  const logoHeight = params.logoHeight || 48;
+  const logoUrl = params.logoUrl || "https://lokt.fr/lokt-logo-small.jpg";
   return `
 <!doctype html>
 <html lang="fr">
