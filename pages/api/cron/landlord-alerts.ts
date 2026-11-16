@@ -339,7 +339,13 @@ function buildFreePlanLatePaymentUpsell(params: {
 
 function renderAlertCard(alert: AlertItem) {
   const baseUrl = appUrl();
-  const accent = alert.tone === "red" ? "#dc2626" : alert.tone === "amber" ? "#d97706" : "#94a3b8";
+  // Même vocabulaire que LevelPill dans SectionAlertes.tsx (pastille de niveau avec
+  // un mot, pas une barre colorée à gauche — motif déjà jugé "trop reconnaissable
+  // généré par IA" et corrigé côté app en septembre, cf. commit bdfa07e — jamais
+  // reporté ici jusqu'à maintenant).
+  const accent = alert.tone === "red" ? "#dc2626" : alert.tone === "amber" ? "#b45309" : "#475569";
+  const accentBg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f1f5f9";
+  const levelLabel = alert.tone === "red" ? "Urgent" : alert.tone === "amber" ? "Anticipation" : "À compléter";
   const actionable = alert.actionable !== false;
   const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
 
@@ -377,7 +383,8 @@ function renderAlertCard(alert: AlertItem) {
   }
 
   return `
-      <div style="margin-bottom:14px;padding:16px 18px;border-radius:12px;border:1px solid #e2e8f0;border-left:4px solid ${accent};background:#ffffff;">
+      <div style="margin-bottom:14px;padding:16px 18px;border-radius:12px;border:1px solid #e2e8f0;background:#ffffff;">
+        <span style="display:inline-block;margin-bottom:8px;padding:3px 10px;border-radius:999px;background:${accentBg};color:${accent};font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">${levelLabel}</span>
         <p style="margin:0 0 6px;font-weight:700;color:#0f172a;font-size:15px;">${alert.title}</p>
         <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.5;">${alert.detail}</p>
         <a href="${baseUrl}${alert.href}" style="display:inline-block;padding:10px 16px;border-radius:10px;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:700;font-size:13px;">${linkLabel}</a>
