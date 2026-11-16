@@ -47,6 +47,7 @@ type Transaction = {
   recurrence_parent_id?: string | null;
   recurrence_since?: string | null;
   recurrence_end_date?: string | null;
+  receipt_id?: string | null;
 };
 
 type PropertyFinance = {
@@ -938,7 +939,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       try {
         const { data: txData, error: txError } = await supabase
           .from("transactions")
-          .select("id,property_id,lease_id,occurred_at,direction,category,label,amount,status,is_recurring,recurrence_frequency,recurrence_parent_id,recurrence_since,recurrence_end_date")
+          .select("id,property_id,lease_id,occurred_at,direction,category,label,amount,status,is_recurring,recurrence_frequency,recurrence_parent_id,recurrence_since,recurrence_end_date,receipt_id")
           .eq("user_id", userId)
           .order("occurred_at", { ascending: false })
           .limit(2000);
@@ -1080,7 +1081,20 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           const d = normalizeDate(row.occurred_at);
           return d != null && d >= pStart && d <= pEnd;
         });
-        const ledgerIncome = sum(periodTx.filter((row) => !isRecurringFlow(row) && isReceivedIncome(row)).map((row) => Number(row.amount || 0)));
+        // Exclut uniquement les lignes copiées automatiquement depuis une quittance
+        // (receipt_id non nul, écrites par syncReceiptsToTransactions côté Finance) : ce loyer
+        // existe déjà dans rent_payments (-> `received` ci-dessus), le compter ici en plus le
+        // compterait deux fois. Ne PAS exclure toute la catégorie "rent" : un loyer peut aussi
+        // être ajouté manuellement dans Finance (catégorie "Loyer (quittance)" sélectionnable à
+        // la main, receipt_id = null), et devait rester compté. L'ancien calcul
+        // (Math.max(received, ledgerIncome) sur tout `ledgerIncome` sans distinction) faisait
+        // disparaître silencieusement un revenu annexe (remboursement, parking...) saisi le même
+        // mois qu'un loyer pas encore synchronisé, dès que ce loyer dépassait le revenu annexe.
+        const ledgerIncome = sum(
+          periodTx
+            .filter((row) => !isRecurringFlow(row) && isReceivedIncome(row) && !row.receipt_id)
+            .map((row) => Number(row.amount || 0))
+        );
         const expense = sum(
           periodTx
             .filter((row) => !isRecurringFlow(row) && row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category))
@@ -1171,7 +1185,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         }
         const recurringPeriodAvg = monthCount > 0 ? recurringPeriodTotal / monthCount : 0;
 
-        const incomeBase = Math.max(received, ledgerIncome);
+        const incomeBase = received + ledgerIncome;
         const incomeMonthly = monthCount > 1 ? incomeBase / monthCount : incomeBase;
         const expenseMonthly = monthCount > 1 ? expense / monthCount : expense;
         // Phase 1 (plan de remédiation) : cashflow et rendement net utilisent désormais la
@@ -1180,7 +1194,13 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         // cashflow négatif", scénarios) héritent du correctif sans y être touchés un par un.
         const cashflow = incomeMonthly - expenseMonthly - recurringPeriodAvg;
         const investment = investmentAmount(fin);
-        const netYield = investment > 0 ? ((incomeMonthly - recurringPeriodAvg) * 12 * 100) / investment : null;
+        // Le rendement (brut/net) est un ratio structurel : loyer contractuel (`expected`),
+        // pas le loyer réellement encaissé sur la période affichée (`incomeMonthly`). Sinon un
+        // retard de paiement ou une vacance font chuter artificiellement le "Rendement net"
+        // d'un bien par ailleurs loué normalement, dès qu'on regarde une période qui les contient
+        // — alors que le Cashflow (qui doit, lui, refléter l'argent réellement perçu) continue
+        // bien d'utiliser `incomeMonthly`.
+        const netYield = investment > 0 ? ((expected - recurringPeriodAvg) * 12 * 100) / investment : null;
         const occupancy = computeOccupancySignals(safeLeases, id);
         const loanRemainingMonths = remainingLoanMonths(fin);
         const loanRatePct = fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent);
@@ -1213,7 +1233,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         // Cashflow projeté une fois la mensualité de crédit disparue (prêt soldé).
         const cashflowAfterLoan = loanMonthly > 0 ? cashflow + loanMonthly : null;
 
-        const grossYield = investment > 0 ? (incomeMonthly * 12 * 100) / investment : null;
+        const grossYield = investment > 0 ? (expected * 12 * 100) / investment : null;
         const earliestMs = earliestDateByProperty.get(id);
         const holdingYears = earliestMs != null ? (Date.now() - earliestMs) / (365.25 * 86400_000) : null;
         const purchasePrice = Number(fin?.purchase_price || 0);
@@ -1295,7 +1315,11 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           received,
           ledgerIncome,
           expense,
-          recurring,
+          // Expose la moyenne mois par mois, pas le taux courant brut (`recurring`, qui reste
+          // une variable locale utilisée seulement par `totalHistoricalRecurring` ci-dessus) :
+          // sinon l'en-tête "charges mensuelles" de la carte peut afficher un chiffre différent
+          // du Cashflow juste en dessous, qui lui se base déjà sur `recurringPeriodAvg`.
+          recurring: recurringPeriodAvg,
           recurringPeriodTotal,
           recurringPeriodAvg,
           cashflow,
