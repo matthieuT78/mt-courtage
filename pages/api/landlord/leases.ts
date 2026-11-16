@@ -46,6 +46,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       updated_at: payload.updated_at || new Date().toISOString(),
     };
 
+    // Défaut appliqué ici plutôt que chez chaque appelant : le formulaire manuel
+    // (SectionBaux.tsx) pré-remplit reminder_email avec l'email du compte avant
+    // d'appeler cette API, mais l'outil create_lease de Loky ne le fait pas (son
+    // contexte n'a même pas accès à l'email) — tout bail créé par l'assistant se
+    // retrouvait avec reminder_email vide, cassant silencieusement les relances
+    // et confirmations de paiement en un clic pour ce bail.
+    if (!leasePayload.reminder_email) {
+      leasePayload.reminder_email = auth.email || null;
+    }
+
     if (!leasePayload.property_id || !leasePayload.tenant_id || !leasePayload.start_date) {
       return res.status(400).json({ error: "Bien, locataire et date de début requis." });
     }
