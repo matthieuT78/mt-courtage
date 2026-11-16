@@ -296,7 +296,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     title="Espace bailleur"
                     aria-label="Espace bailleur"
                   >
-                    <BuildingOffice2Icon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                    <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
                     <span className="sm:hidden">Bailleur</span>
                     <span className="hidden sm:inline">Espace bailleur</span>
                   </Link>
