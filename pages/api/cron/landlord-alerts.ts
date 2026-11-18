@@ -672,9 +672,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (leaseStart && leaseStart <= today) {
             const anniversary = nextLeaseAnniversary(leaseStart, today);
             const daysToAnniversary = daysBetween(today, anniversary);
-            if (daysToAnniversary === 30 || daysToAnniversary === 14) {
+            // Fenêtre J-30 à J-14 (au lieu de deux jours pile) : si le cron a
+            // un pépin exactement un de ces deux jours (déjà arrivé une fois,
+            // cf. commentaire sur PER_LANDLORD_TIMEOUT_MS plus bas), la
+            // relance n'était plus jamais rattrapée pour cette occurrence.
+            // Clé hebdomadaire par occurrence (scope year+anniversary) pour
+            // rattraper sans spammer tous les jours de la fenêtre.
+            if (daysToAnniversary <= 30 && daysToAnniversary >= 14) {
               alerts.push({
-                key: `rent-revision:${lease.id}:${toISODate(anniversary)}:${daysToAnniversary}`,
+                key: weeklyScheduleKey(`rent-revision:${lease.id}:${toISODate(anniversary)}`, today),
                 preferenceKey: "rent_revision_due",
                 tone: "slate",
                 title: `Révision annuelle du loyer à préparer - ${labels.property}`,
@@ -914,9 +920,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 propertyId: lease.property_id,
               });
             }
-          } else if (!renewing && active && [60, 30, 7].includes(daysToEnd)) {
+          } else if (!renewing && active && daysToEnd >= 0 && daysToEnd <= 60) {
+            // Fenêtre continue (au lieu de 3 jours pile à J-60/J-30/J-7) : même
+            // rattrapage que rent_revision_due ci-dessus si le cron rate un de
+            // ces jours précis — clé hebdomadaire pour ne pas spammer chaque jour.
             alerts.push({
-              key: `lease-end:${lease.id}:${daysToEnd}`,
+              key: weeklyScheduleKey(`lease-end:${lease.id}`, today),
               preferenceKey: "lease_end",
               tone: "amber",
               title: `Bail bientôt à échéance - ${labels.property}`,
@@ -990,25 +999,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      const uniqueAlerts = Array.from(
+      const allUniqueAlerts = Array.from(
         new Map(
           alerts
             .filter((alert) => userPreferences[alert.preferenceKey] && planAllowsLandlordAlert(userPlan, alert.preferenceKey))
             .filter((alert) => !isServiceDelegated(alert.propertyId, alert.preferenceKey, propertiesById))
             .map((a) => [a.key, a])
         ).values()
-      ).slice(0, 24);
+      );
+      // Garde-fou contre un vrai emballement (bug de données, boucle
+      // infinie...), pas un plafond produit : avant, les alertes au-delà de
+      // 24 étaient tronquées en silence, jamais envoyées ni marquées comme
+      // vues, pour un bailleur avec beaucoup de biens en souci simultané.
+      // 100 reste assez généreux pour n'être atteint que par un vrai
+      // problème — dans ce cas, on le signale plutôt que de le cacher.
+      const DIGEST_ALERT_CAP = 100;
+      const uniqueAlerts = allUniqueAlerts.slice(0, DIGEST_ALERT_CAP);
+      const overflowCount = allUniqueAlerts.length - uniqueAlerts.length;
+      const overflowFailure = overflowCount > 0 ? { email: null, error: `landlord ${userId} : ${allUniqueAlerts.length} alertes actives, ${overflowCount} tronquée(s) au-delà du plafond de ${DIGEST_ALERT_CAP}` } : undefined;
+
       if (uniqueAlerts.length === 0) {
         return { result: { userId, skipped: "no_alerts" } };
       }
 
       const to = await ownerEmailForUser(userId, userLeaseList);
       if (!to) {
-        return { result: { userId, skipped: "no_owner_email", alerts: uniqueAlerts.length } };
+        return { result: { userId, skipped: "no_owner_email", alerts: uniqueAlerts.length }, failure: overflowFailure };
       }
 
       if (dryRun) {
-        return { result: { userId, to, dryRun: true, alerts: uniqueAlerts } };
+        return { result: { userId, to, dryRun: true, alerts: uniqueAlerts }, failure: overflowFailure };
       }
 
       const skipped: string[] = [];
@@ -1022,7 +1042,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (dueAlerts.length === 0) {
-        return { result: { userId, to, sent: [], skipped, failed: [] } };
+        return { result: { userId, to, sent: [], skipped, failed: [] }, failure: overflowFailure };
       }
 
       const mail = await sendEmailViaResend({
@@ -1040,7 +1060,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       for (const alert of dueAlerts) await markSent(userId, alert);
-      return { result: { userId, to, sent: dueAlerts.map((a) => a.key), skipped, failed: [] } };
+      return { result: { userId, to, sent: dueAlerts.map((a) => a.key), skipped, failed: [] }, failure: overflowFailure };
     }
 
     const PER_LANDLORD_TIMEOUT_MS = 12000;
