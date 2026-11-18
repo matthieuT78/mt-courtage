@@ -470,12 +470,12 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
   }
 
   if (row.cashflow < -300) {
-    const pctSorties = row.expected > 0 ? Math.round(((row.recurring + row.expense) / row.expected) * 100) : 0;
+    const pctSorties = row.expected > 0 ? Math.round(((row.recurring + row.expenseMonthly) / row.expected) * 100) : 0;
     const culprit =
       row.loanMonthly > row.expected * 0.5
         ? `le crédit (${money(row.loanMonthly)}/mois = ${Math.round((row.loanMonthly / Math.max(row.expected, 1)) * 100)} % du loyer)`
-        : row.expense > row.recurring * 0.6 && row.expense > 200
-        ? `les dépenses ponctuelles de la période (${money(row.expense)})`
+        : row.expenseMonthly > row.recurring * 0.6 && row.expenseMonthly > 200
+        ? `les dépenses ponctuelles (${money(row.expenseMonthly)}/mois)`
         : `les charges récurrentes (${money(row.recurring)}/mois)`;
     actions.push({
       tone: "red",
@@ -488,11 +488,11 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
         ? `le crédit (${money(row.loanMonthly)}/mois)`
         : row.recurring > row.expected * 0.55
         ? `les charges récurrentes (${money(row.recurring)}/mois)`
-        : `les dépenses ponctuelles (${money(row.expense)})`;
+        : `les dépenses ponctuelles (${money(row.expenseMonthly)}/mois)`;
     actions.push({
       tone: "amber",
       title: "Cashflow négatif — identifier le premier levier",
-      detail: `${money(row.expected)} de loyers, ${money(row.recurring + row.expense)} de sorties. Poste le plus lourd : ${culprit}.`,
+      detail: `${money(row.expected)} de loyers, ${money(row.recurring + row.expenseMonthly)} de sorties. Poste le plus lourd : ${culprit}.`,
     });
   }
 
@@ -589,7 +589,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
   }
 
   if (row.expected > 0 && row.cashflow >= -300) {
-    const ratio = row.expected > 0 ? (row.recurring + row.expense) / row.expected : 0;
+    const ratio = row.expected > 0 ? (row.recurring + row.expenseMonthly) / row.expected : 0;
     if (ratio > 0.72 && row.recurring > 0) {
       const heaviest = row.loanMonthly > row.recurring * 0.5 ? "le crédit" : "les charges fixes";
       actions.push({
@@ -815,6 +815,11 @@ type PropertyRow = {
   received: number;
   ledgerIncome: number;
   expense: number;
+  // Comme recurringPeriodAvg ci-dessous : `expense` est un total sur toute la période
+  // sélectionnée (6 mois par défaut), pas un montant mensuel. Les comparaisons avec des
+  // montants mensuels (loyer, charges récurrentes) doivent utiliser ce champ-ci, jamais
+  // `expense` brut — sinon le ratio "charges/loyer" affiché est gonflé d'un facteur ≈ monthCount.
+  expenseMonthly: number;
   recurring: number;
   // Phase 0 (plan de remédiation) : somme/moyenne des charges structurelles calculée mois
   // par mois sur la période sélectionnée, en respectant recurring_since à chaque mois —
@@ -1325,6 +1330,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           received,
           ledgerIncome,
           expense,
+          expenseMonthly,
           // Expose la moyenne mois par mois, pas le taux courant brut (`recurring`, qui reste
           // une variable locale utilisée seulement par `totalHistoricalRecurring` ci-dessus) :
           // sinon l'en-tête "charges mensuelles" de la carte peut afficher un chiffre différent
@@ -1660,7 +1666,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         : "taux crédit à renseigner";
     const monthlyModulationPotential = sum(propertyRows.map((row) => (row.cashflow < 0 && row.loanRemainingMonths && row.loanRemainingMonths > 84 ? row.loanMonthly * 0.08 : 0)));
     const vacancyCostMonthly = sum(propertyRows.map((row) => (row.expected > 0 ? (row.expected / 30) * row.vacancyDays12m : 0))) / 12;
-    const fiscalCandidates = propertyRows.filter((row) => row.taxRegime === "lmnp_micro" && row.recurring + row.expense > row.expected * 0.35 && row.expected > 0).length;
+    const fiscalCandidates = propertyRows.filter((row) => row.taxRegime === "lmnp_micro" && row.recurring + row.expenseMonthly > row.expected * 0.35 && row.expected > 0).length;
     return [
       {
         label: "Renégociation de taux",
@@ -2159,7 +2165,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                     />
                     <Stat
                       label={selectedPeriod.monthCount === 1 ? "Dépenses ce mois" : "Dépenses / mois"}
-                      value={money(row.expense / selectedPeriod.monthCount + row.recurringPeriodAvg)}
+                      value={money(row.expenseMonthly + row.recurringPeriodAvg)}
                     />
                     <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                     <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
