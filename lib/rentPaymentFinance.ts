@@ -21,8 +21,10 @@ export async function removeTrackedPartialPaymentTransactions(params: {
 
 // Label dédié aux baux "quittances agence" (receipts_disabled) : ces paiements
 // n'ont jamais de quittance lokt, donc pas de receipt_id — cette écriture Finance
-// est la seule trace du paiement pour ces baux.
-const DELEGATED_RENT_LABEL = "Loyer (gestion agence)";
+// est la seule trace du paiement pour ces baux. Exporté pour que les agrégats
+// de revenus (ex. SectionPerformance) puissent reconnaître et exclure ces lignes
+// quand ils additionnent déjà le même montant depuis rent_payments.
+export const DELEGATED_RENT_LABEL = "Loyer (gestion agence)";
 
 export async function syncDelegatedRentTransaction(params: {
   userId: string;

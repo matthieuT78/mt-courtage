@@ -21,6 +21,7 @@ import type { Lease, Property, PropertyLot, RentPayment } from "../../../lib/lan
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
+import { DELEGATED_RENT_LABEL } from "../../../lib/rentPaymentFinance";
 import { cx } from "../ui/uiHelpers";
 import type { LandlordSectionKey } from "../navigation";
 
@@ -1081,18 +1082,27 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           const d = normalizeDate(row.occurred_at);
           return d != null && d >= pStart && d <= pEnd;
         });
-        // Exclut uniquement les lignes copiées automatiquement depuis une quittance
-        // (receipt_id non nul, écrites par syncReceiptsToTransactions côté Finance) : ce loyer
-        // existe déjà dans rent_payments (-> `received` ci-dessus), le compter ici en plus le
-        // compterait deux fois. Ne PAS exclure toute la catégorie "rent" : un loyer peut aussi
-        // être ajouté manuellement dans Finance (catégorie "Loyer (quittance)" sélectionnable à
-        // la main, receipt_id = null), et devait rester compté. L'ancien calcul
+        // Exclut les lignes qui existent déjà dans rent_payments (-> `received` ci-dessus) sous
+        // une autre forme, sinon ce loyer serait compté deux fois : (1) les copies automatiques
+        // d'une quittance (receipt_id non nul, écrites par syncReceiptsToTransactions côté
+        // Finance), et (2) les lignes "Loyer (gestion agence)" des baux receipts_disabled
+        // (écrites par syncDelegatedRentTransaction, qui n'a jamais de receipt_id puisqu'il n'y a
+        // pas de quittance lokt — payments/confirm.ts écrit alors le même montant à la fois dans
+        // rent_payments ET dans transactions). Ne PAS exclure toute la catégorie "rent" : un
+        // loyer peut aussi être ajouté manuellement dans Finance (catégorie "Loyer (quittance)"
+        // sélectionnable à la main, receipt_id = null), et devait rester compté. L'ancien calcul
         // (Math.max(received, ledgerIncome) sur tout `ledgerIncome` sans distinction) faisait
         // disparaître silencieusement un revenu annexe (remboursement, parking...) saisi le même
         // mois qu'un loyer pas encore synchronisé, dès que ce loyer dépassait le revenu annexe.
         const ledgerIncome = sum(
           periodTx
-            .filter((row) => !isRecurringFlow(row) && isReceivedIncome(row) && !row.receipt_id)
+            .filter(
+              (row) =>
+                !isRecurringFlow(row) &&
+                isReceivedIncome(row) &&
+                !row.receipt_id &&
+                row.label !== DELEGATED_RENT_LABEL
+            )
             .map((row) => Number(row.amount || 0))
         );
         const expense = sum(
