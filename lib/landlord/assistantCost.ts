@@ -69,8 +69,10 @@ const SUBSCRIPTION_PRICE_USD: Record<Plan, number> = {
 
 // Part du prix de l'abonnement qu'on accepte de dépenser en coût API Claude
 // pour Loky — le reste couvre hébergement, Stripe, support, marge. Le but
-// explicite : le coût IA ne doit jamais manger l'abonnement.
-const ASSISTANT_COST_SHARE = 0.15;
+// explicite : le coût IA ne doit jamais manger l'abonnement. Relevé le
+// 2026-11-18 (0.15 → 0.40) après vérification du coût réel : ~2 $ sur 3 mois
+// tous abonnés confondus, très loin même du plafond précédent.
+const ASSISTANT_COST_SHARE = 0.4;
 
 export function landlordAssistantMonthlyBudgetUsd(plan: Plan): number {
   return SUBSCRIPTION_PRICE_USD[plan] * ASSISTANT_COST_SHARE;

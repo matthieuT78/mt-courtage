@@ -517,7 +517,7 @@ export default function AssistantChat({
             <div className="flex justify-center">
               <div className="max-w-[90%] rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-center text-xs font-medium text-amber-800 shadow-sm">
                 {quotaScope === "trial"
-                  ? "Tu arrives à 80% de ton essai gratuit avec Loky. Il ne se renouvelle pas — passe à un abonnement lokt pour continuer à en profiter."
+                  ? "Tu arrives à 80% de ton usage gratuit de Loky ce mois-ci. Ça se remet à jour le mois prochain — ou passe à un abonnement lokt pour un accès complet dès maintenant."
                   : "Tu as atteint 80% de ton crédit Loky inclus dans ton abonnement ce mois-ci. Ça se remet à jour le mois prochain."}
               </div>
             </div>

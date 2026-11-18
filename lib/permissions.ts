@@ -86,9 +86,13 @@ export function landlordMaxActiveProperties(plan: Plan): number {
 }
 
 // Compte sans abonnement Stripe réel (essai, compte gratuit, test accordé à
-// la main) : quota unique à vie, jamais renouvelé — le but est de faire
-// essayer Loky une fois, pas d'offrir un accès gratuit permanent en boucle.
-export const ASSISTANT_TRIAL_LIFETIME_LIMIT = 8;
+// la main) : quota qui se régénère chaque mois civil — contrairement à un
+// quota unique à vie, ça laisse le temps de vraiment sentir la valeur de
+// Loky et recrée le rappel "passe payant pour plus" à chaque mois plutôt
+// qu'un mur définitif touché trop tôt. Relevé le 2026-11-18 (8 → 15) après
+// vérification du coût réel : ~2 $ sur 3 mois tous utilisateurs confondus,
+// la limite ne protégeait aucun coût significatif.
+export const ASSISTANT_TRIAL_MONTHLY_LIMIT = 15;
 
 export function storageQuotaBytes(plan: Plan): number {
   switch (plan) {

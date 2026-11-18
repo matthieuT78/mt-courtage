@@ -11,7 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireApiUser } from "../../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { getServerUserPlan, hasStripeLinkedSubscription } from "../../../../lib/serverPermissions";
-import { ASSISTANT_TRIAL_LIFETIME_LIMIT } from "../../../../lib/permissions";
+import { ASSISTANT_TRIAL_MONTHLY_LIMIT } from "../../../../lib/permissions";
 import { callCostUsd, usdToMicros, microsToUsd, landlordAssistantMonthlyBudgetUsd } from "../../../../lib/landlord/assistantCost";
 import { assistantToolDefinitionsForClaude, getAssistantTool, type AssistantToolContext } from "../../../../lib/landlord/assistantTools";
 
@@ -142,7 +142,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const todayRow = rows.find((r: any) => r.usage_date === today) as any;
     const usedTodayMessages = todayRow?.message_count || 0;
     const usedTodayCostMicros = todayRow?.cost_usd_micros || 0;
-    const usedLifetimeMessages = rows.reduce((sum: number, r: any) => sum + (r.message_count || 0), 0);
+    const usedThisMonthMessages = rows
+      .filter((r: any) => String(r.usage_date).startsWith(currentMonth))
+      .reduce((sum: number, r: any) => sum + (r.message_count || 0), 0);
     const usedThisMonthCostUsd = rows
       .filter((r: any) => String(r.usage_date).startsWith(currentMonth))
       .reduce((sum: number, r: any) => sum + microsToUsd(r.cost_usd_micros || 0), 0);
@@ -150,16 +152,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const quotaScope: QuotaScope = isRealSubscriber ? "monthly_budget" : "trial";
     const monthlyBudgetUsd = landlordAssistantMonthlyBudgetUsd(plan);
 
-    if (!unlimited && quotaScope === "trial" && usedLifetimeMessages >= ASSISTANT_TRIAL_LIFETIME_LIMIT) {
+    if (!unlimited && quotaScope === "trial" && usedThisMonthMessages >= ASSISTANT_TRIAL_MONTHLY_LIMIT) {
       return res.status(200).json({
         messages,
         done: true,
         limitReached: true,
         remaining: 0,
         quotaScope,
-        quotaLimit: ASSISTANT_TRIAL_LIFETIME_LIMIT,
+        quotaLimit: ASSISTANT_TRIAL_MONTHLY_LIMIT,
         limitMessage:
-          "Tu as utilisé ton essai gratuit de Loky. L'accès complet à l'assistant IA est réservé aux abonnements lokt payants — merci de passer par Stripe pour en profiter pleinement.",
+          "Tu as atteint l'usage gratuit de Loky inclus ce mois-ci. Ça se remet à jour le mois prochain — ou passe à un abonnement lokt pour un accès complet dès maintenant.",
       });
     }
     if (!unlimited && quotaScope === "monthly_budget" && (monthlyBudgetUsd <= 0 || usedThisMonthCostUsd >= monthlyBudgetUsd)) {
@@ -211,8 +213,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         );
 
       if (quotaScope === "trial") {
-        const limit = ASSISTANT_TRIAL_LIFETIME_LIMIT;
-        return { remaining: unlimited ? limit : Math.max(0, limit - (usedLifetimeMessages + 1)), quotaScope, quotaLimit: limit };
+        const limit = ASSISTANT_TRIAL_MONTHLY_LIMIT;
+        return { remaining: unlimited ? limit : Math.max(0, limit - (usedThisMonthMessages + 1)), quotaScope, quotaLimit: limit };
       }
       const usedThisMonthAfter = usedThisMonthCostUsd + costIncurredUsd;
       const limit = Math.round(monthlyBudgetUsd * 100) / 100;

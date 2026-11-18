@@ -148,7 +148,7 @@ export default function TarifsPage() {
     },
     {
       q: "Loky, l'assistant IA, est-il inclus dans le prix ?",
-      a: "Le plan Gratuit inclut un essai de 8 messages à vie avec Loky. L'accès complet est inclus dès le plan lokt·one, avec un usage étendu sur lokt·plus.",
+      a: "Le plan Gratuit inclut 15 messages par mois avec Loky. L'accès complet est inclus dès le plan lokt·one, avec un usage étendu sur lokt·plus.",
     },
     {
       q: "L'abonnement lokt.fr est-il déductible fiscalement ?",
