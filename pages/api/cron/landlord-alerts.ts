@@ -136,6 +136,14 @@ function daysSince(today: Date, value?: string | null) {
 const STALE_AFTER_DAYS = 180;
 const STALE_REPEAT_DAYS = 28;
 
+// Au-delà de ce délai entre le début réel du bail et sa création dans lokt,
+// on considère que l'EDL d'entrée n'est plus un oubli récent mais un bail
+// "rattrapé" rétroactivement (le bailleur rejoint lokt pour un bail déjà en
+// cours) — un vrai EDL d'entrée n'a plus de sens à ce stade, la relance
+// hebdo/mensuelle indéfinie n'apporte rien. 45 jours : assez large pour ne
+// pas confondre avec un simple retard sur un bail vraiment récent.
+const RETROACTIVE_LEASE_THRESHOLD_DAYS = 45;
+
 function recurringScheduleKey(prefix: string, daysElapsed: number, firstDays: number[], repeatEveryDays?: number) {
   if (firstDays.includes(daysElapsed)) return `${prefix}:day-${daysElapsed}`;
   const repeatFrom = firstDays[firstDays.length - 1];
@@ -686,27 +694,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           if (!hasPreparedEntryEdl && leaseStart) {
-            const daysToStart = daysBetween(today, leaseStart);
-            // Avant/le jour du début du bail : deux rappels ponctuels de préparation.
-            // Après le début : relance hebdomadaire tant que l'EDL n'est pas fait
-            // (namespace distinct pour ne jamais entrer en collision avec les clés
-            // de préparation ci-dessus).
-            const scheduleKey =
-              daysToStart === 7 || daysToStart === 1
-                ? `entry-edl:${lease.id}:day-${daysToStart}`
-                : daysToStart < 0
-                ? recurringScheduleKey(`entry-edl-overdue:${lease.id}`, -daysToStart, [1, 7], 7)
-                : null;
-            if (scheduleKey) {
-              alerts.push({
-                key: scheduleKey,
-                preferenceKey: "entry_inventory_missing",
-                tone: "amber",
-                title: `État des lieux d'entrée manquant - ${labels.property}`,
-                detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
-                href: "/espace-bailleur",
-                propertyId: lease.property_id,
-              });
+            const leaseCreatedAt = parseISODate(String(lease.created_at || "").slice(0, 10));
+            const isRetroactiveLease =
+              !!leaseCreatedAt && daysBetween(leaseStart, leaseCreatedAt) > RETROACTIVE_LEASE_THRESHOLD_DAYS;
+
+            if (isRetroactiveLease) {
+              // Relance unique et plus douce (pas de boucle hebdo/mensuelle) : la
+              // clé stable sans suffixe de jour garantit un envoi une seule fois
+              // pour toute la vie du bail, via alreadySent/markSent plus bas.
+              if (daysBetween(leaseCreatedAt!, today) >= 1) {
+                alerts.push({
+                  key: `entry-edl-retroactive:${lease.id}`,
+                  preferenceKey: "entry_inventory_missing",
+                  tone: "slate",
+                  title: `État des lieux d'entrée manquant - ${labels.property}`,
+                  detail: `Ce bail a démarré le ${toISODate(leaseStart)}, avant son ajout dans lokt — un vrai état des lieux d'entrée n'est plus possible, mais documenter l'état actuel du logement reste utile en cas de litige au départ.`,
+                  href: "/espace-bailleur",
+                  propertyId: lease.property_id,
+                  actionable: false,
+                });
+              }
+            } else {
+              const daysToStart = daysBetween(today, leaseStart);
+              // Avant/le jour du début du bail : deux rappels ponctuels de préparation.
+              // Après le début : relance hebdomadaire tant que l'EDL n'est pas fait
+              // (namespace distinct pour ne jamais entrer en collision avec les clés
+              // de préparation ci-dessus).
+              const scheduleKey =
+                daysToStart === 7 || daysToStart === 1
+                  ? `entry-edl:${lease.id}:day-${daysToStart}`
+                  : daysToStart < 0
+                  ? recurringScheduleKey(`entry-edl-overdue:${lease.id}`, -daysToStart, [1, 7], 7)
+                  : null;
+              if (scheduleKey) {
+                alerts.push({
+                  key: scheduleKey,
+                  preferenceKey: "entry_inventory_missing",
+                  tone: "amber",
+                  title: `État des lieux d'entrée manquant - ${labels.property}`,
+                  detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
+                  href: "/espace-bailleur",
+                  propertyId: lease.property_id,
+                });
+              }
             }
           }
 
