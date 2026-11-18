@@ -102,6 +102,8 @@ La fraction déductible de la CSG payée sur vos revenus BIC de l'année N-1 peu
 
 L'amortissement est une charge **comptable sans décaissement** qui simule l'usure progressive du bien. Il est déductible uniquement au régime réel LMNP.
 
+Pour aller plus loin sur le volet comptable, [Expert Fiscal](https://expertfiscal.fr) propose des ressources dédiées à la fiscalité et à la comptabilité.
+
 ### Principe
 
 Le bien est décomposé en **composants** (éléments avec des durées de vie différentes) et chaque composant est amorti séparément sur sa durée de vie.
