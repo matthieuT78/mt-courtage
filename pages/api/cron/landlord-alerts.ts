@@ -256,6 +256,14 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     why: "Sans état des lieux de sortie signé, impossible de justifier une retenue sur le dépôt de garantie en cas de dégradations, et le délai légal de restitution de la caution ne peut pas être respecté correctement.",
     how: "Planifiez et réalisez l'état des lieux de sortie avec le locataire, puis finalisez-le dans lokt.fr.",
   },
+  insurance_certificate_missing: {
+    why: "L'assurance habitation du locataire est une obligation légale pour une location nue ou meublée (art. 7g, loi du 6 juillet 1989). Sans justificatif à jour, vous n'avez aucune preuve qu'il est couvert en cas de sinistre (dégât des eaux, incendie) — et vous pouvez, à défaut de réponse, souscrire vous-même une assurance pour son compte et lui refacturer le coût avec le loyer.",
+    how: "Demandez le justificatif au locataire — le modèle de lettre \"Demande de justificatif d'assurance habitation\" (Documents & modèles, ou directement via Loky) est prêt à envoyer.",
+  },
+  dpe_missing: {
+    why: "Le diagnostic de performance énergétique (DPE) est une annexe obligatoire du bail et doit être communiqué au locataire. Sans classe énergétique renseignée, le bail est incomplet et vous ne pouvez pas savoir si ce logement est soumis au gel ou à l'encadrement du loyer (classes F et G).",
+    how: "Renseignez la classe énergétique du bien (ou du lot concerné) depuis la fiche du bien, à partir de votre diagnostic DPE réel.",
+  },
   teom_overcharge_risk: {
     why: "La récupération de TEOM a été calculée au prorata d'une occupation supposée jusqu'à une certaine date. Si le locataire part avant cette date, il a payé pour des jours qu'il n'a pas occupés.",
     how: "Vérifiez le montant recalculé indiqué ci-dessus et remboursez la différence au locataire (directement ou en le créditant lors de la restitution de sa caution).",
