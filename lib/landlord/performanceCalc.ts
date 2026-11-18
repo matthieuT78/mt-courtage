@@ -1,8 +1,10 @@
-// Logique de revenu/dépense partagée par SectionPerformance (cashflow, TRI, alertes) et ses
-// tests. Extraite pour rester testable sans monter le composant React — voir
-// tests/unit/performanceCalc.test.ts, qui couvre les deux incidents du 2026-11 : le double
-// comptage du loyer pour les baux en gestion déléguée, et le ratio "charges/loyer" gonflé
-// faute de ramener les dépenses ponctuelles à un montant mensuel.
+// Logique de revenu/dépense partagée par SectionPerformance et SectionFinance (cashflow, TRI,
+// alertes, recettes/dépenses) et leurs tests. Extraite pour rester testable sans monter de
+// composant React, et pour que les deux sections restent nécessairement d'accord sur ce qui
+// compte comme revenu/dépense — voir tests/unit/performanceCalc.test.ts, qui couvre les
+// incidents du 2026-11 : double comptage du loyer pour les baux en gestion déléguée, ratio
+// "charges/loyer" gonflé faute de ramener les dépenses ponctuelles à un montant mensuel, et
+// retenue sur caution comptée à tort comme un revenu locatif.
 
 // Label dédié aux baux "quittances agence" (receipts_disabled), écrit par
 // syncDelegatedRentTransaction (lib/rentPaymentFinance.ts) : ces paiements n'ont jamais de
@@ -12,7 +14,11 @@
 // genre de dépendance côté navigateur juste pour lire une constante.
 export const DELEGATED_RENT_LABEL = "Loyer (gestion agence)";
 
-export const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
+// "deposit_retained" (retenue sur caution en fin de bail, catégorie "in") est un mouvement de
+// capital au même titre que deposit_collected/deposit_returned, pas un revenu locatif — déjà
+// traité comme tel dans SectionDeclaration.tsx, mais manquait ici : une retenue de caution
+// gonflait les recettes de Finance et Performance comme si c'était un loyer encaissé.
+export const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned", "deposit_retained"];
 
 export type PerformanceTx = {
   direction: "in" | "out";

@@ -38,6 +38,11 @@ import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
 import { FURNISHED_LEASE_KINDS } from "../../../lib/landlord/lmnpInventory";
+import {
+  DEPOSIT_TRANSIT_CATEGORIES,
+  isReceivedIncome as isIncomeReceived,
+  isRecurringFlow,
+} from "../../../lib/landlord/performanceCalc";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
@@ -339,18 +344,7 @@ const statusLabel = (value: TxStatus) =>
   value === "expected" ? "Prévu" : value === "received" ? "Encaissé" : "Payé";
 const directionLabel = (value: TxDirection) => (value === "in" ? "Recette" : "Dépense");
 const sourceLabel = (tx: Transaction) => (tx.receipt_id ? "Quittance auto" : "Manuel");
-const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
 const DEPOSIT_CATS = ["deposit_collected", "deposit_returned", "deposit_retained"];
-
-const isIncomeReceived = (row: Pick<Transaction, "direction" | "status" | "category">) =>
-  row.direction === "in" &&
-  (row.status === "received" || row.status === "paid") &&
-  !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category);
-
-// Lignes déjà comptées dans les charges structurelles (récurrentes) : à exclure des sommes
-// "ponctuelles" (dépenses/recettes) pour éviter un double comptage avec le total récurrent.
-const isRecurringFlow = (row: Pick<Transaction, "is_recurring" | "recurrence_parent_id">) =>
-  Boolean(row.is_recurring || row.recurrence_parent_id);
 
 type StructuralChargesForMonth = {
   loan: number;

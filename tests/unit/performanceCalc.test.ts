@@ -57,6 +57,14 @@ describe("computeLedgerIncome", () => {
     expect(computeLedgerIncome(txs)).toBe(0);
   });
 
+  // Incident réel du 2026-11 : une retenue sur caution (fin de bail) est un mouvement de
+  // capital, pas un loyer encaissé — une transaction deposit_retained réelle de 1200€ était
+  // comptée comme revenu locatif dans Finance et Performance avant ce fix.
+  it("ignore une retenue sur caution (deposit_retained)", () => {
+    const txs = [rentTx({ category: "deposit_retained", label: "Retenue sur caution", amount: 1200, receipt_id: null })];
+    expect(computeLedgerIncome(txs)).toBe(0);
+  });
+
   it("additionne plusieurs lignes comptables distinctes", () => {
     const txs = [
       rentTx({ label: "Loyer (quittance)", receipt_id: null, amount: 900 }),
