@@ -89,8 +89,13 @@ export async function requireThreadParticipant(userId: string, threadId: string)
     return { thread, role: "landlord" as const };
   }
 
+  // messaging_enabled n'était vérifié que côté UI (onglet Messagerie masqué
+  // dans espace-locataire/index.tsx) — jamais ici, donc un appel direct à
+  // l'API pouvait encore lire/écrire après désactivation (départ du
+  // locataire). Corrigé le 2026-11-18 : la coupure doit tenir côté serveur,
+  // pas seulement côté affichage.
   const accesses = await getTenantPortalAccess(userId, thread.tenant_id);
-  if (accesses.length > 0) {
+  if (accesses.length > 0 && accesses.some((a) => a.messaging_enabled !== false)) {
     return { thread, role: "tenant" as const };
   }
 

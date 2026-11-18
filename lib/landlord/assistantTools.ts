@@ -1834,6 +1834,22 @@ N'invente jamais une valeur absente du document : utilise null.`,
         .eq("user_id", ctx.userId);
       if (tenantErr) throw new Error(tenantErr.message);
 
+      // Même geste que restrictPortalMessaging dans SectionLocataires.tsx : coupe
+      // la messagerie (plus de relation locative en cours) sans révoquer l'accès
+      // au portail (quittances/bail/EDL restent consultables indéfiniment).
+      // Oublié ici jusqu'au 2026-11-18 : un départ traité par Loky laissait la
+      // messagerie active, contrairement au même départ fait manuellement.
+      try {
+        await admin
+          .from("tenant_portal_access")
+          .update({ messaging_enabled: false, updated_at: now })
+          .in("tenant_id", tenantIdsToArchive)
+          .eq("landlord_user_id", ctx.userId)
+          .in("status", ["invited", "active"]);
+      } catch {
+        // Non bloquant.
+      }
+
       return {
         ok: true,
         next_steps: [{ section: "etat_des_lieux", link: { leaseId: args.lease_id }, label: "Faire l'état des lieux de sortie" }],
