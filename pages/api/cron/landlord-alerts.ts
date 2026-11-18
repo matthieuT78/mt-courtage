@@ -236,10 +236,6 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
     why: "Sans état des lieux d'entrée, impossible de prouver l'état du logement à l'arrivée du locataire — en cas de litige au départ, vous n'avez aucune référence pour justifier une retenue sur le dépôt de garantie.",
     how: "Planifiez et réalisez l'état des lieux d'entrée avec le locataire, puis finalisez-le dans lokt.fr.",
   },
-  owner_email_missing: {
-    why: "Sans cet email, vous ne recevez plus les emails de confirmation de paiement en un clic ni leurs relances automatiques. Les autres notifications (cette alerte incluse, et la copie des quittances) continuent d'arriver sur l'email de connexion de votre compte par défaut.",
-    how: "Ouvrez le bail, cliquez sur « Modifier » puis « Options avancées », et renseignez un email de notification — utile aussi si vous voulez recevoir ces emails sur une autre adresse que celle du compte.",
-  },
   deposit_not_collected: {
     why: "Le dépôt de garantie protège contre d'éventuelles dégradations ou impayés en fin de bail — sans lui, vous êtes exposé sans filet en cas de litige au départ.",
     how: "Réclamez le dépôt de garantie au locataire et confirmez son encaissement dans lokt.fr.",
@@ -773,17 +769,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          if (!lease.reminder_email) {
-            alerts.push({
-              key: weeklyScheduleKey(`owner-email:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
-              preferenceKey: "owner_email_missing",
-              tone: "slate",
-              title: `Email bailleur manquant - ${labels.property}`,
-              detail: "Ajoutez un email de notification pour recevoir les confirmations de paiement en un clic et leurs relances automatiques (les autres notifications continuent d'arriver sur l'email de votre compte).",
-              href: "/espace-bailleur",
-              propertyId: lease.property_id,
-            });
-          }
+          // owner_email_missing retiré le 2026-11-18 : rent-reminders.ts et
+          // rent-followups.ts se replient désormais sur l'email réel du compte
+          // quand reminder_email est vide (resolveProfileEmail) — un champ
+          // vide ne cassait plus rien, l'alerte n'avait plus de vrai problème
+          // à signaler. Voir lib/landlordAlertPreferences.ts.
 
           // Obligation légale (art. 7g loi du 6 juillet 1989) pour une location à
           // usage de résidence principale, nue ou meublée, y compris bail

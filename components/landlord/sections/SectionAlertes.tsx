@@ -115,14 +115,6 @@ const ALERTS: AlertConfig[] = [
     level: "À compléter",
   },
   {
-    key: "owner_email_missing",
-    title: "Votre email manquant sur un bail",
-    desc: "Votre adresse email n'est pas renseignée sur ce bail. Vous ne recevrez aucune notification le concernant.",
-    schedule: "Chaque semaine jusqu'à correction",
-    group: "Données manquantes",
-    level: "À compléter",
-  },
-  {
     key: "co_tenant_email_missing",
     title: "Email du co-locataire manquant",
     desc: "Le co-locataire a les mêmes droits que le locataire mais son email n'est pas renseigné : il ne reçoit ni quittances ni invitation à signer le bail.",
