@@ -21,7 +21,13 @@ import type { Lease, Property, PropertyLot, RentPayment } from "../../../lib/lan
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import { computeLoanAmortization } from "../../../lib/landlord/loanAmortization";
-import { DELEGATED_RENT_LABEL } from "../../../lib/rentPaymentFinance";
+import {
+  computeExpenseMonthly,
+  computeLedgerIncome,
+  DEPOSIT_TRANSIT_CATEGORIES,
+  isReceivedIncome,
+  isRecurringFlow,
+} from "../../../lib/landlord/performanceCalc";
 import { cx } from "../ui/uiHelpers";
 import type { LandlordSectionKey } from "../navigation";
 
@@ -318,23 +324,6 @@ function investmentAmount(finance: PropertyFinance | null) {
 
 function monthlyLeaseAmount(lease: Lease) {
   return Number((lease as any).rent_amount || 0) + Number((lease as any).charges_amount || 0);
-}
-
-const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
-
-function isReceivedIncome(row: Transaction) {
-  const status = String(row.status || "").toLowerCase();
-  return (
-    row.direction === "in" &&
-    (status === "received" || status === "paid") &&
-    !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)
-  );
-}
-
-// Lignes déjà comptées dans les charges récurrentes : à exclure des sommes ponctuelles
-// (dépenses/recettes) pour éviter un double comptage avec le total récurrent.
-function isRecurringFlow(row: Transaction) {
-  return Boolean(row.is_recurring || row.recurrence_parent_id);
 }
 
 function labelForProperty(property: Property | undefined, fallback = "Bien") {
@@ -1087,29 +1076,11 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           const d = normalizeDate(row.occurred_at);
           return d != null && d >= pStart && d <= pEnd;
         });
-        // Exclut les lignes qui existent déjà dans rent_payments (-> `received` ci-dessus) sous
-        // une autre forme, sinon ce loyer serait compté deux fois : (1) les copies automatiques
-        // d'une quittance (receipt_id non nul, écrites par syncReceiptsToTransactions côté
-        // Finance), et (2) les lignes "Loyer (gestion agence)" des baux receipts_disabled
-        // (écrites par syncDelegatedRentTransaction, qui n'a jamais de receipt_id puisqu'il n'y a
-        // pas de quittance lokt — payments/confirm.ts écrit alors le même montant à la fois dans
-        // rent_payments ET dans transactions). Ne PAS exclure toute la catégorie "rent" : un
-        // loyer peut aussi être ajouté manuellement dans Finance (catégorie "Loyer (quittance)"
-        // sélectionnable à la main, receipt_id = null), et devait rester compté. L'ancien calcul
-        // (Math.max(received, ledgerIncome) sur tout `ledgerIncome` sans distinction) faisait
-        // disparaître silencieusement un revenu annexe (remboursement, parking...) saisi le même
-        // mois qu'un loyer pas encore synchronisé, dès que ce loyer dépassait le revenu annexe.
-        const ledgerIncome = sum(
-          periodTx
-            .filter(
-              (row) =>
-                !isRecurringFlow(row) &&
-                isReceivedIncome(row) &&
-                !row.receipt_id &&
-                row.label !== DELEGATED_RENT_LABEL
-            )
-            .map((row) => Number(row.amount || 0))
-        );
+        // Voir lib/landlord/performanceCalc.ts pour le détail des deux dédoublonnages
+        // nécessaires (quittance synchronisée, loyer d'un bail en gestion déléguée) : les deux
+        // existent déjà dans rent_payments (-> `received` ci-dessus) sous une autre forme, donc
+        // les compter ici en plus les compterait deux fois.
+        const ledgerIncome = computeLedgerIncome(periodTx);
         const expense = sum(
           periodTx
             .filter((row) => !isRecurringFlow(row) && row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category))
@@ -1202,7 +1173,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
 
         const incomeBase = received + ledgerIncome;
         const incomeMonthly = monthCount > 1 ? incomeBase / monthCount : incomeBase;
-        const expenseMonthly = monthCount > 1 ? expense / monthCount : expense;
+        const expenseMonthly = computeExpenseMonthly(periodTx, monthCount);
         // Phase 1 (plan de remédiation) : cashflow et rendement net utilisent désormais la
         // moyenne mois par mois (recurringPeriodAvg), pas le taux courant brut — un seul point
         // de calcul par métrique, donc tous leurs consommateurs (comparatif par bien, "biens en
