@@ -25,6 +25,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/purge-assistant-feedback",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/cron/rent-reminders",
       "schedule": "0 8 * * *"
     },

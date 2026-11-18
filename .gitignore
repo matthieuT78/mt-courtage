@@ -134,9 +134,10 @@ screenshots/
 # TEST / ADMIN LOCAL (pas en prod)
 ###############################################
 pages/test-quittance.tsx
-pages/admin.tsx
 pages/admin/
 pages/api/admin/
+components/admin/
+lib/admin/
 
 ###############################################
 # FAVICON WORK FILES (ne pas ignorer les vrais)

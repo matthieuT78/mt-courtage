@@ -76,6 +76,12 @@ const jobs = [
     minutes: [35],
     wdays: [1], // lundi uniquement — cf. payloadFor, wdays: [-1] par défaut (tous les jours)
   },
+  {
+    title: "lokt - purge feedback Loky RGPD (90j)",
+    url: `${siteUrl}/api/cron/purge-assistant-feedback`,
+    hours: [3],
+    minutes: [40],
+  },
 ];
 
 async function request(url, options = {}) {

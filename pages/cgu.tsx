@@ -177,6 +177,11 @@ export default function CGUPage() {
                   Toute action de Loky ayant un effet sur les données du compte (création ou modification d’une écriture, envoi d’un email à un
                   tiers, etc.) est soumise à une confirmation explicite de l’utilisateur avant exécution.
                 </p>
+                <p>
+                  Lorsqu’un utilisateur évalue une réponse de Loky (pouce levé/baissé), la question et la réponse concernées sont conservées
+                  temporairement à des fins d’amélioration du service — voir la{" "}
+                  <a href="/confidentialite" className="underline">politique de confidentialité</a> pour la durée de conservation.
+                </p>
               </Section>
 
               <Section title="10. Simulations, fiscalité et aide à la déclaration">

@@ -174,6 +174,11 @@ export default function ConfidentialitePage() {
                     <strong>Logs techniques et sécurité :</strong> 30 jours à 12 mois selon la nature, nécessaires au diagnostic, à la sécurité et à la prévention des abus.
                   </li>
                   <li>
+                    <strong>Retours sur l'assistant Loky :</strong> lorsqu'un utilisateur évalue une réponse de Loky (pouce levé/baissé), la question et la
+                    réponse concernées sont conservées 90 jours à des fins d'amélioration du service, puis supprimées automatiquement. Elles sont également
+                    supprimées immédiatement en cas de suppression du compte.
+                  </li>
+                  <li>
                     <strong>Données anonymisées ou agrégées :</strong> conservées sans limite lorsqu’elles ne permettent plus d’identifier une personne.
                   </li>
                 </ul>
