@@ -6,6 +6,7 @@ import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { resolveProfileEmail } from "../../../lib/resolveProfileEmail";
 
 const FOLLOWUP_DAY = 1;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -109,7 +110,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
-        const ownerEmail = safeStr(lease.reminder_email);
+        // Même repli que rent-reminders.ts : reminder_email n'est écrit qu'à la
+        // création du bail et rien ne permet de le corriger après coup si vide
+        // (audit du 2026-11-18) — on retombe sur l'email réel du compte plutôt
+        // que de sauter la relance en silence.
+        const ownerEmail = safeStr(lease.reminder_email) || (await resolveProfileEmail({ id: String(lease.user_id), email: null })) || "";
         if (!ownerEmail) {
           skipped++;
           continue;

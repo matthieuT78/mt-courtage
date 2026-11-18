@@ -7,6 +7,7 @@ import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { alertCronFailures } from "../../../lib/cronAlert";
+import { resolveProfileEmail } from "../../../lib/resolveProfileEmail";
 
 type Json = Record<string, any>;
 
@@ -114,7 +115,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       if (today !== targetLocal) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "wrong_date", today, targetLocal, payment_day: day }); continue; }
 
-      const to = l.reminder_email;
+      // reminder_email n'est écrit qu'à la création du bail — un bail créé
+      // avant le filet de sécurité de leases.ts (ou un souci de chargement
+      // côté client à ce moment-là) peut l'avoir vide, sans aucun moyen de le
+      // corriger depuis l'UI. Repli sur l'email réel du compte pour ne jamais
+      // sauter silencieusement cette relance (audit du 2026-11-18).
+      const to = l.reminder_email || (await resolveProfileEmail({ id: String(l.user_id), email: null }));
       if (!to) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_reminder_email" }); continue; }
 
       const rentPeriod = getLeaseRentPeriod(l, period);

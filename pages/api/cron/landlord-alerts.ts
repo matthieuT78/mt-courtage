@@ -238,7 +238,7 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
   },
   owner_email_missing: {
     why: "Sans cet email, vous ne recevez plus les emails de confirmation de paiement en un clic ni leurs relances automatiques. Les autres notifications (cette alerte incluse, et la copie des quittances) continuent d'arriver sur l'email de connexion de votre compte par défaut.",
-    how: "Renseignez un email de notification dans les réglages du bail — utile si vous voulez recevoir ces emails sur une autre adresse que celle du compte.",
+    how: "Ouvrez le bail, cliquez sur « Modifier » puis « Options avancées », et renseignez un email de notification — utile aussi si vous voulez recevoir ces emails sur une autre adresse que celle du compte.",
   },
   deposit_not_collected: {
     why: "Le dépôt de garantie protège contre d'éventuelles dégradations ou impayés en fin de bail — sans lui, vous êtes exposé sans filet en cas de litige au départ.",

@@ -3483,6 +3483,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, propertyLot
                   <option value="UTC">UTC</option>
                 </select>
               </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[0.7rem] text-slate-700">Email de notification bailleur</label>
+                <input
+                  type="email"
+                  value={form.reminder_email || ""}
+                  onChange={(e) => setForm((s) => ({ ...s, reminder_email: e.target.value }))}
+                  placeholder={userEmail || "email du compte"}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+                <p className="text-[0.65rem] text-slate-400">
+                  Reçoit les confirmations de paiement et les relances automatiques pour ce bail. Laissez vide pour utiliser l’email de votre compte.
+                </p>
+              </div>
             </div>
           </div>
         </details>

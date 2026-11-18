@@ -379,6 +379,50 @@ export const assistantTools: AssistantTool[] = [
     },
   },
   {
+    name: "update_lease_reminder_email",
+    description: "Modifie l'email de notification du bailleur pour un bail précis — celui qui reçoit les confirmations de paiement en un clic et les relances automatiques (alerte 'Email bailleur manquant', champ reminder_email renvoyé par list_leases). À utiliser si l'utilisateur veut recevoir ces notifications sur une autre adresse que celle de son compte, ou pour corriger un bail où ce champ est vide. Omettre reminder_email (ou envoyer une chaîne vide) remet l'email du compte par défaut.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lease_id: { type: "string" },
+        reminder_email: { type: "string", description: "Nouvel email de notification. Vide/omis = revient à l'email du compte." },
+      },
+      required: ["lease_id"],
+    },
+    mutates: true,
+    execute: async (ctx, args) => {
+      const admin = requireAdmin();
+      const { data: lease } = await admin.from("leases").select("id").eq("id", args.lease_id).eq("user_id", ctx.userId).maybeSingle();
+      if (!lease) throw new Error("Bail introuvable ou non autorisé.");
+
+      let email = args.reminder_email != null ? String(args.reminder_email).trim() : "";
+      if (!email) {
+        const { data: authUser } = await admin.auth.admin.getUserById(ctx.userId);
+        email = authUser?.user?.email || "";
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Email de notification invalide.");
+
+      const { error } = await admin
+        .from("leases")
+        .update({ reminder_email: email, updated_at: new Date().toISOString() })
+        .eq("id", args.lease_id)
+        .eq("user_id", ctx.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true, reminder_email: email };
+    },
+    summarize: async (ctx, args) => {
+      const admin = requireAdmin();
+      const leaseInfo = await resolveLeaseSummary(admin, ctx.userId, args.lease_id);
+      const rows: Array<{ label: string; value: string }> = [];
+      if (leaseInfo) {
+        rows.push({ label: "Bien", value: leaseInfo.propertyLabel });
+        rows.push({ label: "Locataire", value: leaseInfo.tenantName });
+      }
+      rows.push({ label: "Nouvel email de notification", value: args.reminder_email ? String(args.reminder_email) : "Email du compte (par défaut)" });
+      return rows;
+    },
+  },
+  {
     name: "list_rent_payments",
     description: "Donne le statut de paiement du loyer d'un bail pour un ou plusieurs mois : payé (avec date, montant et si une quittance a réellement été générée) ou non encore payé (avec l'échéance attendue). À utiliser pour répondre directement à 'est-ce que X a payé son loyer ?' ou 'pourquoi je n'ai pas de quittance ?' — ne redirige jamais ces questions vers open_quittances, et ne déduis jamais qu'une quittance existe du simple fait qu'un loyer est payé : utilise le champ has_receipt, jamais une supposition. Si un mois renvoie out_of_lease_range=true, ce mois est simplement antérieur au début du bail (lease_start_date) ou postérieur à sa fin (lease_end_date) : dis-le explicitement, ne présente JAMAIS ça comme un loyer manquant/en retard, et ne propose jamais de le confirmer ou de relancer le locataire pour ce mois-là.",
     input_schema: {
