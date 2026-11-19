@@ -355,7 +355,7 @@ export default function GestionLocativeLmnpPage() {
           </div>
         </section>
 
-        <section className="px-4 pb-10 pt-12 sm:pb-16 sm:pt-20">
+        <section className="bg-white px-4 pb-10 pt-12 sm:pb-16 sm:pt-20">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-3xl pb-3">
               <p data-scroll-reveal data-reveal-delay="0" className="text-base sm:text-lg font-bold uppercase tracking-wide text-[#635bff]">Location meublée</p>
@@ -397,13 +397,28 @@ export default function GestionLocativeLmnpPage() {
                 </div>
               </div>
             </section>
+          </div>
+        </section>
 
-            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+        <section
+          className="relative overflow-hidden px-4 py-14 sm:py-20"
+          style={{ background: "linear-gradient(to bottom, #ffffff, #0b0718 220px)" }}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(55% 50% at 12% 0%, rgba(99,91,255,0.32), transparent 70%), radial-gradient(50% 45% at 90% 100%, rgba(0,212,255,0.22), transparent 70%)",
+            }}
+          />
+          <div className="relative mx-auto max-w-6xl space-y-6">
+            <section className="overflow-hidden rounded-[1.5rem] border border-white/15 bg-white shadow-xl shadow-black/40 sm:rounded-[2rem]">
               <div className="p-5 pb-0 sm:p-8 sm:pb-0">
                 <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Assistant IA lokt.fr</p>
                 <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                   <span className="block text-2xl sm:text-3xl">Loky connaît votre inventaire</span>
-                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">et votre fiscalité meublée.</span>
+                  <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">et vos baux meublés.</span>
                 </h2>
                 <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
                   Décrivez ce que vous voulez savoir, en une phrase. Loky va chercher la vraie donnée dans votre compte — jamais une estimation générique.
@@ -420,7 +435,11 @@ export default function GestionLocativeLmnpPage() {
                 </Link>
               </div>
             </section>
+          </div>
+        </section>
 
+        <section className="px-4 py-14 sm:py-20" style={{ background: "linear-gradient(to bottom, #0b0718, #eef2ff 220px)" }}>
+          <div className="mx-auto max-w-6xl space-y-6">
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
                 <div>
@@ -522,7 +541,11 @@ export default function GestionLocativeLmnpPage() {
                 <strong className="text-slate-800">En pratique :</strong> le régime réel est souvent plus avantageux dès que vous avez un crédit immobilier en cours (intérêts déductibles), des travaux ou un bien récemment acquis (amortissement). L'amortissement comptable du bien (hors terrain) et du mobilier permet de créer un déficit fiscal qui s'impute sur les recettes locatives, réduisant l'imposition à zéro sur plusieurs années. Un expert-comptable spécialisé LMNP peut calculer l'option optimale pour votre situation.
               </div>
             </section>
+          </div>
+        </section>
 
+        <section className="px-4 py-14 sm:py-20" style={{ background: "linear-gradient(to bottom, #eef2ff, #ffffff 220px)" }}>
+          <div className="mx-auto max-w-6xl space-y-6">
             {/* ── Argument économique : agence vs lokt ── */}
             <section className="overflow-hidden rounded-[1.5rem] border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 to-[#00d4ff]/5 p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Pourquoi payer un abonnement plutôt qu'une agence ?</p>
@@ -624,7 +647,11 @@ export default function GestionLocativeLmnpPage() {
                 </Link>
               </p>
             </section>
+          </div>
+        </section>
 
+        <section className="px-4 py-14 sm:py-20" style={{ background: "linear-gradient(to bottom, #ffffff, #eef2ff 220px)" }}>
+          <div className="mx-auto max-w-6xl space-y-6">
             {/* ── Section éditoriale C : Obligations légales ── */}
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
               <div>
@@ -702,7 +729,7 @@ export default function GestionLocativeLmnpPage() {
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Gestion pratique</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Gérer une location meublée LMNP au quotidien</h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  La gestion de location meublée LMNP se distingue de la location vide par la nécessité de suivre le mobilier, de produire un inventaire contradictoire et de maîtriser un régime fiscal spécifique (BIC). Bien organisée, la gestion LMNP peut se gérer sans agence ni comptable pour un ou deux logements — à condition de disposer des bons outils et des bonnes habitudes.
+                  La gestion de location meublée LMNP se distingue de la location vide par la nécessité de suivre le mobilier, de produire un inventaire contradictoire et de maîtriser un régime fiscal spécifique (BIC). Voici comment lokt.fr répond à chaque étape du cycle de vie d'un meublé.
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -710,37 +737,29 @@ export default function GestionLocativeLmnpPage() {
                   {
                     title: "Gestion LMNP au démarrage",
                     items: [
-                      "Rédiger le bail meublé et l'inventaire détaillé",
-                      "Réaliser l'état des lieux d'entrée (mobile ou papier)",
-                      "Encaisser et documenter le dépôt de garantie",
-                      "Déclarer le bien (formulaire P0i) pour l'activité LMNP",
+                      "Bail meublé et inventaire LMNP créés dans lokt.fr, prêts à signer",
+                      "État des lieux d'entrée réalisable depuis le téléphone, pièce par pièce",
                     ],
                   },
                   {
                     title: "Gestion LMNP mois par mois",
                     items: [
-                      "Confirmer chaque paiement de loyer dans les délais",
-                      "Émettre et archiver la quittance PDF",
-                      "Signaler et gérer les retards ou paiements partiels",
-                      "Classer les charges (assurance, charges de copropriété, travaux)",
+                      "Loky confirme le loyer et génère la quittance PDF en une question",
+                      "Paiement non confirmé ? Une alerte vous le signale automatiquement",
                     ],
                   },
                   {
                     title: "Gestion LMNP en fin de bail",
                     items: [
-                      "Réaliser l'état des lieux de sortie et comparer l'inventaire",
-                      "Évaluer les retenues éventuelles sur dépôt de garantie",
-                      "Restituer dans le délai légal (1 ou 2 mois selon l'état des lieux)",
-                      "Archiver tous les documents pour la déclaration fiscale",
+                      "État des lieux d'entrée et de sortie côte à côte dans le dossier du bien",
+                      "Délai de restitution du dépôt de garantie suivi, avec rappel avant la pénalité légale",
                     ],
                   },
                   {
                     title: "Gestion LMNP et déclaration",
                     items: [
-                      "Choisir entre micro-BIC (50 %) et régime réel simplifié",
-                      "Conserver tous les justificatifs de charges et travaux",
-                      "Anticiper la liasse P0i si changement de régime",
-                      "Faire appel à un expert-comptable spécialisé LMNP si besoin",
+                      "Micro-BIC vs réel calculé avec vos vraies recettes et charges, pas une estimation générique",
+                      "Quittances et justificatifs retrouvés et exportés d'un coup pour votre comptable",
                     ],
                   },
                 ].map((block) => (
@@ -761,7 +780,11 @@ export default function GestionLocativeLmnpPage() {
                 L'essentiel de la gestion LMNP repose sur la traçabilité : chaque loyer encaissé, chaque charge réglée, chaque document signé doit être retrouvable rapidement — pour un contrôle fiscal, un départ de locataire ou une revente du bien. lokt.fr centralise ces preuves dans un espace bailleur structuré autour du logement plutôt que du document.
               </p>
             </section>
+          </div>
+        </section>
 
+        <section className="px-4 py-14 sm:py-20" style={{ background: "linear-gradient(to bottom, #eef2ff, #ffffff 220px)" }}>
+          <div className="mx-auto max-w-6xl space-y-6">
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-8 lg:grid-cols-[1fr,420px] lg:items-start">
                 <div>
@@ -796,7 +819,11 @@ export default function GestionLocativeLmnpPage() {
             </section>
 
             <ReviewsSection />
+          </div>
+        </section>
 
+        <section className="px-4 py-14 sm:py-20" style={{ background: "linear-gradient(to bottom, #ffffff, #f1f5f9 220px)" }}>
+          <div className="mx-auto max-w-6xl space-y-6">
             <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 sm:rounded-[2rem] sm:p-8">
               <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
               <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Questions fréquentes</h2>
