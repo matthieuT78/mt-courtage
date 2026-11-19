@@ -35,7 +35,7 @@ Elle **ne s'applique pas** à la résidence principale, exonérée sous conditio
 
 > **Plus-value brute = Prix de cession − Prix d'acquisition**
 
-**Prix de cession** = prix de vente acté − frais supportés par le vendeur (diagnostics obligatoires, commission d'agence si à la charge du vendeur, mainlevée d'hypothèque)
+**Prix de cession** = prix de vente acté − frais supportés par le vendeur ([diagnostics obligatoires](https://immoallie.com), commission d'agence si à la charge du vendeur, mainlevée d'hypothèque)
 
 **Prix d'acquisition** = prix d'achat + frais d'acquisition + travaux
 
