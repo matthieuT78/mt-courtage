@@ -135,7 +135,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         patch.deposit_return_tx_id = txRet.id;
       }
 
-      if (retainAmt > 0) {
+      // La part "loyers/charges impayés" d'une retenue est un loyer finalement encaissé (via
+      // compensation plutôt que virement) : elle doit compter comme revenu locatif partout
+      // (Finance, Performance, déclaration fiscale), donc catégorie "rent". La part "dommages"
+      // n'est pas un revenu locatif (indemnisation d'un préjudice) : elle reste en
+      // "deposit_retained", exclue des recettes (cf. lib/landlord/performanceCalc.ts et
+      // SectionDeclaration.tsx). `pendingChargesTotal` n'alimente aucune des deux écritures ici
+      // : son montant est déjà compté une fois via le flip de statut plus bas sur sa transaction
+      // "charges_recovered" d'origine — l'ajouter ici le compterait une seconde fois.
+      //
+      // Repli sur l'ancien comportement (tout dans "deposit_retained", donc hors recettes) si
+      // l'appelant n'a fourni qu'un retained_amount brut sans décompte structuré (hasItems
+      // false — cas de Loky via manage_deposit, qui ne construit pas encore imputed_months/
+      // damage_items) : sans savoir ce que couvre ce montant, mieux vaut sous-compter les
+      // recettes que risquer de compter un dédommagement comme loyer.
+      if (hasItems) {
+        if (imputedTotal > 0) {
+          const imputedLabel = (
+            imputedMonths.length
+              ? `Loyers/charges compensés par la caution : ${imputedMonths.map((m) => String(m.period_start).slice(0, 7)).join(", ")}`
+              : "Loyers/charges compensés par la caution"
+          ).slice(0, 200);
+          const { data: txRent, error: txRentErr } = await supabaseAdmin.from("transactions").insert({
+            user_id: userId,
+            property_id: lease.property_id ?? null,
+            lease_id: leaseId,
+            receipt_id: null,
+            occurred_at: safeStr(returned_at),
+            direction: "in",
+            status: "received",
+            category: "rent",
+            label: imputedLabel,
+            amount: Math.round(imputedTotal * 100) / 100,
+            notes: "[lokt:deposit]",
+            updated_at: new Date().toISOString(),
+          }).select("id").single();
+          if (txRentErr || !txRent) return res.status(500).json({ error: `Écriture Finance (loyers compensés) échouée : ${txRentErr?.message}` });
+          patch.deposit_retain_rent_tx_id = txRent.id;
+        }
+
+        if (damageTotal > 0) {
+          const damageLabel = (
+            damageItems.length
+              ? `Retenue pour dommages : ${damageItems.map((d) => `${d.label} (${safeNum(d.amount) ?? 0} €)`).join(", ")}`
+              : "Retenue sur caution"
+          ).slice(0, 200);
+          const { data: txRetain, error: txRetainErr } = await supabaseAdmin.from("transactions").insert({
+            user_id: userId,
+            property_id: lease.property_id ?? null,
+            lease_id: leaseId,
+            receipt_id: null,
+            occurred_at: safeStr(returned_at),
+            direction: "in",
+            status: "received",
+            category: "deposit_retained",
+            label: damageLabel,
+            amount: Math.round(damageTotal * 100) / 100,
+            notes: "[lokt:deposit]",
+            updated_at: new Date().toISOString(),
+          }).select("id").single();
+          if (txRetainErr || !txRetain) return res.status(500).json({ error: `Écriture Finance (retenue dommages) échouée : ${txRetainErr?.message}` });
+          patch.deposit_retain_tx_id = txRetain.id;
+        }
+      } else if (retainAmt > 0) {
         const retainLabel = reasonLabel ? `Retenue : ${reasonLabel.slice(0, 80)}` : "Retenue sur caution";
         const { data: txRetain, error: txRetainErr } = await supabaseAdmin.from("transactions").insert({
           user_id: userId,
@@ -228,7 +290,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── cancel_return ──────────────────────────────────────────────────────────
     if (action === "cancel_return") {
-      const idsToDelete = [lease.deposit_return_tx_id, lease.deposit_retain_tx_id].filter(Boolean) as string[];
+      const idsToDelete = [lease.deposit_return_tx_id, lease.deposit_retain_tx_id, lease.deposit_retain_rent_tx_id].filter(Boolean) as string[];
       if (idsToDelete.length) {
         await supabaseAdmin.from("transactions").delete().in("id", idsToDelete).eq("user_id", userId);
       }
@@ -239,6 +301,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         deposit_retained_reason: null,
         deposit_return_tx_id: null,
         deposit_retain_tx_id: null,
+        deposit_retain_rent_tx_id: null,
         updated_at: new Date().toISOString(),
       }).eq("id", leaseId).eq("user_id", userId).select("*").single();
       if (updErr) return res.status(500).json({ error: updErr.message });

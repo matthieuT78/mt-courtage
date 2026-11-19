@@ -135,6 +135,7 @@ export type Lease = {
   deposit_collection_tx_id?: string | null;
   deposit_return_tx_id?: string | null;
   deposit_retain_tx_id?: string | null;
+  deposit_retain_rent_tx_id?: string | null;
   payment_day: number | null;
   payment_type?: string | null;
   payment_method: string | null;
