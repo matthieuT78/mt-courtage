@@ -123,7 +123,10 @@ export function SidebarNav({
     return {
       ...item,
       badge:
-        item.key === "dashboard" ? (
+        // Masqué quand on est déjà sur Accueil : le bandeau du cockpit affiche le même score
+        // juste à côté, le répéter ici serait redondant. Ailleurs, c'est le seul repère santé
+        // visible sans y retourner — donc affiché partout sauf là.
+        item.key === "dashboard" && active !== "dashboard" ? (
           <Pill tone={healthScore >= 80 ? "emerald" : healthScore >= 60 ? "amber" : "red"}>
             Santé {healthScore}
           </Pill>
