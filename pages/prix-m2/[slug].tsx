@@ -510,13 +510,17 @@ export default function PrixM2City({
       <Head>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDesc} />
-        {/* Sous 5 transactions sur la dernière année, le prix médian n'est plus un
+        {/* Sous 10 transactions sur la dernière année, le prix médian n'est plus un
             signal fiable (cf. reliabilityLevel) et la page n'a quasiment aucune
-            demande de recherche réelle (audit GSC 2026-10 : ces pages pèsent 9%
-            des impressions du cluster /prix-m2 pour 47% des pages) — noindex pour
-            concentrer le budget de crawl, mais "follow" pour laisser circuler le
-            lien interne vers les communes voisines. */}
-        <meta name="robots" content={latestNTransactions == null || latestNTransactions < 5 ? "noindex, follow" : "index, follow"} />
+            demande de recherche réelle — noindex pour concentrer le budget de
+            crawl, mais "follow" pour laisser circuler le lien interne vers les
+            communes voisines. Seuil initial à 5 (audit GSC 2026-10 : 9% des
+            impressions du cluster /prix-m2 pour 47% des pages). Remonté à 10
+            le 2026-11-19 après re-vérification : une fois le maillage entre
+            communes voisines effectif, ce seuil ne coûte plus que 9,7% des
+            impressions du cluster (contre 16-24% estimé en octobre pour ce
+            même seuil) — voir project_prix_m2_seo_audit_2026_10 en mémoire. */}
+        <meta name="robots" content={latestNTransactions == null || latestNTransactions < 10 ? "noindex, follow" : "index, follow"} />
         <link rel="canonical" href={pageUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="lokt.fr" />
