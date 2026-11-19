@@ -35,13 +35,13 @@ Elle **ne s'applique pas** à la résidence principale, exonérée sous conditio
 
 > **Plus-value brute = Prix de cession − Prix d'acquisition**
 
-**Prix de cession** = prix de vente acté − frais supportés par le vendeur ([diagnostics obligatoires](https://immoallie.com), commission d'agence si à la charge du vendeur, mainlevée d'hypothèque)
+**Prix de cession** = prix de vente acté − frais supportés par le vendeur (diagnostics obligatoires, commission d'agence si à la charge du vendeur, mainlevée d'hypothèque)
 
 **Prix d'acquisition** = prix d'achat + frais d'acquisition + travaux
 
 Les frais d'acquisition comprennent :
 - Les frais de notaire : montant **réel** ou **forfait de 7,5 %** du prix d'achat (au choix, en l'absence de justificatif)
-- La commission d'agence payée lors de l'achat
+- La commission d'agence payée lors de l'achat (sauf si vous optez pour une [vente immobilière sans agence](https://immoallie.com))
 - Les frais de garantie (caution, hypothèque)
 
 Les travaux déductibles :
