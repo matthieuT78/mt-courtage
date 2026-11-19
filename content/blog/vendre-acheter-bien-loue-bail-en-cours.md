@@ -108,7 +108,7 @@ En pratique, ce transfert se matérialise de deux façons possibles :
 
 **Par versement direct** du vendeur à l'acquéreur, en plus du prix de vente, pour que ce dernier dispose effectivement de la somme le jour où il devra la restituer.
 
-**Le rôle du notaire est ici déterminant** : l'acte de vente doit mentionner explicitement l'existence du bail, son identité (locataire, dates, loyer) et le mécanisme retenu pour le dépôt de garantie. Un acte silencieux sur ce point expose l'acquéreur à devoir restituer une somme qu'il n'a jamais reçue — un litige fréquent quand la transaction a été bâclée sur ce détail.
+**Le rôle du notaire est ici déterminant** : [l'acte de vente](https://abcimmobiliere.com) doit mentionner explicitement l'existence du bail, son identité (locataire, dates, loyer) et le mécanisme retenu pour le dépôt de garantie. Un acte silencieux sur ce point expose l'acquéreur à devoir restituer une somme qu'il n'a jamais reçue — un litige fréquent quand la transaction a été bâclée sur ce détail.
 
 ---
 
