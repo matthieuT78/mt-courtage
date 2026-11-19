@@ -7,6 +7,7 @@ import {
   BanknotesIcon,
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
+  FolderArrowDownIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
@@ -35,9 +36,9 @@ const features = [
     icon: DocumentTextIcon,
   },
   {
-    title: "État des lieux mobile",
-    text: "Préparez l’entrée ou la sortie directement sur place, pièce par pièce, avec un parcours pensé pour le téléphone.",
-    icon: ClipboardDocumentCheckIcon,
+    title: "Preuves pour le comptable",
+    text: "Retrouvez quittances, charges et justificatifs classés par bien, prêts à transmettre pour votre déclaration LMNP.",
+    icon: FolderArrowDownIcon,
   },
   {
     title: "Finance propriétaire",
@@ -178,7 +179,7 @@ const jsonLdItems = [
 function FeatureCard({ feature }: { feature: (typeof features)[number] }) {
   const Icon = feature.icon;
   return (
-    <article className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md">
+    <article className="h-full rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md">
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f6f9fc] text-[#635bff] ring-1 ring-slate-200">
         <Icon className="h-6 w-6" />
       </div>
