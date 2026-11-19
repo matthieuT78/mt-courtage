@@ -99,7 +99,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let reasonLabel = safeStr(retained_reason) || null;
       if (hasItems) {
         const parts: string[] = [];
-        if (imputedMonths.length) parts.push(`Loyers/charges : ${imputedMonths.map((m) => `${m.period_start.slice(0, 7)} (${safeNum(m.amount) ?? 0} €)`).join(", ")}`);
+        // period_start optionnel : un appelant sans mois précis (ex. Loky via manage_deposit)
+        // ne fournit qu'un montant — éviter .slice() direct sur une valeur possiblement absente.
+        if (imputedMonths.length) parts.push(`Loyers/charges : ${imputedMonths.map((m) => `${m.period_start ? String(m.period_start).slice(0, 7) : "montant"} (${safeNum(m.amount) ?? 0} €)`).join(", ")}`);
         if (damageItems.length) parts.push(`Dommages : ${damageItems.map((d) => `${d.label} (${safeNum(d.amount) ?? 0} €)`).join(", ")}`);
         if (pendingCharges.length) parts.push(`Charges récupérables : ${pendingCharges.map((c) => `${c.label} (${safeNum(c.amount) ?? 0} €)`).join(", ")}`);
         reasonLabel = parts.join(" — ").slice(0, 500);
@@ -151,9 +153,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // recettes que risquer de compter un dédommagement comme loyer.
       if (hasItems) {
         if (imputedTotal > 0) {
+          const imputedMonthLabels = imputedMonths.map((m) => m.period_start).filter(Boolean).map((p) => String(p).slice(0, 7));
           const imputedLabel = (
-            imputedMonths.length
-              ? `Loyers/charges compensés par la caution : ${imputedMonths.map((m) => String(m.period_start).slice(0, 7)).join(", ")}`
+            imputedMonthLabels.length
+              ? `Loyers/charges compensés par la caution : ${imputedMonthLabels.join(", ")}`
               : "Loyers/charges compensés par la caution"
           ).slice(0, 200);
           const { data: txRent, error: txRentErr } = await supabaseAdmin.from("transactions").insert({

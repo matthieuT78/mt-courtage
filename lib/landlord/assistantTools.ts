@@ -2135,7 +2135,7 @@ N'invente jamais une valeur absente du document : utilise null.`,
   },
   {
     name: "manage_deposit",
-    description: "Encaisse, restitue ou annule une opération sur le dépôt de garantie d'un bail. action='collect' encaisse la caution ; action='return' la restitue (avec retenue éventuelle et motif obligatoire si retenue) ; action='cancel_collect'/'cancel_return' annule l'opération correspondante déjà enregistrée.",
+    description: "Encaisse, restitue ou annule une opération sur le dépôt de garantie d'un bail. action='collect' encaisse la caution ; action='return' la restitue (avec retenue éventuelle et motif obligatoire si retenue) ; action='cancel_collect'/'cancel_return' annule l'opération correspondante déjà enregistrée. Pour une retenue (action='return'), SI l'utilisateur précise ce qu'elle couvre, décompose-la avec imputed_rent_amount (part loyers/charges impayés — compte comme un revenu locatif, car encaissé via la caution plutôt qu'un virement) et damage_amount (part dommages/réparations — n'est pas un revenu locatif). Cette décomposition change la façon dont la retenue remonte dans Finance/Performance/la déclaration fiscale : ne la néglige pas si l'information est disponible dans la conversation. Si l'utilisateur ne précise aucune répartition, utilise simplement retained_amount — la retenue sera alors traitée par défaut comme ne comptant pas en revenu (cas prudent par défaut).",
     input_schema: {
       type: "object",
       properties: {
@@ -2145,14 +2145,20 @@ N'invente jamais une valeur absente du document : utilise null.`,
         paid_amount: { type: "number", description: "Montant encaissé, sinon le montant du dépôt prévu au bail (action='collect')." },
         returned_at: { type: "string", description: "Date de restitution YYYY-MM-DD (action='return')." },
         returned_amount: { type: "number", description: "Montant restitué au locataire (action='return')." },
-        retained_amount: { type: "number", description: "Montant retenu, si applicable (action='return')." },
-        retained_reason: { type: "string", description: "Motif de la retenue — obligatoire si retained_amount > 0 (action='return')." },
+        retained_amount: { type: "number", description: "Montant retenu, si applicable (action='return'). Utilisé seulement si imputed_rent_amount/damage_amount ne sont pas fournis." },
+        retained_reason: { type: "string", description: "Motif de la retenue — obligatoire si un montant est retenu (action='return'). Sert aussi de libellé pour la part dommages si damage_amount est fourni sans damage_reason." },
+        imputed_rent_amount: { type: "number", description: "Part de la retenue correspondant à des loyers/charges impayés désormais compensés (action='return') — compte comme un revenu locatif. Ne fournir que si l'utilisateur distingue explicitement cette part du reste." },
+        damage_amount: { type: "number", description: "Part de la retenue correspondant à des dommages/réparations (action='return') — ne compte pas comme un revenu locatif. Ne fournir que si l'utilisateur distingue explicitement cette part du reste." },
+        damage_reason: { type: "string", description: "Motif de la part dommages si distinct de retained_reason (ex. nature du dégât) — optionnel, retained_reason sert de repli." },
       },
       required: ["lease_id", "action"],
     },
     mutates: true,
     execute: async (ctx, args) => {
       const action = String(args.action);
+      const imputedRentAmount = Number(args.imputed_rent_amount || 0);
+      const damageAmount = Number(args.damage_amount || 0);
+      const hasBreakdown = action === "return" && (imputedRentAmount > 0 || damageAmount > 0);
       const data = await callInternalApi(ctx, "/api/deposits", {
         userId: ctx.userId,
         leaseId: args.lease_id,
@@ -2163,6 +2169,16 @@ N'invente jamais une valeur absente du document : utilise null.`,
         returned_amount: args.returned_amount,
         retained_amount: args.retained_amount,
         retained_reason: args.retained_reason,
+        // period_start/period_end volontairement omis : Loky ne connaît pas forcément le mois
+        // précis compensé, et l'API ferme la quittance du mois concerné seulement si elle est
+        // présente — sans elle, le montant compte quand même en revenu, juste sans clôturer de
+        // quittance précise (dégradation sans casse, voir pages/api/deposits/index.ts).
+        ...(hasBreakdown
+          ? {
+              imputed_months: imputedRentAmount > 0 ? [{ amount: imputedRentAmount }] : [],
+              damage_items: damageAmount > 0 ? [{ label: String(args.damage_reason || args.retained_reason || "Dommages"), amount: damageAmount }] : [],
+            }
+          : {}),
       });
       return data;
     },
@@ -2182,8 +2198,13 @@ N'invente jamais une valeur absente du document : utilise null.`,
       }
       if (action === "return") {
         if (args.returned_amount != null) rows.push({ label: "Restitué", value: euro(args.returned_amount) });
-        if (args.retained_amount != null) rows.push({ label: "Retenu", value: euro(args.retained_amount) });
+        const imputedRentAmount = Number(args.imputed_rent_amount || 0);
+        const damageAmount = Number(args.damage_amount || 0);
+        if (imputedRentAmount > 0) rows.push({ label: "Retenu — loyers/charges", value: euro(imputedRentAmount) });
+        if (damageAmount > 0) rows.push({ label: "Retenu — dommages", value: euro(damageAmount) });
+        if (imputedRentAmount <= 0 && damageAmount <= 0 && args.retained_amount != null) rows.push({ label: "Retenu", value: euro(args.retained_amount) });
         if (args.retained_reason) rows.push({ label: "Motif retenue", value: String(args.retained_reason) });
+        if (args.damage_reason) rows.push({ label: "Motif dommages", value: String(args.damage_reason) });
         rows.push({ label: "Date", value: String(args.returned_at || "—") });
       }
       return rows;
