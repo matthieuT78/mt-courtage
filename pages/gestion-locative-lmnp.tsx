@@ -222,22 +222,42 @@ const LOKY_DEMOS: LokyDemo[] = [
     resultBadge: "✓ Inventaire LMNP ouvert — Studio Bellevue",
   },
   {
-    id: "loyer",
-    tab: "Confirmer un loyer",
-    title: "Un loyer meublé confirmé, sans ressaisie",
-    description: "Signalez le paiement reçu pour un logement meublé — Loky confirme le loyer et génère la quittance, prête pour votre suivi LMNP.",
-    speedNote: "Ce qui prend d’habitude plusieurs minutes de vérification devient une phrase et une confirmation.",
+    id: "bail",
+    tab: "Créer un bail meublé",
+    title: "Un bail meublé créé, durée légale calculée automatiquement",
+    description: "Décrivez le bail meublé à créer — Loky le crée avec le bon type de location LMNP, calcule la date de fin légale (12 mois) et pense à l’inventaire avant l’arrivée.",
+    speedNote: "Ce qui demandait d’ouvrir le formulaire, choisir le type de bail et calculer la date de fin tient en une phrase.",
     capabilities: [
-      { icon: BanknotesIcon, text: "Confirmer un loyer meublé" },
-      { icon: DocumentTextIcon, text: "Générer la quittance PDF" },
-      { icon: ArchiveBoxIcon, text: "Archiver dans le dossier LMNP" },
-      { icon: ShieldCheckIcon, text: "Garder une preuve pour la déclaration" },
+      { icon: BanknotesIcon, text: "Créer un bail meublé (12 mois, reconduction tacite)" },
+      { icon: DocumentTextIcon, text: "Calculer automatiquement la date de fin légale" },
+      { icon: ArchiveBoxIcon, text: "Rappeler de vérifier l’inventaire avant l’entrée" },
+      { icon: ShieldCheckIcon, text: "Suggérer le contrat et l’état des lieux à la suite" },
     ],
-    userMessage: "Julien vient de payer son loyer de janvier pour le studio meublé, tu peux le confirmer ?",
-    lokyIntro: "Je confirme le loyer de janvier — la quittance PDF sera générée automatiquement.",
-    dataLines: ["🏠 Studio Bellevue · Julien Morel", "📄 Loyer janvier 2026 → quittance générée"],
-    userConfirm: "Confirmer",
-    resultBadge: "✓ Paiement confirmé — quittance de janvier générée pour Julien",
+    userMessage: "Crée un bail meublé pour Camille Dubois dans mon studio, à partir du 1er décembre, loyer 850 € hors charges.",
+    lokyIntro: "Bail meublé créé pour Camille Dubois — studio Bellevue, du 1er décembre 2026 au 30 novembre 2027.",
+    dataLines: ["🏠 Studio Bellevue · Camille Dubois", "📄 Bail meublé · 850 €/mois · 12 mois"],
+    lokyFollowup: "Je vous ouvre l’inventaire LMNP pour vérifier qu’il est à jour avant son arrivée ?",
+    userConfirm: "Oui, ouvre-le",
+    resultBadge: "✓ Bail meublé créé — inventaire LMNP à vérifier avant l’arrivée de Camille",
+  },
+  {
+    id: "comptable",
+    tab: "Exporter pour mon comptable",
+    title: "Toutes vos quittances d’un coup, pour votre comptable",
+    description: "Demandez les quittances d’une période — Loky les retrouve toutes et lance leur téléchargement automatiquement, sans les rouvrir une par une.",
+    speedNote: "Ce qui prenait de rouvrir chaque quittance une par une tient en une question.",
+    capabilities: [
+      { icon: DocumentTextIcon, text: "Retrouver toutes les quittances d’une période" },
+      { icon: ArchiveBoxIcon, text: "Un bien précis ou tout le parc, au choix" },
+      { icon: ClipboardDocumentCheckIcon, text: "Téléchargement direct dans le navigateur" },
+      { icon: ShieldCheckIcon, text: "Prêt à transmettre tel quel à votre comptable" },
+    ],
+    userMessage: "Pour mon comptable, j’ai besoin de toutes les quittances de loyer de mon bien meublé depuis janvier à maintenant.",
+    lokyIntro: "Studio Bellevue : 9 quittances trouvées, de janvier à septembre 2026.",
+    dataLines: ["📄 9 quittances · janvier → septembre 2026", "🏠 Studio Bellevue"],
+    lokyFollowup: "Je lance le téléchargement des 9 PDF ?",
+    userConfirm: "Oui, lance-le",
+    resultBadge: "✓ 9 quittances téléchargées — prêtes pour votre comptable",
   },
 ];
 
@@ -338,7 +358,7 @@ export default function GestionLocativeLmnpPage() {
         <section className="px-4 pb-10 pt-12 sm:pb-16 sm:pt-20">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-3xl pb-3">
-              <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Location meublée</p>
+              <p data-scroll-reveal data-reveal-delay="0" className="text-base sm:text-lg font-bold uppercase tracking-wide text-[#635bff]">Location meublée</p>
               <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                 <span className="block text-3xl sm:text-4xl">Les preuves au bon endroit.</span>
                 <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Le pilotage sans surcharge.</span>
