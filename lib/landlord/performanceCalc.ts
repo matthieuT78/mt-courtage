@@ -22,7 +22,7 @@ export const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returne
 
 export type PerformanceTx = {
   direction: "in" | "out";
-  category: string;
+  category?: string | null;
   status?: string | null;
   amount: number;
   label?: string | null;
@@ -36,7 +36,7 @@ export function isReceivedIncome(row: PerformanceTx): boolean {
   return (
     row.direction === "in" &&
     (status === "received" || status === "paid") &&
-    !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)
+    !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category || "")
   );
 }
 
@@ -76,7 +76,7 @@ export function computeLedgerIncome(periodTx: PerformanceTx[]): number {
 // 6 mois).
 export function computeExpenseMonthly(periodTx: PerformanceTx[], monthCount: number): number {
   const total = periodTx
-    .filter((row) => !isRecurringFlow(row) && row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category))
+    .filter((row) => !isRecurringFlow(row) && row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category || ""))
     .reduce((sum, row) => sum + Number(row.amount || 0), 0);
   return monthCount > 1 ? total / monthCount : total;
 }

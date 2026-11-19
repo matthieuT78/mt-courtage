@@ -13,6 +13,7 @@ import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLmnpItemCompliant, lotRequiresLmnpInventory, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
+import { isReceivedIncome as isReceivedIncomeTransaction, isRecurringFlow as isRecurringFlowTransaction } from "../../../lib/landlord/performanceCalc";
 import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
 import type { Plan } from "../../../lib/permissions";
 import { TransitionPanel } from "./TransitionPanel";
@@ -90,16 +91,6 @@ const monthLabel = (key: string) => {
   return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
-const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned"]);
-const isReceivedIncomeTransaction = (tx: TransactionRow) => {
-  const status = String(tx.status || "").toLowerCase();
-  if (DEPOSIT_CATEGORIES.has(tx.category || "")) return false;
-  return tx.direction === "in" && (status === "received" || status === "paid");
-};
-
-const isRecurringFlowTransaction = (tx: TransactionRow) =>
-  Boolean(tx.is_recurring || tx.recurrence_parent_id);
-
 function isLeaseUsable(lease: Lease) {
   const status = String(lease?.status || "").toLowerCase();
   return status !== "draft" && status !== "archived";

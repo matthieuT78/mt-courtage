@@ -3,6 +3,7 @@ import {
   computeExpenseMonthly,
   computeLedgerIncome,
   DELEGATED_RENT_LABEL,
+  isReceivedIncome,
   type PerformanceTx,
 } from "../../lib/landlord/performanceCalc";
 
@@ -71,6 +72,29 @@ describe("computeLedgerIncome", () => {
       rentTx({ category: "other", label: "Parking", amount: 60, receipt_id: null }),
     ];
     expect(computeLedgerIncome(txs)).toBe(960);
+  });
+});
+
+describe("isReceivedIncome", () => {
+  // Incident réel du 2026-11 : SectionDashboard.tsx (le cockpit, page la plus visible du site)
+  // avait sa propre copie de ce prédicat, avec son propre DEPOSIT_CATEGORIES local qui n'avait
+  // jamais été mis à jour avec "deposit_retained" — la retenue de caution de Saint-Rémy restait
+  // comptée comme loyer dans le graphe "Trésorerie 6 mois" du tableau de bord alors qu'elle
+  // avait déjà été corrigée dans Finance et Performance. category est typé nullable ici
+  // (TransactionRow du dashboard n'a pas la même forme stricte que Transaction de Finance) —
+  // vérifie que ça ne casse pas le filtre deposit_retained.
+  it("exclut deposit_retained même avec un type category nullable (cas SectionDashboard)", () => {
+    const tx: PerformanceTx = { direction: "in", status: "received", amount: 689.03, category: "deposit_retained" };
+    expect(isReceivedIncome(tx)).toBe(false);
+  });
+
+  it("ne plante pas si category est absent/null", () => {
+    expect(isReceivedIncome({ direction: "in", status: "received", amount: 100, category: null })).toBe(true);
+    expect(isReceivedIncome({ direction: "in", status: "received", amount: 100 })).toBe(true);
+  });
+
+  it("compte un loyer normal", () => {
+    expect(isReceivedIncome({ direction: "in", status: "received", amount: 900, category: "rent" })).toBe(true);
   });
 });
 
