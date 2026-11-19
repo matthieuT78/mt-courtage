@@ -1818,11 +1818,14 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, visitAt, on
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const totalRent = listing.rent_amount + listing.charges_amount;
-  const requiredIncome = totalRent * listing.income_ratio;
-  const income = c.net_monthly_income ?? 0;
-  const ratio = requiredIncome > 0 ? income / requiredIncome : 0;
-  const isEligible = income >= requiredIncome;
+  // Réutilise computeScoreBreakdown (même source que le score et SynthesisPanel) plutôt que de
+  // recalculer un ratio à partir du seul net_monthly_income : sinon la tuile "× seuil" ignore le
+  // garant (individuel vérifié ou Visale) alors que le score juste à côté en tient compte — un
+  // candidat avec Visale pouvait afficher un score "Profil solide" ET une tuile rouge "0.0×".
+  const breakdown = computeScoreBreakdown(c, listing);
+  const ratio = breakdown.required > 0 ? breakdown.referenceIncome / breakdown.required : 0;
+  const isEligible = breakdown.referenceIncome >= breakdown.required;
+  const income = breakdown.referenceIncome;
   const docsCount = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length;
   const score = scoreProfile(c, listing);
   const badge = profileBadge(score);
