@@ -156,7 +156,7 @@ export default function TarifsPage() {
     },
     {
       q: "Qu'est-ce que lokt·pro ?",
-      a: "lokt·pro est une offre pour les agences et gestionnaires, pas encore commercialisée, centrée sur la gestion documentaire (dossiers locataires, justificatifs, assurances, diagnostics, accès équipe, traçabilité). Les agences intéressées peuvent déjà contacter lokt.fr pour cadrer le besoin.",
+      a: "lokt·pro est une offre pour les agences et gestionnaires, pas encore commercialisée, centrée sur la gestion documentaire (dossiers locataires, justificatifs, assurances, diagnostics, accès équipe, traçabilité). Les agences intéressées peuvent déjà contacter lokt.fr pour cadrer le besoin, ou intégrer dès maintenant le widget simulateur gratuit de lokt.fr sur leur site.",
     },
   ];
   const jsonLdItems = [
@@ -484,7 +484,11 @@ export default function TarifsPage() {
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
                   L’offre lokt·pro n’est pas encore commercialisée. Elle sera construite autour de la gestion documentaire : dossiers
                   locataires, justificatifs, assurances, diagnostics, accès équipe et traçabilité. Les agences intéressées peuvent déjà nous
-                  contacter pour cadrer le besoin.
+                  contacter pour cadrer le besoin — ou intégrer dès maintenant notre{" "}
+                  <Link href="/widget" className="underline underline-offset-2 hover:text-amber-950">
+                    widget simulateur gratuit
+                  </Link>{" "}
+                  sur leur site.
                 </p>
               </div>
               <a

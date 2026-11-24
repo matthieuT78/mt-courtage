@@ -253,9 +253,9 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
 export default function WidgetPage() {
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/widget`;
-  const title = "Simulateurs immobiliers à intégrer sur votre site d'agence | lokt.fr";
+  const title = "Widget simulateur immobilier gratuit pour votre site d'agence | lokt.fr";
   const description =
-    "Intégrez gratuitement un simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
+    "Intégrez gratuitement un widget simulateur lokt.fr (capacité d'emprunt, prêt relais, rentabilité locative) sur votre site d'agence immobilière. Une iframe à copier-coller, aucune compétence technique requise.";
   const ogImage = `${siteUrl}/simulateurs-immobiliers-lokt.png`;
   const jsonLdItems = [
     {
@@ -468,7 +468,7 @@ export default function WidgetPage() {
               Gratuit pour les agences immobilières
             </div>
             <h1 className="mt-5 text-3xl font-semibold leading-tight tracking-tight text-slate-950 sm:text-5xl">
-              Offrez à vos visiteurs un simulateur immobilier — sur votre site, en 2 minutes.
+              Offrez à vos visiteurs un simulateur immobilier (widget gratuit) — sur votre site, en 2 minutes.
             </h1>
             <p className="mt-5 text-base leading-7 text-slate-600 sm:text-lg">
               Capacité d'emprunt, prêt relais, rentabilité locative : choisissez le simulateur le plus pertinent pour vos
