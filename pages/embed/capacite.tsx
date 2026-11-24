@@ -37,6 +37,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import CapaciteWizard from "../../components/CapaciteWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
+import { useWidgetViewPing } from "../../components/calculators/useWidgetViewPing";
 
 const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
 
@@ -72,6 +73,7 @@ export default function EmbedCapacitePage() {
   const router = useRouter();
   const style = accentStyle(router.query.accent, router.query.theme);
   const agencyLead = agencyLeadFromQuery(router.query);
+  useWidgetViewPing("capacite", agencyLead?.token);
   const size = router.query.size;
   const compactSteps = size === "small";
   const compactHeader = size === "small" || size === "medium";

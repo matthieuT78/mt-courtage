@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import InvestissementWizard from "../../components/InvestissementWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
+import { useWidgetViewPing } from "../../components/calculators/useWidgetViewPing";
 
 function agencyLeadFromQuery(query: Record<string, any>) {
   const token = typeof query.agency_token === "string" ? query.agency_token.trim() : "";
@@ -28,6 +29,7 @@ export default function EmbedInvestissementPage() {
   useWidgetAutoResize();
   const router = useRouter();
   const agencyLead = agencyLeadFromQuery(router.query);
+  useWidgetViewPing("investissement", agencyLead?.token);
   const size = router.query.size;
   const compactHeader = size === "small" || size === "medium";
 

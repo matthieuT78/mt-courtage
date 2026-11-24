@@ -102,12 +102,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: agency, error: agencyError } = await supabaseAdmin
       .from("widget_agencies")
-      .select("agency_email, lead_count")
+      .select("agency_email, lead_count, notif_window_start, notif_window_count")
       .eq("token", agencyToken)
       .maybeSingle();
 
     if (agencyError) return res.status(500).json({ ok: false, error: agencyError.message });
     if (!agency) return res.status(404).json({ ok: false, error: "Token agence inconnu" });
+
+    // agency_token est nécessairement public (visible dans le code source de
+    // la page qui héberge l'iframe) : le rate-limit par IP ne suffit pas à
+    // empêcher de spammer UNE agence précise depuis plusieurs IP une fois
+    // son token extrait. Plafond par token, suivi en base (persiste entre
+    // invocations serverless) — s'applique aussi aux envois de test, qui ne
+    // demandent aucune preuve que l'appelant est bien le propriétaire du
+    // token (cf. audit du 2026-11-24).
+    const NOTIF_WINDOW_MS = 3_600_000;
+    const MAX_NOTIF_PER_WINDOW = 20;
+    const windowStartMs = agency.notif_window_start ? new Date(agency.notif_window_start).getTime() : null;
+    const windowExpired = windowStartMs == null || Date.now() - windowStartMs > NOTIF_WINDOW_MS;
+    const nextWindowStart = windowExpired ? new Date().toISOString() : agency.notif_window_start;
+    const nextWindowCount = windowExpired ? 1 : agency.notif_window_count + 1;
+    if (!windowExpired && agency.notif_window_count >= MAX_NOTIF_PER_WINDOW) {
+      return res.status(429).json({ ok: false, error: "Trop de notifications pour ce widget, réessayez plus tard." });
+    }
 
     const nextLeadCount = isTest ? agency.lead_count : agency.lead_count + 1;
 
@@ -152,11 +169,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ ok: false, error: mail.error });
     }
 
-    if (!isTest) {
-      await supabaseAdmin
-        .from("widget_agencies")
-        .update({ lead_count: nextLeadCount, last_lead_at: new Date().toISOString() })
-        .eq("token", agencyToken);
+    {
+      const update: Record<string, any> = { notif_window_start: nextWindowStart, notif_window_count: nextWindowCount };
+      if (!isTest) {
+        update.lead_count = nextLeadCount;
+        update.last_lead_at = new Date().toISOString();
+      }
+      await supabaseAdmin.from("widget_agencies").update(update).eq("token", agencyToken);
     }
 
     return res.status(200).json({ ok: true });

@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import PretRelaisWizard from "../../components/PretRelaisWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
+import { useWidgetViewPing } from "../../components/calculators/useWidgetViewPing";
 
 function agencyLeadFromQuery(query: Record<string, any>) {
   const token = typeof query.agency_token === "string" ? query.agency_token.trim() : "";
@@ -27,6 +28,7 @@ export default function EmbedPretRelaisPage() {
   useWidgetAutoResize();
   const router = useRouter();
   const agencyLead = agencyLeadFromQuery(router.query);
+  useWidgetViewPing("pret-relais", agencyLead?.token);
   const size = router.query.size;
   const compactSteps = size === "small";
   const compactHeader = size === "small" || size === "medium";

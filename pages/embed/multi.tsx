@@ -20,6 +20,7 @@ import CapaciteWizard from "../../components/CapaciteWizard";
 import PretRelaisWizard from "../../components/PretRelaisWizard";
 import InvestissementWizard from "../../components/InvestissementWizard";
 import { useWidgetAutoResize } from "../../components/calculators/useWidgetAutoResize";
+import { useWidgetViewPing } from "../../components/calculators/useWidgetViewPing";
 
 const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
 
@@ -77,6 +78,7 @@ export default function EmbedMultiPage() {
 
   const style = accentStyle(router.query.accent, router.query.theme);
   const agencyLead = agencyLeadFromQuery(router.query);
+  useWidgetViewPing(active, agencyLead?.token);
   const size = router.query.size;
   const compactSteps = size === "small";
   const compactHeader = size === "small" || size === "medium";
