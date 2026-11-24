@@ -6,6 +6,11 @@ type SendEmailParams = {
   text?: string;
   replyTo?: string;
   attachments?: { filename: string; content: string }[];
+  // Surcharge de l'expéditeur par défaut (RESEND_FROM = contact@lokt.fr,
+  // adresse transactionnelle). À utiliser pour les campagnes à froid
+  // (prospection) afin de ne jamais risquer la délivrabilité des emails
+  // transactionnels réels (quittances, relances...) avec une adresse dédiée.
+  from?: string;
 };
 
 function isResendDisabled(data: any) {
@@ -15,7 +20,7 @@ function isResendDisabled(data: any) {
 
 export async function sendEmailViaResend(params: SendEmailParams) {
   const apiKey = process.env.RESEND_API_KEY || "";
-  const from = process.env.RESEND_FROM || "lokt.fr <contact@lokt.fr>";
+  const from = params.from || process.env.RESEND_FROM || "lokt.fr <contact@lokt.fr>";
   const replyTo = params.replyTo || process.env.RESEND_REPLY_TO || "contact@lokt.fr";
 
   if (!apiKey) return { ok: false as const, error: "RESEND_API_KEY manquante" };
